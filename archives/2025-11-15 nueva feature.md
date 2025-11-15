@@ -1,4 +1,3 @@
----
 
 ## 🔄 actualización reciente
 
