@@ -1,73 +1,78 @@
-# 🗣️ HERRAMIENTA DE DICTADO POR VOZ
+# 🗣️ Whisper Dictation Tool
 
-<https://github.com/user-attachments/assets/e1b8a747-61fc-4afc-bd48-0db9f0774eaf>
+## 🎯 Purpose
 
----
+This tool integrates audio transcription into your entire operating system. You can dictate text in any text field, regardless of the application. The system is designed to be efficient and fast.
 
-## 🎯 propósito
+## 🚀 New Architecture
 
-> su propósito es integrar la transcripción de audio en todo tu sistema operativo.
-> puedes dictar texto en cualquier campo de escritura sin importar la aplicación.
-> el sistema está diseñado para ser eficiente y rápido.
+This project has been refactored to follow modern software architecture best practices. The new architecture is based on a modular and configurable Python application, which offers the following advantages:
 
----
+- **Separation of Concerns**: The application logic is separated from the user interface (keyboard shortcuts).
+- **Centralized Configuration**: All application settings are managed in a single `config.toml` file, making it easy to customize.
+- **Modularity**: The application is divided into reusable modules for transcription and language processing.
+- **Maintainability**: The code is now more organized, easier to understand, and easier to maintain.
 
-## 🕹️ interacción
+## 🛠️ Installation and Setup
 
-para interactuar con el sistema utilizas un único atajo de teclado:
+### 1. System Dependencies
 
-- **`ctrl` + `mayúsculas` + `espacio`**
+Before installing the application, make sure you have the following system dependencies installed:
 
-1. ⏺️ al presionarlo por primera vez se inicia la grabación de audio desde tu micrófono.
-2. ⏹️ al presionarlo de nuevo la grabación se detiene y comienza el proceso de transcripción.
-3. 📋 el texto resultante se copia automáticamente a tu portapapeles.
-4. 📥 luego puedes pegarlo
+- **ffmpeg**: For audio processing.
+- **CUDA**: For GPU acceleration (optional, but recommended for better performance).
+- **xclip**: For copying text to the clipboard.
 
----
+You can use the `scripts/verify-setup.sh` script to check if these dependencies are installed.
 
-## 🧩 núcleo del sistema
+### 2. Python Environment
 
-- el núcleo de este sistema es el modelo de lenguaje **Whisper** de OpenAI.
-- específicamente se utiliza **faster-whisper**, una reimplementación optimizada para velocidad.
-- el script principal `whisper-toggle.sh` gestiona el estado de la grabación.
-- crea un archivo temporal para saber si está grabando o no.
-- al detener la grabación este script invoca un proceso de Python.
-- este proceso carga el modelo Whisper en la GPU utilizando la tecnología **CUDA**.
-- la computación se realiza en **float16** para maximizar el rendimiento en tarjetas RTX.
-- puedes verificar la correcta aceleración de tu GPU con el script `test_whisper_gpu`.
-- una vez transcrito el texto el script utiliza la utilidad **xclip** para copiarlo al portapapeles.
+It is recommended to use a virtual environment to install the Python dependencies.
 
----
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
 
-## 🛠️ diagnóstico y dependencias
+### 3. Install Dependencies
 
-> antes de usarlo por primera vez el script `verify-setup` te ayuda a diagnosticar el sistema.
+Install the required Python packages using `pip`:
 
-- revisa que todas las dependencias como **ffmpeg**, **CUDA** y **xclip** estén instaladas.
-- así puedes asegurar que el entorno está configurado correctamente para su operación.
+```bash
+pip install -r requirements.txt
+```
 
----
+### 4. Configuration
 
-<https://github.com/user-attachments/assets/5bcadcfa-14f9-42a1-b3fc-dec93aa01996>
+All application settings are managed in the `config.toml` file. You can customize the following settings:
 
----
+- **Paths**: Temporary file paths.
+- **Whisper**: Whisper model settings (model, language, device, etc.).
+- **Gemini**: Gemini API settings (model, temperature, etc.).
 
----
+### 5. Environment Variables
 
-## 🧠 procesamiento con IA (Opcional)
-
-además del dictado básico, el sistema incluye un procesador inteligente de texto:
-
-- utiliza la **API de Google Gemini** para refinar y mejorar el texto transcrito.
-- puedes procesar el contenido de tu portapapeles con un segundo atajo de teclado.
-- el sistema lee el portapapeles, lo envía a Gemini, y devuelve el texto mejorado.
-- el procesador se encuentra en `llm_processor.py` y usa el modelo **gemini-2.5-flash**.
-- requiere configurar tu `GEMINI_API_KEY` en el archivo `.env`.
-
----
-
-nota: para más detalles ampliados de la nueva actualización consulta [archives/2025-11-15 nueva feature](archives/2025-11-15%20nueva%20feature.md).
-
-para información sobre la migración de Perplexity a Gemini consulta [MIGRATION.md](MIGRATION.md).
+If you want to use the optional AI processing with Gemini, you need to configure your Gemini API key in a `.env` file in the project root:
 
 ```
+GEMINI_API_KEY="YOUR_API_KEY"
+```
+
+## 🕹️ Usage
+
+The application is controlled by the `scripts/whisper-toggle.sh` script, which is intended to be triggered by a keyboard shortcut (e.g., `Ctrl+Shift+Space`).
+
+- **Start Recording**: The first time you trigger the shortcut, it will start recording audio from your microphone.
+- **Stop and Transcribe**: The second time you trigger the shortcut, it will stop the recording, transcribe the audio using Whisper, and copy the resulting text to the clipboard.
+
+### Optional AI Processing
+
+You can also process the text in your clipboard with Gemini. The `scripts/process-clipboard.sh` script is designed to be triggered by a second keyboard shortcut. It reads the content of the clipboard, sends it to Gemini for processing, and copies the improved text back to the clipboard.
+
+## 🧠 Core of the System
+
+- **Whisper**: The core of this system is OpenAI's Whisper model. We use `faster-whisper`, an optimized reimplementation for speed.
+- **Gemini**: The system includes an intelligent text processor that uses the Google Gemini API to refine and improve the transcribed text.
+- **Python Application**: The main logic is encapsulated in a Python application located in the `src` directory. The `whisper-toggle.sh` script acts as a simple interface to this application.
+
+For more details on the new features, check the `archives` directory.
