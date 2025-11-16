@@ -35,3 +35,5 @@ tqdm==4.67.1
 typer-slim==0.20.0
 typing_extensions==4.15.0
 wheel==0.45.1
+toml
+python-json-logger
