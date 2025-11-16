@@ -10,7 +10,7 @@ def load_config():
     if not config_path.is_file():
         raise FileNotFoundError(f"Configuration file not found at {config_path}")
 
-    with open(config_path, "rb") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         return toml.load(f)
 
 config = load_config()
