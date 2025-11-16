@@ -52,4 +52,22 @@ para interactuar con el sistema utilizas un único atajo de teclado:
 
 ---
 
+---
+
+## 🧠 procesamiento con IA (Opcional)
+
+además del dictado básico, el sistema incluye un procesador inteligente de texto:
+
+- utiliza la **API de Google Gemini** para refinar y mejorar el texto transcrito.
+- puedes procesar el contenido de tu portapapeles con un segundo atajo de teclado.
+- el sistema lee el portapapeles, lo envía a Gemini, y devuelve el texto mejorado.
+- el procesador se encuentra en `llm_processor.py` y usa el modelo **gemini-2.5-flash**.
+- requiere configurar tu `GEMINI_API_KEY` en el archivo `.env`.
+
+---
+
 nota: para más detalles ampliados de la nueva actualización consulta [archives/2025-11-15 nueva feature](archives/2025-11-15%20nueva%20feature.md).
+
+para información sobre la migración de Perplexity a Gemini consulta [MIGRATION.md](MIGRATION.md).
+
+```

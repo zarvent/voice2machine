@@ -3,7 +3,7 @@ set -euo pipefail  # Mejor práctica: fallar rápido
 
 # Configuración
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_PATH="$SCRIPT_DIR/venv"
+VENV_PATH="$SCRIPT_DIR/.venv"
 PYTHON_PROCESSOR="$SCRIPT_DIR/llm_processor.py"
 LOG_FILE="$SCRIPT_DIR/logs/process.log"
 
@@ -17,7 +17,7 @@ log() {
 }
 
 # 1. Notificar inicio
-notify-send "🧠 Procesando texto..." "Llamando a la API de Perplexity..." -t 2000
+notify-send "🧠 Procesando texto..." "Llamando a la API de Gemini..." -t 2000
 
 # 2. Leer portapapeles
 CLIPBOARD_CONTENT=$(xclip -selection clipboard -o 2>/dev/null || echo "")
@@ -38,10 +38,14 @@ if [ ! -f "$VENV_PATH/bin/activate" ]; then
 fi
 source "$VENV_PATH/bin/activate"
 
-# Pasamos el contenido como argumento. La salida de errores del script de python se redirige a la salida estándar
-# para que el script de bash la capture en REFINED_TEXT en caso de error.
-REFINED_TEXT=$(python3 "$PYTHON_PROCESSOR" "$CLIPBOARD_CONTENT" 2>&1)
-EXIT_CODE=$?
+TMP_ERR=$(mktemp)
+EXIT_CODE=0
+REFINED_TEXT=$(python3 "$PYTHON_PROCESSOR" "$CLIPBOARD_CONTENT" 2>"$TMP_ERR") || EXIT_CODE=$?
+
+if [ -s "$TMP_ERR" ]; then
+    log "STDERR python: $(cat "$TMP_ERR")"
+fi
+rm -f "$TMP_ERR"
 
 if [ $EXIT_CODE -ne 0 ]; then
     log "ERROR: El script de Python falló con código $EXIT_CODE"
