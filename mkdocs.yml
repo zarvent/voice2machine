@@ -1,0 +1,17 @@
+site_name: 'HERRAMIENTA DE DICTADO POR VOZ'
+theme:
+  name: 'material'
+  palette:
+    scheme: 'slate'
+    primary: 'indigo'
+    accent: 'blue'
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+nav:
+  - 'introducción': 'index.md'
+  - 'guía rápida': 'guia_rapida.md'
+  - 'instalación': 'instalacion.md'
+  - 'arquitectura': 'arquitectura.md'
+  - 'contribución': 'contribucion.md'
