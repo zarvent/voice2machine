@@ -5,10 +5,10 @@ import sys
 from pathlib import Path
 from typing import Callable, Dict
 
-from whisper_dictation.core.logging import logger
-from whisper_dictation.core.ipc_protocol import SOCKET_PATH, IPCCommand
-from whisper_dictation.core.di.container import container
-from whisper_dictation.application.commands import StartRecordingCommand, StopRecordingCommand, ProcessTextCommand
+from v2m.core.logging import logger
+from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand
+from v2m.core.di.container import container
+from v2m.application.commands import StartRecordingCommand, StopRecordingCommand, ProcessTextCommand
 
 class Daemon:
     def __init__(self):

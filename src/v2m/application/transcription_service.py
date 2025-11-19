@@ -23,7 +23,7 @@ class TranscriptionService(ABC):
         """
         raise NotImplementedError
 
-    @abstractd
+    @abstractmethod
     def stop_and_transcribe(self) -> str:
         """
         detiene la grabación actual y procesa el audio para obtener una transcripción

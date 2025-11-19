@@ -1,7 +1,7 @@
 import subprocess
 import pyperclip
-from whisper_dictation.core.interfaces import ClipboardInterface, NotificationInterface
-from whisper_dictation.core.logging import logger
+from v2m.core.interfaces import ClipboardInterface, NotificationInterface
+from v2m.core.logging import logger
 
 class LinuxClipboardAdapter(ClipboardInterface):
     def copy(self, text: str) -> None:

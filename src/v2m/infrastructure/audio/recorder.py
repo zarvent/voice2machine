@@ -4,8 +4,8 @@ import threading
 import wave
 from pathlib import Path
 from typing import Optional, List
-from whisper_dictation.core.logging import logger
-from whisper_dictation.domain.errors import RecordingError
+from v2m.core.logging import logger
+from v2m.domain.errors import RecordingError
 
 class AudioRecorder:
     def __init__(self, sample_rate: int = 16000, channels: int = 1):

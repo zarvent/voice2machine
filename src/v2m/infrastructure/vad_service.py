@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from typing import List, Optional
-from whisper_dictation.core.logging import logger
+from v2m.core.logging import logger
 
 class VADService:
     """

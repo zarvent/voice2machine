@@ -1,8 +1,8 @@
 [paths]
-recording_flag = "/tmp/whisper_recording.pid"
-audio_file = "/tmp/whisper_audio.wav"
-log_file = "/tmp/whisper_debug.log"
-venv_path = "~/whisper-dictation/venv"
+recording_flag = "/tmp/v2m_recording.pid"
+audio_file = "/tmp/v2m_audio.wav"
+log_file = "/tmp/v2m.log"
+venv_path = "~/v2m/venv"
 
 [whisper]
 model = "large-v3-turbo"

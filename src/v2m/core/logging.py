@@ -14,7 +14,7 @@ def setup_logging():
     """
     configura y devuelve un logger estructurado (JSON)
 
-    el logger se nombra 'whisper_dictation' y se configura para emitir logs
+    el logger se nombra 'v2m' y se configura para emitir logs
     a partir del nivel INFO los logs se envían a la salida estándar (stdout)
 
     el formato JSON incluye timestamp nombre del logger nivel y mensaje
@@ -22,7 +22,7 @@ def setup_logging():
     returns:
         una instancia del logger configurado
     """
-    logger = logging.getLogger("whisper_dictation")
+    logger = logging.getLogger("v2m")
     logger.setLevel(logging.INFO)
 
     # previene que se añadan múltiples handlers si este módulo se importa más de una vez

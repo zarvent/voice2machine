@@ -10,16 +10,16 @@ este es el único lugar de la aplicación donde las implementaciones concretas
 depende de abstracciones (interfaces)
 """
 
-from whisper_dictation.core.cqrs.command_bus import CommandBus
-from whisper_dictation.application.command_handlers import StartRecordingHandler, StopRecordingHandler, ProcessTextHandler
-from whisper_dictation.infrastructure.whisper_transcription_service import WhisperTranscriptionService
-from whisper_dictation.infrastructure.gemini_llm_service import GeminiLLMService
-from whisper_dictation.infrastructure.linux_adapters import LinuxNotificationAdapter, LinuxClipboardAdapter
-from whisper_dictation.application.transcription_service import TranscriptionService
-from whisper_dictation.application.llm_service import LLMService
-from whisper_dictation.core.interfaces import NotificationInterface, ClipboardInterface
+from v2m.core.cqrs.command_bus import CommandBus
+from v2m.application.command_handlers import StartRecordingHandler, StopRecordingHandler, ProcessTextHandler
+from v2m.infrastructure.whisper_transcription_service import WhisperTranscriptionService
+from v2m.infrastructure.gemini_llm_service import GeminiLLMService
+from v2m.infrastructure.linux_adapters import LinuxNotificationAdapter, LinuxClipboardAdapter
+from v2m.application.transcription_service import TranscriptionService
+from v2m.application.llm_service import LLMService
+from v2m.core.interfaces import NotificationInterface, ClipboardInterface
 
-from whisper_dictation.infrastructure.vad_service import VADService
+from v2m.infrastructure.vad_service import VADService
 
 class Container:
     """

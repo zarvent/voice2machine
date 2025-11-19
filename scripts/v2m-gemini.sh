@@ -6,7 +6,7 @@ PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )"
 
 # --- Rutas Derivadas ---
 VENV_PATH="${PROJECT_DIR}/venv"
-MAIN_SCRIPT="${PROJECT_DIR}/src/whisper_dictation/main.py"
+MAIN_SCRIPT="${PROJECT_DIR}/src/v2m/main.py"
 
 # --- Función Principal ---
 run_orchestrator() {

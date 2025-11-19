@@ -12,13 +12,13 @@ y la lógica de negocio real
 
 import asyncio
 from typing import Type
-from whisper_dictation.core.cqrs.command import Command
-from whisper_dictation.core.cqrs.command_handler import CommandHandler
-from whisper_dictation.application.commands import StartRecordingCommand, StopRecordingCommand, ProcessTextCommand
-from whisper_dictation.application.transcription_service import TranscriptionService
-from whisper_dictation.application.llm_service import LLMService
-from whisper_dictation.core.interfaces import NotificationInterface, ClipboardInterface
-from whisper_dictation.config import config
+from v2m.core.cqrs.command import Command
+from v2m.core.cqrs.command_handler import CommandHandler
+from v2m.application.commands import StartRecordingCommand, StopRecordingCommand, ProcessTextCommand
+from v2m.application.transcription_service import TranscriptionService
+from v2m.application.llm_service import LLMService
+from v2m.core.interfaces import NotificationInterface, ClipboardInterface
+from v2m.config import config
 
 class StartRecordingHandler(CommandHandler):
     """
@@ -53,7 +53,7 @@ class StartRecordingHandler(CommandHandler):
         # crear bandera de grabación para que el script bash sepa que estamos grabando
         config.paths.recording_flag.touch()
 
-        self.notification_service.notify("🎤 Whisper", "Grabación iniciada...")
+        self.notification_service.notify("🎤 Voice2Machine", "Grabación iniciada...")
 
     def listen_to(self) -> Type[Command]:
         """
@@ -98,7 +98,7 @@ class StopRecordingHandler(CommandHandler):
         if config.paths.recording_flag.exists():
             config.paths.recording_flag.unlink()
 
-        self.notification_service.notify("⚡ Whisper GPU", "Procesando...")
+        self.notification_service.notify("⚡ V2M Processing", "Procesando...")
 
         # la transcripción es pesada (CPU/GPU bound) debe correr en un hilo aparte
         transcription = await asyncio.to_thread(self.transcription_service.stop_and_transcribe)

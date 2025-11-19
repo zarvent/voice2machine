@@ -6,8 +6,8 @@ from pathlib import Path
 # añadir src a la ruta para permitir importaciones
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from whisper_dictation.infrastructure.audio.recorder import AudioRecorder
-from whisper_dictation.config import config
+from v2m.infrastructure.audio.recorder import AudioRecorder
+from v2m.config import config
 
 # configurar el manejo de señales
 stop_requested = False

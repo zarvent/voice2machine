@@ -10,12 +10,12 @@ de la lógica de bajo nivel para
 
 from typing import Optional
 from faster_whisper import WhisperModel
-from whisper_dictation.application.transcription_service import TranscriptionService
-from whisper_dictation.config import config
-from whisper_dictation.domain.errors import RecordingError
-from whisper_dictation.core.logging import logger
-from whisper_dictation.infrastructure.audio.recorder import AudioRecorder
-from whisper_dictation.infrastructure.vad_service import VADService
+from v2m.application.transcription_service import TranscriptionService
+from v2m.config import config
+from v2m.domain.errors import RecordingError
+from v2m.core.logging import logger
+from v2m.infrastructure.audio.recorder import AudioRecorder
+from v2m.infrastructure.vad_service import VADService
 
 class WhisperTranscriptionService(TranscriptionService):
     """

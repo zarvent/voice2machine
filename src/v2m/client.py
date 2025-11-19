@@ -1,7 +1,7 @@
 import asyncio
 import sys
 import argparse
-from whisper_dictation.core.ipc_protocol import SOCKET_PATH, IPCCommand
+from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand
 
 async def send_command(command: str):
     try:
@@ -18,7 +18,7 @@ async def send_command(command: str):
         await writer.wait_closed()
         return response
     except FileNotFoundError:
-        print("Error: Daemon is not running. Start it with 'python -m whisper_dictation.daemon'", file=sys.stderr)
+        print("Error: Daemon is not running. Start it with 'python -m v2m.daemon'", file=sys.stderr)
         sys.exit(1)
     except ConnectionRefusedError:
         print("Error: Connection refused. Daemon might be dead.", file=sys.stderr)

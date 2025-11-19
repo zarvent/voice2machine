@@ -7,4 +7,4 @@ class IPCCommand(str, Enum):
     PING = "PING"
     SHUTDOWN = "SHUTDOWN"
 
-SOCKET_PATH = "/tmp/whisper_dictation.sock"
+SOCKET_PATH = "/tmp/v2m.sock"

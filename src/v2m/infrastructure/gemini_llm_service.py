@@ -6,15 +6,15 @@ de toda la lógica de comunicación con el servicio de GOOGLE GEMINI incluyendo
 la autenticación la construcción de la solicitud y el manejo de reintentos
 """
 
-from whisper_dictation.application.llm_service import LLMService
-from whisper_dictation.config import config, BASE_DIR
+from v2m.application.llm_service import LLMService
+from v2m.config import config, BASE_DIR
 from google import genai
 import os
 from dotenv import load_dotenv
 from pathlib import Path
 from tenacity import retry, stop_after_attempt, wait_exponential
-from whisper_dictation.domain.errors import LLMError
-from whisper_dictation.core.logging import logger
+from v2m.domain.errors import LLMError
+from v2m.core.logging import logger
 
 class GeminiLLMService(LLMService):
     """

@@ -13,7 +13,7 @@ ISSUES=0
 
 # 1. Verificar venv
 echo -n "✓ Entorno virtual: "
-if [ -d "$HOME/whisper-dictation/venv" ]; then
+if [ -d "$HOME/v2m/venv" ]; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FALLO${NC}"
@@ -22,7 +22,7 @@ fi
 
 # 2. Verificar faster-whisper
 echo -n "✓ Faster-Whisper instalado: "
-if source "$HOME/whisper-dictation/venv/bin/activate" 2>/dev/null && python3 -c "import faster_whisper" 2>/dev/null; then
+if source "$HOME/v2m/venv/bin/activate" 2>/dev/null && python3 -c "import faster_whisper" 2>/dev/null; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FALLO${NC}"
@@ -31,7 +31,7 @@ fi
 
 # 3. Verificar CUDA
 echo -n "✓ CUDA disponible: "
-if source "$HOME/whisper-dictation/venv/bin/activate" 2>/dev/null && python3 -c "import torch; print(torch.cuda.is_available())" 2>/dev/null | grep -q "True"; then
+if source "$HOME/v2m/venv/bin/activate" 2>/dev/null && python3 -c "import torch; print(torch.cuda.is_available())" 2>/dev/null | grep -q "True"; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}NO (Verificar CUDA)${NC}"
@@ -40,7 +40,7 @@ fi
 
 # 4. Verificar LD_LIBRARY_PATH
 echo -n "✓ LD_LIBRARY_PATH configurado: "
-if source "$HOME/whisper-dictation/venv/bin/activate" 2>/dev/null && [ -n "$LD_LIBRARY_PATH" ]; then
+if source "$HOME/v2m/venv/bin/activate" 2>/dev/null && [ -n "$LD_LIBRARY_PATH" ]; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${YELLOW}VACIO (Se configurará al activar)${NC}"
@@ -48,7 +48,7 @@ fi
 
 # 5. Verificar script principal
 echo -n "✓ Script whisper-toggle.sh: "
-if [ -x "$HOME/whisper-dictation/whisper-toggle.sh" ]; then
+if [ -x "$HOME/v2m/whisper-toggle.sh" ]; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FALLO${NC}"
@@ -104,7 +104,7 @@ else
     echo -e "${RED}⚠️  Se encontraron $ISSUES problema(s)${NC}"
     echo ""
     echo "Para reinstalar:"
-    echo "cd ~/whisper-dictation"
+    echo "cd ~/v2m"
     echo "rm -rf venv/"
     echo "python3 -m venv venv"
     echo "source venv/bin/activate"

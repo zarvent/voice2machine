@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from whisper_dictation.infrastructure.vad_service import VADService
+from v2m.infrastructure.vad_service import VADService
 
 @pytest.fixture
 def vad_service():

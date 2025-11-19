@@ -6,7 +6,7 @@ puede realizar estos objetos son despachados por el `commandbus` y no
 contienen lógica de negocio solo los datos necesarios para ejecutar la acción
 """
 
-from whisper_dictation.core.cqrs.command import Command
+from v2m.core.cqrs.command import Command
 
 class StartRecordingCommand(Command):
     """

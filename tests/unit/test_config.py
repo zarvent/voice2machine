@@ -1,5 +1,5 @@
 import pytest
-from whisper_dictation.config import Settings
+from v2m.config import Settings
 
 def test_config_loading():
     """Test that configuration loads correctly."""

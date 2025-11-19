@@ -5,19 +5,19 @@ este script ahora actúa como un lanzador unificado puede iniciar el demonio (se
 o actuar como un cliente que envía comandos al demonio a través de IPC
 
 modos de operación
-1.  daemon `python -m whisper_dictation.main --daemon`
+1.  daemon `python -m v2m.main --daemon`
     inicia el proceso persistente que carga el modelo en memoria y escucha comandos
 
-2.  client `python -m whisper_dictation.main <COMMAND>`
+2.  client `python -m v2m.main <COMMAND>`
     envía un comando (START_RECORDING STOP_RECORDING etc) al demonio en ejecución
 """
 import argparse
 import asyncio
 import sys
-from whisper_dictation.daemon import Daemon
-from whisper_dictation.client import send_command
-from whisper_dictation.core.ipc_protocol import IPCCommand
-from whisper_dictation.core.logging import logger
+from v2m.daemon import Daemon
+from v2m.client import send_command
+from v2m.core.ipc_protocol import IPCCommand
+from v2m.core.logging import logger
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Whisper Dictation Main Entrypoint")

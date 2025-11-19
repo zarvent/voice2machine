@@ -16,10 +16,10 @@ from pydantic_settings import (
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class PathsConfig(BaseModel):
-    recording_flag: Path = Field(default=Path("/tmp/whisper_recording.pid"))
-    audio_file: Path = Field(default=Path("/tmp/whisper_audio.wav"))
-    log_file: Path = Field(default=Path("/tmp/whisper_debug.log"))
-    venv_path: Path = Field(default=Path("~/whisper-dictation/venv"))
+    recording_flag: Path = Field(default=Path("/tmp/v2m_recording.pid"))
+    audio_file: Path = Field(default=Path("/tmp/v2m_audio.wav"))
+    log_file: Path = Field(default=Path("/tmp/v2m_debug.log"))
+    venv_path: Path = Field(default=Path("~/v2m/venv"))
 
     def __getitem__(self, item):
         return getattr(self, item)
