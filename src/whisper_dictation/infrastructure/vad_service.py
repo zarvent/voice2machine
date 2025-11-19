@@ -5,10 +5,10 @@ from whisper_dictation.core.logging import logger
 
 class VADService:
     """
-    Servicio para la detección de actividad de voz (VAD) utilizando Silero VAD.
+    servicio para la detección de actividad de voz (VAD) utilizando silero vad
 
-    Permite truncar los silencios del audio antes de enviarlo a Whisper,
-    mejorando la eficiencia y reduciendo el tiempo de inferencia.
+    permite truncar los silencios del audio antes de enviarlo a WHISPER
+    mejorando la eficiencia y reduciendo el tiempo de inferencia
     """
     def __init__(self):
         self.model = None
@@ -17,45 +17,45 @@ class VADService:
 
     def load_model(self):
         """
-        Carga el modelo Silero VAD de forma perezosa.
+        carga el modelo silero vad de forma perezosa
         """
         if self.model is None:
-            logger.info("Cargando modelo Silero VAD...")
+            logger.info("cargando modelo silero vad...")
             try:
-                # Usamos torch.hub para cargar el modelo desde el repositorio oficial
-                # force_reload=False usa la caché local si existe
+                # usamos torch.hub para cargar el modelo desde el repositorio oficial
+                # force_reload=false usa la caché local si existe
                 self.model, self.utils = torch.hub.load(
                     repo_or_dir='snakers4/silero-vad',
                     model='silero_vad',
                     force_reload=False,
-                    onnx=False # Usamos PyTorch por defecto ya que instalamos torch
+                    onnx=False # usamos pytorch por defecto ya que instalamos torch
                 )
                 (self.get_speech_timestamps, _, _, _, _) = self.utils
-                logger.info("Modelo Silero VAD cargado.")
+                logger.info("modelo silero vad cargado")
             except Exception as e:
-                logger.error(f"Error al cargar Silero VAD: {e}")
+                logger.error(f"error al cargar silero vad {e}")
                 raise e
 
     def process(self, audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
         """
-        Procesa el audio y elimina los segmentos de silencio.
+        procesa el audio y elimina los segmentos de silencio
 
-        Args:
-            audio: Array de numpy con el audio (float32).
-            sample_rate: Frecuencia de muestreo (debe ser 8000 o 16000 para Silero).
+        args:
+            audio: array de numpy con el audio (float32)
+            sample_rate: frecuencia de muestreo (debe ser 8000 o 16000 para silero)
 
-        Returns:
-            Un nuevo array de numpy que contiene solo los segmentos de voz concatenados.
-            Si no se detecta voz, devuelve un array vacío.
+        returns:
+            un nuevo array de numpy que contiene solo los segmentos de voz concatenados
+            si no se detecta voz devuelve un array vacío
         """
         self.load_model()
 
-        # Convertir numpy array a tensor de torch
-        # Silero espera un tensor de forma (1, N) o (N)
+        # convertir numpy array a tensor de torch
+        # silero espera un tensor de forma (1 N) o (N)
         audio_tensor = torch.from_numpy(audio)
 
-        # Obtener timestamps de voz
-        # threshold: umbral de probabilidad de voz (0.5 es default)
+        # obtener timestamps de voz
+        # threshold umbral de probabilidad de voz (0.5 es default)
         timestamps = self.get_speech_timestamps(
             audio_tensor,
             self.model,
@@ -64,10 +64,10 @@ class VADService:
         )
 
         if not timestamps:
-            logger.info("VAD: No se detectó voz.")
+            logger.info("VAD no se detectó voz")
             return np.array([], dtype=np.float32)
 
-        # Concatenar los chunks de voz
+        # concatenar los chunks de voz
         speech_chunks = []
         for ts in timestamps:
             start = int(ts['start'])
@@ -81,6 +81,6 @@ class VADService:
 
         original_duration = len(audio) / sample_rate
         new_duration = len(result) / sample_rate
-        logger.info(f"VAD: Audio truncado de {original_duration:.2f}s a {new_duration:.2f}s")
+        logger.info(f"VAD audio truncado de {original_duration:.2f}s a {new_duration:.2f}s")
 
         return result

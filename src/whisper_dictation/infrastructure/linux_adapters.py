@@ -9,7 +9,7 @@ class LinuxClipboardAdapter(ClipboardInterface):
             pyperclip.copy(text)
         except Exception as e:
             logger.error(f"Failed to copy to clipboard: {e}")
-            # Fallback or re-raise? For now log and ignore to not crash app
+            # fallback o relanzar por ahora registrar e ignorar para no bloquear la aplicación
 
     def paste(self) -> str:
         try:
@@ -21,7 +21,7 @@ class LinuxClipboardAdapter(ClipboardInterface):
 class LinuxNotificationAdapter(NotificationInterface):
     def notify(self, title: str, message: str) -> None:
         try:
-            # Using notify-send as it is standard on most Linux DEs
+            # usando notify-send ya que es estándar en la mayoría de los de de linux
             subprocess.run(
                 ["notify-send", title, message],
                 check=False,

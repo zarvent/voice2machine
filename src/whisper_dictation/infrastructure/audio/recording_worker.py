@@ -3,13 +3,13 @@ import time
 import signal
 import argparse
 from pathlib import Path
-# Add src to path to allow imports
+# añadir src a la ruta para permitir importaciones
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 from whisper_dictation.infrastructure.audio.recorder import AudioRecorder
 from whisper_dictation.config import config
 
-# Setup signal handling
+# configurar el manejo de señales
 stop_requested = False
 
 def signal_handler(sig, frame):
@@ -27,17 +27,17 @@ def main():
     recorder = AudioRecorder()
     try:
         recorder.start()
-        print("Recording started", flush=True)
+        print("grabación iniciada", flush=True)
     except Exception as e:
-        print(f"Error starting recording: {e}", file=sys.stderr)
+        print(f"error al iniciar la grabación {e}", file=sys.stderr)
         sys.exit(1)
 
     while not stop_requested:
         time.sleep(0.1)
 
-    print("Stopping recording...", flush=True)
+    print("deteniendo la grabación...", flush=True)
     recorder.stop(save_path=Path(args.output))
-    print(f"Saved to {args.output}", flush=True)
+    print(f"guardado en {args.output}", flush=True)
 
 if __name__ == "__main__":
     main()

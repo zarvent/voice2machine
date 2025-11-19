@@ -50,4 +50,4 @@ echa un vistazo a `config.toml` aquí es donde puedes afinar el rendimiento como
 para asegurar que todo esté conectado correctamente puedes usar estos scripts
 
 *   `scripts/verify-setup.sh` te da un chequeo rápido de las dependencias del sistema
-*   `python test_whisper_gpu.py` es útil para confirmar que `faster-whisper` está usando tu GPU y no el CPU
+*   `python scripts/test_whisper_gpu.py` es útil para confirmar que `faster-whisper` está usando tu GPU y no el CPU

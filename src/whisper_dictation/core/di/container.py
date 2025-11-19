@@ -1,13 +1,13 @@
 """
-Módulo que implementa el Contenedor de Inyección de Dependencias (DI).
+módulo que implementa el contenedor de inyección de dependencias (DI)
 
-El contenedor es responsable de "cablear" la aplicación. Esto significa que
+el contenedor es responsable de "cablear" la aplicación esto significa que
 instancia las clases concretas (infraestructura) y las inyecta en las clases
-que las necesitan (handlers de aplicación), desacoplando las capas entre sí.
+que las necesitan (handlers de aplicación) desacoplando las capas entre sí
 
-Este es el único lugar de la aplicación donde las implementaciones concretas
-(ej. `WhisperTranscriptionService`) son conocidas. El resto de la aplicación
-depende de abstracciones (interfaces).
+este es el único lugar de la aplicación donde las implementaciones concretas
+(ej `whispertranscriptionservice`) son conocidas el resto de la aplicación
+depende de abstracciones (interfaces)
 """
 
 from whisper_dictation.core.cqrs.command_bus import CommandBus
@@ -23,38 +23,38 @@ from whisper_dictation.infrastructure.vad_service import VADService
 
 class Container:
     """
-    Contenedor de DI que gestiona el ciclo de vida y las dependencias de los objetos.
+    contenedor de DI que gestiona el ciclo de vida y las dependencias de los objetos
     """
     def __init__(self) -> None:
         """
-        Inicializa y configura todas las dependencias de la aplicación.
+        inicializa y configura todas las dependencias de la aplicación
 
-        El proceso de configuración sigue estos pasos:
-        1.  **Instanciar servicios de infraestructura**: Se crean las implementaciones
-            concretas de los servicios (ej. para Whisper, para Gemini). Se manejan
-            como singletons para que solo haya una instancia por servicio.
+        el proceso de configuración sigue estos pasos
+        1.  **instanciar servicios de infraestructura** se crean las implementaciones
+            concretas de los servicios (ej para WHISPER para GEMINI) se manejan
+            como singletons para que solo haya una instancia por servicio
 
-        2.  **Instanciar handlers de aplicación**: Se crean los manejadores de comandos
+        2.  **instanciar handlers de aplicación** se crean los manejadores de comandos
             y se les inyectan las instancias de los servicios que necesitan para
-            funcionar.
+            funcionar
 
-        3.  **Configurar el Command Bus**: Se instancia el bus de comandos y se
+        3.  **configurar el command bus** se instancia el bus de comandos y se
             registran todos los handlers para que el bus sepa a quién despachar
-            cada comando.
+            cada comando
         """
-        # --- 1. Instanciar servicios (como singletons) ---
-        # Aquí se decide qué implementación concreta usar para cada interfaz.
-        # Si quisiéramos cambiar de Gemini a OpenAI, solo cambiaríamos esta línea.
+        # --- 1 instanciar servicios (como singletons) ---
+        # aquí se decide qué implementación concreta usar para cada interfaz
+        # si quisiéramos cambiar de GEMINI a OPENAI solo cambiaríamos esta línea
         self.vad_service = VADService()
         self.transcription_service: TranscriptionService = WhisperTranscriptionService(vad_service=self.vad_service)
         self.llm_service: LLMService = GeminiLLMService()
 
-        # Adaptadores de sistema
+        # adaptadores de sistema
         self.notification_service: NotificationInterface = LinuxNotificationAdapter()
         self.clipboard_service: ClipboardInterface = LinuxClipboardAdapter()
 
-        # --- 2. Instanciar manejadores de comandos ---
-        # Se inyectan las dependencias en el constructor de cada handler.
+        # --- 2 instanciar manejadores de comandos ---
+        # se inyectan las dependencias en el constructor de cada handler
         self.start_recording_handler = StartRecordingHandler(
             self.transcription_service,
             self.notification_service
@@ -70,9 +70,9 @@ class Container:
             self.clipboard_service
         )
 
-        # --- 3. Instanciar y configurar el bus de comandos ---
-        # El bus de comandos se convierte en el punto de acceso central para
-        # ejecutar la lógica de negocio.
+        # --- 3 instanciar y configurar el bus de comandos ---
+        # el bus de comandos se convierte en el punto de acceso central para
+        # ejecutar la lógica de negocio
         self.command_bus = CommandBus()
         self.command_bus.register(self.start_recording_handler)
         self.command_bus.register(self.stop_recording_handler)
@@ -80,14 +80,14 @@ class Container:
 
     def get_command_bus(self) -> CommandBus:
         """
-        Provee acceso al Command Bus configurado.
+        provee acceso al command bus configurado
 
-        Returns:
-            La instancia única del Command Bus.
+        returns:
+            la instancia única del command bus
         """
         return self.command_bus
 
-# --- Instancia global del contenedor ---
-# Se crea una única instancia del contenedor que será accesible desde toda la
-# aplicación (principalmente desde `main.py`).
+# --- instancia global del contenedor ---
+# se crea una única instancia del contenedor que será accesible desde toda la
+# aplicación (principalmente desde `main.py`)
 container = Container()

@@ -15,7 +15,7 @@ este es el flujo principal para capturar tu voz y convertirla en texto
 %%{init: {"flowchart": {"htmlLabels": false}} }%%
 flowchart TD
     subgraph VOZ A TEXTO
-        A["🎤 ATAMO 1<br/>_inicia grabación_"] --> B{"transcribe con WHISPER"}
+        A["🎤 ATAJO 1<br/>_inicia grabación_"] --> B{"transcribe con WHISPER"}
         B --> C["📋 COPIADO<br/>_texto en portapapeles_"]
     end
 

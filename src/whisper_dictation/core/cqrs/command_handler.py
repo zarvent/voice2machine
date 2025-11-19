@@ -1,9 +1,9 @@
 """
-Módulo que define la interfaz para los manejadores de comandos (Command Handlers).
+módulo que define la interfaz para los manejadores de comandos (command handlers)
 
-Un Command Handler es el componente que contiene la lógica de negocio para
-procesar un comando específico. Cada handler se suscribe a un tipo de comando
-y es invocado por el `CommandBus` cuando un comando de ese tipo es despachado.
+un command handler es el componente que contiene la lógica de negocio para
+procesar un comando específico cada handler se suscribe a un tipo de comando
+y es invocado por el `commandbus` cuando un comando de ese tipo es despachado
 """
 
 from abc import ABC, abstractmethod
@@ -12,32 +12,32 @@ from .command import Command
 
 class CommandHandler(ABC):
     """
-    Clase base abstracta para los manejadores de comandos.
+    clase base abstracta para los manejadores de comandos
 
-    Todos los handlers de la aplicación deben heredar de esta clase e implementar
-    los métodos `handle` y `listen_to`.
+    todos los handlers de la aplicación deben heredar de esta clase e implementar
+    los métodos `handle` y `listen_to`
     """
 
     @abstractmethod
     async def handle(self, command: Command) -> None:
         """
-        Contiene la lógica de negocio para procesar el comando.
+        contiene la lógica de negocio para procesar el comando
 
-        Este método es invocado por el `CommandBus`.
+        este método es invocado por el `commandbus`
 
-        Args:
-            command: La instancia del comando a procesar.
+        args:
+            command: la instancia del comando a procesar
         """
         raise NotImplementedError
 
     def listen_to(self) -> Type[Command]:
         """
-        Especifica a qué tipo de comando se suscribe este handler.
+        especifica a qué tipo de comando se suscribe este handler
 
-        El `CommandBus` utiliza este método para registrar el handler y saber
-        a cuál invocar para un comando dado.
+        el `commandbus` utiliza este método para registrar el handler y saber
+        a cuál invocar para un comando dado
 
-        Returns:
-            El tipo de la clase del comando (ej. `StartRecordingCommand`).
+        returns:
+            el tipo de la clase del comando (eg `startrecordingcommand`)
         """
         raise NotImplementedError

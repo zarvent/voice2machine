@@ -15,13 +15,13 @@ class AudioRecorder:
         self._frames: List[np.ndarray] = []
         self._stream: Optional[sd.InputStream] = None
         self._lock = threading.Lock()
-        # Max duration to prevent OOM: 10 minutes
+        # duración máxima para evitar oom 10 minutos
         self.max_samples = 10 * 60 * sample_rate
         self.current_samples = 0
 
     def start(self):
         if self._recording:
-            raise RecordingError("Recording already in progress")
+            raise RecordingError("grabación ya en progreso")
 
         self._recording = True
         self._frames = []
@@ -29,14 +29,14 @@ class AudioRecorder:
 
         def callback(indata, frames, time, status):
             if status:
-                logger.warning(f"Audio recording status: {status}")
+                logger.warning(f"estado de la grabación de audio {status}")
             with self._lock:
                 if self._recording:
                     if self.current_samples < self.max_samples:
                         self._frames.append(indata.copy())
                         self.current_samples += frames
                     else:
-                        # Stop recording if max duration reached (or just stop appending)
+                        # detener la grabación si se alcanza la duración máxima (o simplemente dejar de añadir)
                         pass
 
         try:
@@ -47,16 +47,16 @@ class AudioRecorder:
                 dtype="float32"
             )
             self._stream.start()
-            logger.info("Audio recording started")
+            logger.info("grabación de audio iniciada")
         except Exception as e:
             self._recording = False
-            raise RecordingError(f"Failed to start recording: {e}") from e
+            raise RecordingError(f"falló al iniciar la grabación {e}") from e
 
     def stop(self, save_path: Optional[Path] = None) -> np.ndarray:
         if not self._recording:
-             # If frames are empty and not recording, then truly nothing happened
+             # si los fotogramas están vacíos y no se está grabando entonces no ha pasado nada
              if not self._frames and not self._stream:
-                 raise RecordingError("No recording in progress")
+                 raise RecordingError("no hay grabación en curso")
 
         with self._lock:
             self._recording = False
@@ -66,7 +66,7 @@ class AudioRecorder:
             self._stream.close()
             self._stream = None
 
-        logger.info("Audio recording stopped")
+        logger.info("grabación de audio detenida")
 
         if not self._frames:
             return np.array([], dtype=np.float32)
@@ -74,7 +74,7 @@ class AudioRecorder:
         audio = np.concatenate(self._frames, axis=0).flatten()
 
         if save_path:
-            # Convert float32 to int16 for WAV
+            # convertir float32 a int16 para wav
             audio_int16 = (audio * 32767).astype(np.int16)
             with wave.open(str(save_path), 'wb') as wf:
                 wf.setnchannels(self.channels)

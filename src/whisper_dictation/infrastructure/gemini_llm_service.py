@@ -1,9 +1,9 @@
 """
-Módulo que implementa el servicio de LLM utilizando la API de GOOGLE GEMINI.
+módulo que implementa el servicio de LLM utilizando la API de GOOGLE GEMINI
 
-Esta es una implementación concreta de la interfaz `LLMService`. Es responsable
+esta es una implementación concreta de la interfaz `llmservice` es responsable
 de toda la lógica de comunicación con el servicio de GOOGLE GEMINI incluyendo
-la autenticación la construcción de la solicitud y el manejo de reintentos.
+la autenticación la construcción de la solicitud y el manejo de reintentos
 """
 
 from whisper_dictation.application.llm_service import LLMService
@@ -18,24 +18,24 @@ from whisper_dictation.core.logging import logger
 
 class GeminiLLMService(LLMService):
     """
-    Implementación del `LLMService` que se conecta con GOOGLE GEMINI.
+    implementación del `llmservice` que se conecta con GOOGLE GEMINI
 
-    Gestiona la configuración del cliente de la API la formulación de las
-    peticiones y la lógica de reintentos para asegurar una comunicación robusta.
+    gestiona la configuración del cliente de la API la formulación de las
+    peticiones y la lógica de reintentos para asegurar una comunicación robusta
     """
     def __init__(self) -> None:
         """
-        Inicializa el servicio de GOOGLE GEMINI.
+        inicializa el servicio de GOOGLE GEMINI
 
-        Este constructor realiza las siguientes acciones:
-        1.  Obtiene la configuración y la API KEY desde `config.py` (Pydantic Settings).
-        2.  Configura e instancia el cliente de la API de GOOGLE.
-        3.  Almacena los parámetros del modelo y la configuración de reintentos.
+        este constructor realiza las siguientes acciones
+        1.  obtiene la configuración y la API KEY desde `config.py` (pydantic settings)
+        2.  configura e instancia el cliente de la API de GOOGLE
+        3.  almacena los parámetros del modelo y la configuración de reintentos
 
-        Raises:
-            LLMError: Si la `GEMINI_API_KEY` no se encuentra en la configuración.
+        raises:
+            llmerror: si la `GEMINI_API_KEY` no se encuentra en la configuración
         """
-        # --- Carga de configuración y secretos ---
+        # --- carga de configuración y secretos ---
         gemini_config = config.gemini
         api_key = gemini_config.api_key
 
@@ -43,21 +43,21 @@ class GeminiLLMService(LLMService):
             raise LLMError("la variable de entorno GEMINI_API_KEY no fue encontrada")
 
         # --- inicialización del cliente de la api ---
-        # la librería de google utiliza `GOOGLE_API_KEY` por defecto
+        # la librería de GOOGLE utiliza `GOOGLE_API_KEY` por defecto
         os.environ["GOOGLE_API_KEY"] = api_key
         self.client = genai.Client(api_key=api_key)
         self.model = gemini_config.model
         self.temperature = gemini_config.temperature
         self.max_tokens = gemini_config.max_tokens
 
-        # Cargar System Prompt
+        # cargar system prompt
         prompt_path = BASE_DIR / "prompts" / "refine_system.txt"
         try:
             with open(prompt_path, "r", encoding="utf-8") as f:
                 self.system_instruction = f.read()
         except FileNotFoundError:
-            logger.warning("System prompt no encontrado, usando default.")
-            self.system_instruction = "Eres un editor de texto experto."
+            logger.warning("system prompt no encontrado usando default")
+            self.system_instruction = "eres un editor de texto experto"
 
     @retry(
         stop=stop_after_attempt(config.gemini.retry_attempts),
@@ -69,19 +69,19 @@ class GeminiLLMService(LLMService):
     )
     async def process_text(self, text: str) -> str:
         """
-        Procesa un texto utilizando el modelo de GOOGLE GEMINI.
+        procesa un texto utilizando el modelo de GOOGLE GEMINI
 
-        Implementa una estrategia de reintentos con `tenacity` para manejar
-        errores transitorios de red o de la API de forma resiliente.
+        implementa una estrategia de reintentos con `tenacity` para manejar
+        errores transitorios de red o de la API de forma resiliente
 
-        Args:
-            text: El texto a procesar.
+        args:
+            text: el texto a procesar
 
-        Returns:
-            El texto refinado por el LLM.
+        returns:
+            el texto refinado por el LLM
 
-        Raises:
-            LLMError: Si la comunicación con la API falla después de todos los reintentos.
+        raises:
+            llmerror: si la comunicación con la API falla después de todos los reintentos
         """
         try:
             logger.info("procesando texto con GEMINI...")
@@ -108,10 +108,10 @@ class GeminiLLMService(LLMService):
             if response.text:
                 return response.text.strip()
             else:
-                raise LLMError("Respuesta vacía de Gemini")
+                raise LLMError("respuesta vacía de GEMINI")
         except Exception as e:
             # --- manejo de errores ---
-            # se captura cualquier excepción de la librería de google o de red
+            # se captura cualquier excepción de la librería de GOOGLE o de red
             # y se relanza como un error de dominio para no filtrar detalles
             # de la infraestructura a la capa de aplicación
             logger.error(f"error procesando texto con GEMINI {e}")

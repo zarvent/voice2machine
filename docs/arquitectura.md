@@ -58,7 +58,7 @@ graph TD
 | componente                                | descripción                                                              |
 | ------------------------------------------- | ------------------------------------------------------------------------ |
 | `src/whisper_dictation/main.py`             | el **controlador** principal que escucha comandos desde los scripts de shell (`start` `stop` `process`) |
-| `src/whisper_dictation/core/di/container.py`  | el **orquestador** donde se conectan las interfaces con sus implementaciones concretas (ej `LLMService` se resuelve a `GeminiLLMService`) |
+| `src/whisper_dictation/core/di/container.py`  | el **orquestador** donde se conectan las interfaces con sus implementaciones concretas ej `LLMService` se resuelve a `GeminiLLMService` |
 | `src/whisper_dictation/application/`        | el **cerebro** con la lógica de negocio pura los comandos y los handlers que definen qué hacer |
 | `src/whisper_dictation/infrastructure/`     | las **manos** que interactúan con el mundo real como la API de WHISPER o GOOGLE GEMINI |
 | `config.toml`                               | el **panel de control** para configurar modelos dispositivos y otros parámetros |

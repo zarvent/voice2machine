@@ -31,7 +31,7 @@ class Daemon:
                 await self.command_bus.dispatch(StopRecordingCommand())
 
             elif message.startswith(IPCCommand.PROCESS_TEXT):
-                # Extract payload
+                # extraer payload
                 parts = message.split(" ", 1)
                 if len(parts) > 1:
                     text = parts[1]
@@ -63,7 +63,7 @@ class Daemon:
 
     async def start_server(self):
         if self.socket_path.exists():
-            # Check if socket is actually alive
+            # verificar si el socket está realmente vivo
             try:
                 reader, writer = await asyncio.open_unix_connection(str(self.socket_path))
                 writer.close()
@@ -71,7 +71,7 @@ class Daemon:
                 logger.error("Daemon is already running.")
                 sys.exit(1)
             except (ConnectionRefusedError, FileNotFoundError):
-                # Socket exists but no one is listening, safe to remove
+                # el socket existe pero nadie está escuchando es seguro eliminarlo
                 self.socket_path.unlink()
 
         server = await asyncio.start_unix_server(self.handle_client, str(self.socket_path))
@@ -79,7 +79,7 @@ class Daemon:
 
         self.running = True
 
-        # Keep the server running
+        # mantener el servidor en funcionamiento
         async with server:
             await server.serve_forever()
 
@@ -90,7 +90,7 @@ class Daemon:
         sys.exit(0)
 
     def run(self):
-        # Setup signal handlers
+        # configurar manejadores de señales
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
@@ -98,7 +98,7 @@ class Daemon:
             logger.info("Signal received, shutting down...")
             self.stop()
 
-        # Note: add_signal_handler is not supported on Windows, but we are on Linux
+        # nota add_signal_handler no es compatible con windows pero estamos en linux
         loop.add_signal_handler(signal.SIGINT, signal_handler)
         loop.add_signal_handler(signal.SIGTERM, signal_handler)
 

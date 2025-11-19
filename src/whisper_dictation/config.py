@@ -1,5 +1,5 @@
 """
-Módulo para la carga y gestión de la configuración de la aplicación utilizando Pydantic Settings.
+módulo para la carga y gestión de la configuración de la aplicación utilizando pydantic settings
 """
 
 from pathlib import Path
@@ -12,7 +12,7 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
-# --- Ruta base del proyecto ---
+# --- ruta base del proyecto ---
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class PathsConfig(BaseModel):
