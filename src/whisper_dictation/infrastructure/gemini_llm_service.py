@@ -7,7 +7,7 @@ la autenticación la construcción de la solicitud y el manejo de reintentos.
 """
 
 from whisper_dictation.application.llm_service import LLMService
-from whisper_dictation.config import config
+from whisper_dictation.config import config, BASE_DIR
 from google import genai
 import os
 from dotenv import load_dotenv
@@ -28,24 +28,16 @@ class GeminiLLMService(LLMService):
         Inicializa el servicio de GOOGLE GEMINI.
 
         Este constructor realiza las siguientes acciones:
-        1.  Carga las variables de entorno desde el archivo `.env`.
-        2.  Lee la configuración específica de GEMINI desde `config.toml`.
-        3.  Obtiene la `GEMINI_API_KEY` de las variables de entorno.
-        4.  Configura e instancia el cliente de la API de GOOGLE.
-        5.  Almacena los parámetros del modelo y la configuración de reintentos.
+        1.  Obtiene la configuración y la API KEY desde `config.py` (Pydantic Settings).
+        2.  Configura e instancia el cliente de la API de GOOGLE.
+        3.  Almacena los parámetros del modelo y la configuración de reintentos.
 
         Raises:
-            LLMError: Si la `GEMINI_API_KEY` no se encuentra en las variables de entorno.
+            LLMError: Si la `GEMINI_API_KEY` no se encuentra en la configuración.
         """
         # --- Carga de configuración y secretos ---
-        env_path = Path(__file__).parent.parent.parent.parent / '.env'
-        if not env_path.exists():
-            # se crea si no existe para evitar errores en `load_dotenv`
-            env_path.touch()
-        load_dotenv(env_path)
-
-        gemini_config = config['gemini']
-        api_key = os.getenv("GEMINI_API_KEY")
+        gemini_config = config.gemini
+        api_key = gemini_config.api_key
 
         if not api_key:
             raise LLMError("la variable de entorno GEMINI_API_KEY no fue encontrada")
@@ -54,16 +46,25 @@ class GeminiLLMService(LLMService):
         # la librería de google utiliza `GOOGLE_API_KEY` por defecto
         os.environ["GOOGLE_API_KEY"] = api_key
         self.client = genai.Client(api_key=api_key)
-        self.model = gemini_config['model']
-        self.temperature = gemini_config['temperature']
-        self.max_tokens = gemini_config['max_tokens']
+        self.model = gemini_config.model
+        self.temperature = gemini_config.temperature
+        self.max_tokens = gemini_config.max_tokens
+
+        # Cargar System Prompt
+        prompt_path = BASE_DIR / "prompts" / "refine_system.txt"
+        try:
+            with open(prompt_path, "r", encoding="utf-8") as f:
+                self.system_instruction = f.read()
+        except FileNotFoundError:
+            logger.warning("System prompt no encontrado, usando default.")
+            self.system_instruction = "Eres un editor de texto experto."
 
     @retry(
-        stop=stop_after_attempt(config['gemini']['retry_attempts']),
+        stop=stop_after_attempt(config.gemini.retry_attempts),
         wait=wait_exponential(
             multiplier=1,
-            min=config['gemini']['retry_min_wait'],
-            max=config['gemini']['retry_max_wait'],
+            min=config.gemini.retry_min_wait,
+            max=config.gemini.retry_max_wait,
         ),
     )
     def process_text(self, text: str) -> str:
@@ -87,6 +88,7 @@ class GeminiLLMService(LLMService):
             generation_config = {
                 "temperature": self.temperature,
                 "max_output_tokens": self.max_tokens,
+                "system_instruction": self.system_instruction,
             }
 
             # --- construcción del payload para la api ---
@@ -103,7 +105,10 @@ class GeminiLLMService(LLMService):
                 config=generation_config
             )
             logger.info("procesamiento con GEMINI completado")
-            return response.text.strip()
+            if response.text:
+                return response.text.strip()
+            else:
+                raise LLMError("Respuesta vacía de Gemini")
         except Exception as e:
             # --- manejo de errores ---
             # se captura cualquier excepción de la librería de google o de red

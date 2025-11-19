@@ -22,7 +22,7 @@ min_speech_duration_ms = 250
 min_silence_duration_ms = 500
 
 [gemini]
-model = "gemini-2.0-flash-exp"
+model = "models/gemini-1.5-flash-latest"
 temperature = 0.3
 max_tokens = 2048
 max_input_chars = 6000

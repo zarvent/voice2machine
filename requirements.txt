@@ -37,3 +37,5 @@ typing_extensions==4.15.0
 wheel==0.45.1
 toml
 python-json-logger
+pydantic-settings
+sounddevice

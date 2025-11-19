@@ -32,9 +32,9 @@ class WhisperTranscriptionService(TranscriptionService):
         en este punto para acelerar el inicio de la aplicación.
         """
         self._model: Optional[WhisperModel] = None
-        self._paths = config['paths']
-        self._recording_flag = Path(self._paths['recording_flag'])
-        self._audio_file = Path(self._paths['audio_file'])
+        self._paths = config.paths
+        self._recording_flag = self._paths.recording_flag
+        self._audio_file = self._paths.audio_file
 
     @property
     def model(self) -> WhisperModel:
@@ -50,13 +50,13 @@ class WhisperTranscriptionService(TranscriptionService):
         """
         if self._model is None:
             logger.info("cargando modelo de WHISPER...")
-            whisper_config = config['whisper']
+            whisper_config = config.whisper
             self._model = WhisperModel(
-                whisper_config['model'],
-                device=whisper_config['device'],
-                compute_type=whisper_config['compute_type'],
-                device_index=whisper_config['device_index'],
-                num_workers=whisper_config['num_workers']
+                whisper_config.model,
+                device=whisper_config.device,
+                compute_type=whisper_config.compute_type,
+                device_index=whisper_config.device_index,
+                num_workers=whisper_config.num_workers
             )
             logger.info("modelo de WHISPER cargado")
         return self._model
@@ -150,15 +150,15 @@ class WhisperTranscriptionService(TranscriptionService):
 
         # --- transcripción con whisper ---
         logger.info("transcribiendo audio...")
-        whisper_config = config['whisper']
+        whisper_config = config.whisper
         segments, _ = self.model.transcribe(
             str(self._audio_file),
-            language=whisper_config['language'],
-            beam_size=whisper_config['beam_size'],
-            best_of=whisper_config['best_of'],
-            temperature=whisper_config['temperature'],
-            vad_filter=whisper_config['vad_filter'],
-            vad_parameters=config['whisper']['vad_parameters']
+            language=whisper_config.language,
+            beam_size=whisper_config.beam_size,
+            best_of=whisper_config.best_of,
+            temperature=whisper_config.temperature,
+            vad_filter=whisper_config.vad_filter,
+            vad_parameters=whisper_config.vad_parameters.model_dump()
         )
         text = " ".join([segment.text.strip() for segment in segments])
         logger.info("transcripción completada")

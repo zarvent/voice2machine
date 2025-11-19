@@ -17,3 +17,5 @@ class Command(ABC):
     un contrato común y puedan ser manejados por el `CommandBus`.
     """
     pass
+
+
