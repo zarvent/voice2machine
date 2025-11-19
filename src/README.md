@@ -7,14 +7,14 @@ esta carpeta es el directorio raíz del código fuente (`source`) de la aplicaci
 su objetivo es separar claramente el código de la aplicación de otros archivos del proyecto como la documentación los scripts las pruebas o la configuración esta separación es una práctica estándar que mejora la organización y facilita la construcción de paquetes distribuibles
 
 ### qué puedo encontrar aquí
-*   `whisper_dictation` el paquete principal de `PYTHON` que contiene toda la lógica de la aplicación la estructura interna de este paquete sigue una arquitectura por capas
+*   `v2m` el paquete principal de `PYTHON` que contiene toda la lógica de la aplicación la estructura interna de este paquete sigue una arquitectura por capas
 
 ### arquitectura o diagramas
 la estructura interna del código está organizada en capas como se ilustra a continuación
 
 ```mermaid
 graph TD
-    A[src] --> B(whisper_dictation)
+    A[src] --> B(v2m)
     B --> C(application)
     B --> D(core)
     B --> E(domain)
@@ -44,4 +44,4 @@ las contribuciones de código deben seguir la arquitectura por capas definida an
     *   aunque no existe actualmente las pruebas deberían estar en una carpeta `tests` separada al mismo nivel que `src` para mantener el código de producción aislado del de prueba
 
 ### referencias y recursos
-*   `src/whisper_dictation/README.md` para una explicación más detallada de la arquitectura por capas
+*   `src/v2m/README.md` para una explicación más detallada de la arquitectura por capas

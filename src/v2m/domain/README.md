@@ -44,5 +44,5 @@ el código en esta capa se centra en la semántica del negocio
     *   a través de interfaces (como los repositorios) y eventos de dominio el dominio define el "qué" se necesita y la `infraestructura` implementa el "cómo"
 
 ### referencias y recursos
-*   `src/whisper_dictation/infrastructure/README.md` para ver cómo se implementan las interfaces de esta capa
+*   `src/v2m/infrastructure/README.md` para ver cómo se implementan las interfaces de esta capa
 *   [domain-driven design quickly (libro gratuito)](https://www.infoq.com/minibooks/domain-driven-design-quickly/) una introducción concisa a los conceptos de DDD

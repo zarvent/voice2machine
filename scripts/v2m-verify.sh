@@ -47,8 +47,8 @@ else
 fi
 
 # 5. Verificar script principal
-echo -n "✓ Script whisper-toggle.sh: "
-if [ -x "$HOME/v2m/whisper-toggle.sh" ]; then
+echo -n "✓ Script v2m-toggle.sh: "
+if [ -x "$HOME/v2m/v2m-toggle.sh" ]; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FALLO${NC}"
@@ -57,7 +57,7 @@ fi
 
 # 6. Verificar atajo de teclado
 echo -n "✓ Atajo de teclado Ctrl+Shift+Space: "
-if gsettings get org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/whisper0/ command 2>/dev/null | grep -q "whisper-toggle.sh"; then
+if gsettings get org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/whisper0/ command 2>/dev/null | grep -q "v2m-toggle.sh"; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}NO CONFIGURADO${NC}"

@@ -5,8 +5,8 @@ import os
 
 # Path to python executable
 PYTHON = sys.executable
-DAEMON_SCRIPT = "src/whisper_dictation/daemon.py"
-CLIENT_SCRIPT = "src/whisper_dictation/client.py"
+DAEMON_SCRIPT = "src/v2m/daemon.py"
+CLIENT_SCRIPT = "src/v2m/client.py"
 
 def run_client(*args):
     cmd = [PYTHON, CLIENT_SCRIPT] + list(args)

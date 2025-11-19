@@ -27,14 +27,14 @@ para ejecutar la aplicación, utiliza los scripts desde la raíz del repositorio
 
 ### cómo contribuir
 1.  **crea un nuevo script**: añade un archivo `.sh` con un nombre descriptivo (e.g., `run_tests.sh`).
-2.  **añade la lógica**: asegúrate de que el script active el entorno virtual de `python` y llame al módulo principal (`src/whisper_dictation/main.py`) con los comandos y argumentos correctos.
+2.  **añade la lógica**: asegúrate de que el script active el entorno virtual de `python` y llame al módulo principal (`src/v2m/main.py`) con los comandos y argumentos correctos.
 3.  **hazlo ejecutable**: no olvides dar permisos de ejecución al nuevo script con `chmod +x scripts/tu_nuevo_script.sh`.
 
 ### faqs o preguntas frecuentes
-*   **¿por qué no ejecutar `python -m src.whisper_dictation.main` directamente?**
+*   **¿por qué no ejecutar `python -m src.v2m.main` directamente?**
     *   usar scripts asegura que todos los desarrolladores ejecuten la aplicación de la misma manera y evita errores comunes relacionados con la activación del entorno virtual o la especificación de rutas.
 *   **¿estos scripts funcionan en windows?**
     *   están diseñados principalmente para entornos `unix-like` (`linux`, `macos`). para `windows`, podría ser necesario crear archivos equivalentes `.bat` o usar `wsl`.
 
 ### referencias y recursos
-*   `src/whisper_dictation/main.py`: el punto de entrada principal que estos scripts invocan.
+*   `src/v2m/main.py`: el punto de entrada principal que estos scripts invocan.

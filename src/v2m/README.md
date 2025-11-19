@@ -1,7 +1,7 @@
-# WHISPER DICTATION
+# V2M (VOICE2MACHINE)
 
 ### qué es esta carpeta
-esta es la carpeta principal del paquete de `PYTHON` `whisper_dictation` contiene todo el código fuente que define la lógica y el comportamiento de la aplicación su estructura interna está organizada siguiendo una arquitectura por capas inspirada en el `diseño guiado por dominio (DDD)`
+esta es la carpeta principal del paquete de `PYTHON` `v2m` contiene todo el código fuente que define la lógica y el comportamiento de la aplicación su estructura interna está organizada siguiendo una arquitectura por capas inspirada en el `diseño guiado por dominio (DDD)`
 
 ### para qué sirve
 el propósito de esta organización es separar las responsabilidades del software en distintas capas lo que facilita su mantenimiento escalabilidad y testeo cada capa tiene un rol bien definido permitiendo que el sistema sea más modular y robusto

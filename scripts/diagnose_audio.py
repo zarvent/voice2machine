@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Diagnóstico de Audio - Whisper Dictation
+Diagnóstico de Audio - Voice2Machine (V2M)
 Prueba todos los dispositivos de entrada y muestra amplitudes en tiempo real.
 """
 
