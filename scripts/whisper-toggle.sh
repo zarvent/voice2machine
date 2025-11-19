@@ -24,7 +24,7 @@ run_orchestrator() {
 
 # --- Lógica de Conmutación ---
 if [ -f "${RECORDING_FLAG}" ]; then
-    run_orchestrator "stop"
+    run_orchestrator "STOP_RECORDING"
 else
-    run_orchestrator "start"
+    run_orchestrator "START_RECORDING"
 fi

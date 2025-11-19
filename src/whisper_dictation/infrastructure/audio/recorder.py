@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional, List
 from whisper_dictation.core.logging import logger
 from whisper_dictation.domain.errors import RecordingError
+from whisper_dictation.config import config
 
 class AudioRecorder:
     def __init__(self, sample_rate: int = 16000, channels: int = 1):
@@ -26,6 +27,12 @@ class AudioRecorder:
         self._recording = True
         self._frames = []
         self.current_samples = 0
+
+        # Crear el archivo PID para que el shell script sepa que estamos grabando
+        try:
+            config.paths.recording_flag.touch()
+        except Exception as e:
+            logger.warning(f"No se pudo crear el archivo flag: {e}")
 
         def callback(indata, frames, time, status):
             if status:
@@ -50,9 +57,16 @@ class AudioRecorder:
             logger.info("Audio recording started")
         except Exception as e:
             self._recording = False
+            # Limpiar flag si falla
+            if config.paths.recording_flag.exists():
+                config.paths.recording_flag.unlink()
             raise RecordingError(f"Failed to start recording: {e}") from e
 
     def stop(self, save_path: Optional[Path] = None) -> np.ndarray:
+        # Eliminar el archivo flag al detener
+        if config.paths.recording_flag.exists():
+            config.paths.recording_flag.unlink()
+
         if not self._recording:
              # If frames are empty and not recording, then truly nothing happened
              if not self._frames and not self._stream:
