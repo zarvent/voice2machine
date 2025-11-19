@@ -14,7 +14,7 @@ num_workers = 4
 beam_size = 5
 best_of = 5
 temperature = 0.0
-vad_filter = true  # Activado para filtrar ruido de aire acondicionado y respiraciones
+vad_filter = false  # Desactivado temporalmente para pruebas
 
 [whisper.vad_parameters]
 threshold = 0.3  # Más sensible para no cortar la voz

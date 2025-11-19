@@ -18,6 +18,7 @@ from whisper_dictation.application.commands import StartRecordingCommand, StopRe
 from whisper_dictation.application.transcription_service import TranscriptionService
 from whisper_dictation.application.llm_service import LLMService
 from whisper_dictation.core.interfaces import NotificationInterface, ClipboardInterface
+from whisper_dictation.config import config
 
 class StartRecordingHandler(CommandHandler):
     """
@@ -48,6 +49,10 @@ class StartRecordingHandler(CommandHandler):
         # start_recording es rápido, pero por seguridad lo corremos en un hilo
         # para no bloquear el loop si sounddevice tarda un poco.
         await asyncio.to_thread(self.transcription_service.start_recording)
+
+        # Crear bandera de grabación para que el script bash sepa que estamos grabando
+        config.paths.recording_flag.touch()
+
         self.notification_service.notify("🎤 Whisper", "Grabación iniciada...")
 
     def listen_to(self) -> Type[Command]:
@@ -89,6 +94,10 @@ class StopRecordingHandler(CommandHandler):
         Args:
             command: El comando que activa este handler.
         """
+        # Borrar bandera de grabación para que el script bash sepa que ya paramos
+        if config.paths.recording_flag.exists():
+            config.paths.recording_flag.unlink()
+
         self.notification_service.notify("⚡ Whisper GPU", "Procesando...")
 
         # La transcripción es pesada (CPU/GPU bound), debe correr en un hilo aparte
