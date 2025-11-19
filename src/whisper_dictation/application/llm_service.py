@@ -16,7 +16,7 @@ class LLMService(ABC):
     """
 
     @abstractmethod
-    def process_text(self, text: str) -> str:
+    async def process_text(self, text: str) -> str:
         """
         Procesa y refina un bloque de texto utilizando el LLM.
 

@@ -19,7 +19,7 @@ class CommandHandler(ABC):
     """
 
     @abstractmethod
-    def handle(self, command: Command) -> None:
+    async def handle(self, command: Command) -> None:
         """
         Contiene la lógica de negocio para procesar el comando.
 

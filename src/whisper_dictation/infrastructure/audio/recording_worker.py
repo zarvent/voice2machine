@@ -6,7 +6,7 @@ from pathlib import Path
 # Add src to path to allow imports
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from whisper_dictation.audio.recorder import AudioRecorder
+from whisper_dictation.infrastructure.audio.recorder import AudioRecorder
 from whisper_dictation.config import config
 
 # Setup signal handling

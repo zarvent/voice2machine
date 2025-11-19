@@ -14,8 +14,12 @@ from whisper_dictation.core.cqrs.command_bus import CommandBus
 from whisper_dictation.application.command_handlers import StartRecordingHandler, StopRecordingHandler, ProcessTextHandler
 from whisper_dictation.infrastructure.whisper_transcription_service import WhisperTranscriptionService
 from whisper_dictation.infrastructure.gemini_llm_service import GeminiLLMService
+from whisper_dictation.infrastructure.linux_adapters import LinuxNotificationAdapter, LinuxClipboardAdapter
 from whisper_dictation.application.transcription_service import TranscriptionService
 from whisper_dictation.application.llm_service import LLMService
+from whisper_dictation.core.interfaces import NotificationInterface, ClipboardInterface
+
+from whisper_dictation.infrastructure.vad_service import VADService
 
 class Container:
     """
@@ -41,14 +45,30 @@ class Container:
         # --- 1. Instanciar servicios (como singletons) ---
         # Aquí se decide qué implementación concreta usar para cada interfaz.
         # Si quisiéramos cambiar de Gemini a OpenAI, solo cambiaríamos esta línea.
-        self.transcription_service: TranscriptionService = WhisperTranscriptionService()
+        self.vad_service = VADService()
+        self.transcription_service: TranscriptionService = WhisperTranscriptionService(vad_service=self.vad_service)
         self.llm_service: LLMService = GeminiLLMService()
+
+        # Adaptadores de sistema
+        self.notification_service: NotificationInterface = LinuxNotificationAdapter()
+        self.clipboard_service: ClipboardInterface = LinuxClipboardAdapter()
 
         # --- 2. Instanciar manejadores de comandos ---
         # Se inyectan las dependencias en el constructor de cada handler.
-        self.start_recording_handler = StartRecordingHandler(self.transcription_service)
-        self.stop_recording_handler = StopRecordingHandler(self.transcription_service)
-        self.process_text_handler = ProcessTextHandler(self.llm_service)
+        self.start_recording_handler = StartRecordingHandler(
+            self.transcription_service,
+            self.notification_service
+        )
+        self.stop_recording_handler = StopRecordingHandler(
+            self.transcription_service,
+            self.notification_service,
+            self.clipboard_service
+        )
+        self.process_text_handler = ProcessTextHandler(
+            self.llm_service,
+            self.notification_service,
+            self.clipboard_service
+        )
 
         # --- 3. Instanciar y configurar el bus de comandos ---
         # El bus de comandos se convierte en el punto de acceso central para

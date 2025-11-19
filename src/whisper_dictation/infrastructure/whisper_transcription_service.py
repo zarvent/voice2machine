@@ -3,38 +3,36 @@ Módulo que implementa el servicio de transcripción utilizando `faster-whisper`
 
 Esta es la implementación concreta de la interfaz `TranscriptionService`. Se encarga
 de la lógica de bajo nivel para:
--   Interactuar con el sistema de audio (PulseAudio) a través de `parecord` y `pactl`.
--   Gestionar el proceso de grabación de audio.
+-   Gestionar el proceso de grabación de audio usando `AudioRecorder`.
 -   Cargar el modelo de WHISPER.
--   Realizar la transcripción del archivo de audio grabado.
+-   Realizar la transcripción del audio grabado directamente desde la memoria.
 """
 
-import time
-import subprocess
-from pathlib import Path
 from typing import Optional
 from faster_whisper import WhisperModel
 from whisper_dictation.application.transcription_service import TranscriptionService
 from whisper_dictation.config import config
-from whisper_dictation.domain.errors import MicrophoneNotFoundError, RecordingError
+from whisper_dictation.domain.errors import RecordingError
 from whisper_dictation.core.logging import logger
+from whisper_dictation.infrastructure.audio.recorder import AudioRecorder
+from whisper_dictation.infrastructure.vad_service import VADService
 
 class WhisperTranscriptionService(TranscriptionService):
     """
-    Implementación del `TranscriptionService` que usa `faster-whisper` y `parecord`.
+    Implementación del `TranscriptionService` que usa `faster-whisper` y `AudioRecorder`.
     """
-    def __init__(self) -> None:
+    def __init__(self, vad_service: Optional[VADService] = None) -> None:
         """
         Inicializa el servicio de transcripción.
 
-        Configura las rutas para el archivo de audio temporal y el archivo "flag"
-        que indica si una grabación está en curso. No carga el modelo de WHISPER
-        en este punto para acelerar el inicio de la aplicación.
+        No carga el modelo de WHISPER en este punto para acelerar el inicio de la aplicación.
+
+        Args:
+            vad_service: Servicio opcional para truncado de silencios.
         """
         self._model: Optional[WhisperModel] = None
-        self._paths = config.paths
-        self._recording_flag = self._paths.recording_flag
-        self._audio_file = self._paths.audio_file
+        self.recorder = AudioRecorder()
+        self.vad_service = vad_service
 
     @property
     def model(self) -> WhisperModel:
@@ -48,7 +46,7 @@ class WhisperTranscriptionService(TranscriptionService):
         Returns:
             La instancia del modelo de WHISPER cargado.
         """
-        if self._model is None:
+        if self._model == None:
             logger.info("cargando modelo de WHISPER...")
             whisper_config = config.whisper
             self._model = WhisperModel(
@@ -65,94 +63,62 @@ class WhisperTranscriptionService(TranscriptionService):
         """
         Inicia la grabación de audio.
 
-        Realiza los siguientes pasos:
-        1.  Verifica que no haya otra grabación en curso.
-        2.  Detecta el micrófono por defecto usando `pactl`.
-        3.  Asegura que el micrófono no esté silenciado y tenga el volumen al 100%.
-        4.  Inicia un proceso `parecord` en segundo plano para grabar el audio.
-        5.  Crea un archivo "flag" que contiene el PID (Process ID) del proceso
-            de grabación para poder detenerlo más tarde.
+        Utiliza `AudioRecorder` para capturar audio en un hilo separado.
 
         Raises:
-            RecordingError: Si ya hay una grabación en proceso.
-            MicrophoneNotFoundError: Si no se puede detectar un micrófono.
+            RecordingError: Si ya hay una grabación en proceso o falla el inicio.
         """
-        if self._recording_flag.exists():
-            raise RecordingError("ya hay una grabación en proceso")
-
-        if self._audio_file.exists():
-            self._audio_file.unlink()
-
-        # --- detección de micrófono ---
-        source = subprocess.getoutput("pactl get-default-source")
-        if not source:
-            source = subprocess.getoutput("pactl list sources short | grep -v monitor | head -1 | awk '{print $2}'")
-
-        if not source:
-            raise MicrophoneNotFoundError("no se detectó ningún micrófono")
-
-        # --- inicio del proceso de grabación ---
-        subprocess.run(["pactl", "set-source-mute", source, "0"])
-        subprocess.run(["pactl", "set-source-volume", source, "100%"])
-
-        process = subprocess.Popen([
-            "parecord",
-            f"--device={source}",
-            "--format=s16le",
-            "--rate=16000",
-            "--channels=1",
-            str(self._audio_file)
-        ], stderr=subprocess.DEVNULL)
-
-        with open(self._recording_flag, 'w') as f:
-            f.write(str(process.pid))
-        logger.info("grabación iniciada")
+        try:
+            self.recorder.start()
+            logger.info("grabación iniciada")
+        except RecordingError as e:
+            logger.error(f"Error al iniciar grabación: {e}")
+            raise e
 
     def stop_and_transcribe(self) -> str:
         """
         Detiene la grabación y transcribe el audio.
 
         Realiza los siguientes pasos:
-        1.  Lee el PID del proceso de grabación desde el archivo "flag".
-        2.  Envía señales `SIGINT` y `SIGKILL` para detener el proceso `parecord`.
-        3.  Elimina el archivo "flag".
-        4.  Verifica que se haya grabado un archivo de audio válido.
-        5.  Utiliza el modelo de WHISPER para transcribir el audio.
-        6.  Limpia el archivo de audio temporal.
+        1.  Detiene el `AudioRecorder` y obtiene los datos de audio en memoria (numpy array).
+        2.  Aplica VAD (Smart Truncation) si está disponible.
+        3.  Verifica que se haya grabado audio válido.
+        4.  Utiliza el modelo de WHISPER para transcribir el audio directamente desde memoria.
 
         Returns:
             El texto transcrito.
 
         Raises:
-            RecordingError: Si no hay una grabación activa o si el archivo de
-                            audio grabado es inválido.
+            RecordingError: Si no hay una grabación activa o si el audio es inválido.
         """
-        if not self._recording_flag.exists():
-            raise RecordingError("no hay ninguna grabación activa")
-
-        with open(self._recording_flag, 'r') as f:
-            pid = int(f.read())
-
-        # --- detención del proceso de grabación ---
         try:
-            subprocess.run(["kill", "-SIGINT", str(pid)])
-            time.sleep(1) # da tiempo a que el proceso se cierre correctamente
-            subprocess.run(["kill", "-9", str(pid)]) # fuerza el cierre si sigue activo
-        except ProcessLookupError:
-            # el proceso ya no existía lo cual es aceptable
-            pass
+            # Detener grabación y obtener audio (sin guardar a disco)
+            audio_data = self.recorder.stop()
+        except RecordingError as e:
+            logger.error(f"Error al detener grabación: {e}")
+            raise e
 
-        self._recording_flag.unlink()
-        time.sleep(0.5)
+        if audio_data.size == 0:
+            raise RecordingError("no se grabó audio o el buffer está vacío")
 
-        if not self._audio_file.exists() or self._audio_file.stat().st_size < 1000:
-            raise RecordingError("no se grabó audio o el archivo es muy pequeño")
+        # --- Aplicar VAD (Smart Truncation) ---
+        if self.vad_service:
+            try:
+                audio_data = self.vad_service.process(audio_data)
+                if audio_data.size == 0:
+                    logger.warning("VAD eliminó todo el audio (solo silencio detectado)")
+                    # Podríamos lanzar error o retornar string vacío
+                    return ""
+            except Exception as e:
+                logger.error(f"Fallo en VAD, usando audio original: {e}")
 
         # --- transcripción con whisper ---
         logger.info("transcribiendo audio...")
         whisper_config = config.whisper
+
+        # faster-whisper acepta numpy array directamente
         segments, _ = self.model.transcribe(
-            str(self._audio_file),
+            audio_data,
             language=whisper_config.language,
             beam_size=whisper_config.beam_size,
             best_of=whisper_config.best_of,
@@ -163,5 +129,4 @@ class WhisperTranscriptionService(TranscriptionService):
         text = " ".join([segment.text.strip() for segment in segments])
         logger.info("transcripción completada")
 
-        self._audio_file.unlink()
         return text

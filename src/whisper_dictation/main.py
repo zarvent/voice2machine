@@ -1,99 +1,54 @@
 """
 Punto de entrada principal para la aplicación de dictado por voz.
 
-Este script actúa como el controlador CLI (Command Line Interface) que interpreta
-los comandos pasados desde los scripts de shell (ej. 'start', 'stop', 'process')
-y los despacha al bus de comandos de la aplicación para su procesamiento.
+Este script ahora actúa como un lanzador unificado. Puede iniciar el Demonio (servidor)
+o actuar como un Cliente que envía comandos al Demonio a través de IPC.
 
-Funcionalidades:
-- Parsear argumentos de línea de comandos para determinar la acción a ejecutar.
-- Inicializar el contenedor de inyección de dependencias (DI).
-- Despachar comandos a través del command bus.
-- Manejar errores a nivel de aplicación y enviar notificaciones al usuario.
+Modos de operación:
+1.  Daemon: `python -m whisper_dictation.main --daemon`
+    Inicia el proceso persistente que carga el modelo en memoria y escucha comandos.
+
+2.  Client: `python -m whisper_dictation.main <COMMAND>`
+    Envía un comando (START_RECORDING, STOP_RECORDING, etc.) al demonio en ejecución.
 """
 import argparse
+import asyncio
 import sys
-import subprocess
-from whisper_dictation.core.di.container import container
-from whisper_dictation.application.commands import StartRecordingCommand, StopRecordingCommand, ProcessTextCommand
-from whisper_dictation.domain.errors import ApplicationError
+from whisper_dictation.daemon import Daemon
+from whisper_dictation.client import send_command
+from whisper_dictation.core.ipc_protocol import IPCCommand
 from whisper_dictation.core.logging import logger
 
-def send_notification(title: str, message: str) -> None:
-    """
-    Envía una notificación de escritorio al usuario.
-
-    Utiliza el comando `notify-send` del sistema para mostrar un mensaje emergente.
-    Esto es útil para comunicar errores o estados importantes sin necesidad de
-    una interfaz gráfica completa.
-
-    Args:
-        title (str): El título de la notificación.
-        message (str): El cuerpo del mensaje de la notificación.
-    """
-    subprocess.run(["notify-send", title, message])
-
 def main() -> None:
-    """
-    Función principal que orquesta la aplicación CLI.
+    parser = argparse.ArgumentParser(description="Whisper Dictation Main Entrypoint")
 
-    Configura el parser de argumentos, recibe los comandos y utiliza el
-    command bus para ejecutar la lógica de negocio correspondiente.
-    También implementa un manejo de errores global para capturar y notificar
-    cualquier problema que ocurra durante la ejecución.
-    """
-    # --- Configuración del parser de argumentos ---
-    # Se define la interfaz de línea de comandos que aceptará la aplicación.
-    parser = argparse.ArgumentParser(description="Whisper Dictation CLI")
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    # Argumento para iniciar como demonio
+    parser.add_argument("--daemon", action="store_true", help="Start the background daemon process")
 
-    subparsers.add_parser("start", help="Inicia la grabación de audio.")
-    subparsers.add_parser("stop", help="Detiene la grabación y transcribe el audio.")
-    subparsers.add_parser("process", help="Procesa el texto del portapapeles con un LLM.")
+    # Argumento para enviar comandos (modo cliente)
+    parser.add_argument("command", nargs="?", choices=[e.value for e in IPCCommand], help="IPC Command to send")
+    parser.add_argument("payload", nargs="*", help="Optional payload for the command")
 
-    args, unknown = parser.parse_known_args()
+    args = parser.parse_args()
 
-    # --- Inicialización del Command Bus ---
-    # Se obtiene una instancia del command bus desde el contenedor de DI.
-    # El command bus es el responsable de mapear un comando a su handler correspondiente.
-    command_bus = container.get_command_bus()
+    if args.daemon:
+        logger.info("Starting Whisper Dictation Daemon...")
+        daemon = Daemon()
+        daemon.run()
+    elif args.command:
+        # Modo Cliente
+        try:
+            full_command = args.command
+            if args.payload:
+                full_command += " " + " ".join(args.payload)
 
-    try:
-        # --- Despacho de comandos ---
-        # Se evalúa el comando proporcionado y se crea la instancia del
-        # comando correspondiente para despacharlo al bus.
-        if args.command == "start":
-            command_bus.dispatch(StartRecordingCommand())
-        elif args.command == "stop":
-            command_bus.dispatch(StopRecordingCommand())
-        elif args.command == "process":
-            # Para el comando 'process', el texto a procesar puede venir
-            # del stdin (pipe) o como argumentos adicionales.
-            text_to_process = ""
-            if not sys.stdin.isatty():
-                text_to_process = sys.stdin.read().strip()
-            elif unknown:
-                text_to_process = " ".join(unknown)
-
-            if text_to_process:
-                command_bus.dispatch(ProcessTextCommand(text_to_process))
-            else:
-                # Si no se proporciona texto, es un uso incorrecto del comando.
-                raise ValueError("No se proporcionó texto para procesar.")
-
-    except ApplicationError as e:
-        # --- Manejo de errores de la aplicación ---
-        # Captura errores de negocio conocidos (ej. micrófono no encontrado)
-        # y los notifica de forma amigable.
-        logger.error(str(e))
-        send_notification("❌ Error", str(e))
-        sys.exit(1)
-    except Exception as e:
-        # --- Manejo de errores inesperados ---
-        # Captura cualquier otro error no previsto para evitar que la aplicación
-        # se cierre silenciosamente.
-        logger.exception("Ocurrió un error inesperado.")
-        send_notification("❌ Error Inesperado", "Ocurrió un error inesperado.")
+            response = asyncio.run(send_command(full_command))
+            print(response)
+        except Exception as e:
+            print(f"Error sending command: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        parser.print_help()
         sys.exit(1)
 
 if __name__ == "__main__":

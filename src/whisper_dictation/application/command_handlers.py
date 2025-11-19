@@ -10,21 +10,14 @@ permite un bajo acoplamiento entre el punto de entrada de la aplicación (main.p
 y la lógica de negocio real.
 """
 
-import subprocess
+import asyncio
 from typing import Type
 from whisper_dictation.core.cqrs.command import Command
 from whisper_dictation.core.cqrs.command_handler import CommandHandler
 from whisper_dictation.application.commands import StartRecordingCommand, StopRecordingCommand, ProcessTextCommand
 from whisper_dictation.application.transcription_service import TranscriptionService
 from whisper_dictation.application.llm_service import LLMService
-
-def send_notification(title: str, message: str) -> None:
-    """Función de utilidad para enviar notificaciones de escritorio."""
-    subprocess.run(["notify-send", title, message])
-
-def copy_to_clipboard(text: str) -> None:
-    """Función de utilidad para copiar texto al portapapeles del sistema."""
-    subprocess.run(["xclip", "-selection", "clipboard"], input=text.encode('utf-8'))
+from whisper_dictation.core.interfaces import NotificationInterface, ClipboardInterface
 
 class StartRecordingHandler(CommandHandler):
     """
@@ -34,24 +27,28 @@ class StartRecordingHandler(CommandHandler):
     el proceso de grabación de audio. También notifica al usuario que
     la grabación ha comenzado.
     """
-    def __init__(self, transcription_service: TranscriptionService) -> None:
+    def __init__(self, transcription_service: TranscriptionService, notification_service: NotificationInterface) -> None:
         """
         Inicializa el handler con sus dependencias.
 
         Args:
             transcription_service: El servicio responsable de la grabación y transcripción.
+            notification_service: El servicio para enviar notificaciones al usuario.
         """
         self.transcription_service = transcription_service
+        self.notification_service = notification_service
 
-    def handle(self, command: StartRecordingCommand) -> None:
+    async def handle(self, command: StartRecordingCommand) -> None:
         """
         Ejecuta la lógica para iniciar la grabación.
 
         Args:
             command: El comando que activa este handler.
         """
-        self.transcription_service.start_recording()
-        send_notification("🎤 Whisper", "Grabación iniciada...")
+        # start_recording es rápido, pero por seguridad lo corremos en un hilo
+        # para no bloquear el loop si sounddevice tarda un poco.
+        await asyncio.to_thread(self.transcription_service.start_recording)
+        self.notification_service.notify("🎤 Whisper", "Grabación iniciada...")
 
     def listen_to(self) -> Type[Command]:
         """
@@ -69,16 +66,20 @@ class StopRecordingHandler(CommandHandler):
     Este handler detiene la grabación, obtiene la transcripción del audio,
     la copia al portapapeles y notifica al usuario del resultado.
     """
-    def __init__(self, transcription_service: TranscriptionService) -> None:
+    def __init__(self, transcription_service: TranscriptionService, notification_service: NotificationInterface, clipboard_service: ClipboardInterface) -> None:
         """
         Inicializa el handler con sus dependencias.
 
         Args:
             transcription_service: El servicio responsable de la grabación y transcripción.
+            notification_service: El servicio para enviar notificaciones al usuario.
+            clipboard_service: El servicio para interactuar con el portapapeles.
         """
         self.transcription_service = transcription_service
+        self.notification_service = notification_service
+        self.clipboard_service = clipboard_service
 
-    def handle(self, command: StopRecordingCommand) -> None:
+    async def handle(self, command: StopRecordingCommand) -> None:
         """
         Ejecuta la lógica para detener la grabación y transcribir.
 
@@ -88,17 +89,19 @@ class StopRecordingHandler(CommandHandler):
         Args:
             command: El comando que activa este handler.
         """
-        send_notification("⚡ Whisper GPU", "Procesando...")
-        transcription = self.transcription_service.stop_and_transcribe()
+        self.notification_service.notify("⚡ Whisper GPU", "Procesando...")
+
+        # La transcripción es pesada (CPU/GPU bound), debe correr en un hilo aparte
+        transcription = await asyncio.to_thread(self.transcription_service.stop_and_transcribe)
 
         # Si la transcripción está vacía, no tiene sentido copiarla.
         if not transcription.strip():
-            send_notification("❌ Whisper", "No se detectó voz en el audio")
+            self.notification_service.notify("❌ Whisper", "No se detectó voz en el audio")
             return
 
-        copy_to_clipboard(transcription)
+        self.clipboard_service.copy(transcription)
         preview = transcription[:80] # Se muestra una vista previa para no saturar la notificación.
-        send_notification(f"✅ Whisper - Copiado", f"{preview}...")
+        self.notification_service.notify(f"✅ Whisper - Copiado", f"{preview}...")
 
     def listen_to(self) -> Type[Command]:
         """
@@ -116,25 +119,43 @@ class ProcessTextHandler(CommandHandler):
     Este handler utiliza un servicio de LLM (Large Language Model) para
     procesar y refinar un texto dado. El resultado se copia al portapapeles.
     """
-    def __init__(self, llm_service: LLMService) -> None:
+    def __init__(self, llm_service: LLMService, notification_service: NotificationInterface, clipboard_service: ClipboardInterface) -> None:
         """
         Inicializa el handler con sus dependencias.
 
         Args:
             llm_service: El servicio que interactúa con el LLM (ej. Gemini).
+            notification_service: El servicio para enviar notificaciones al usuario.
+            clipboard_service: El servicio para interactuar con el portapapeles.
         """
         self.llm_service = llm_service
+        self.notification_service = notification_service
+        self.clipboard_service = clipboard_service
 
-    def handle(self, command: ProcessTextCommand) -> None:
+    async def handle(self, command: ProcessTextCommand) -> None:
         """
         Ejecuta la lógica para procesar el texto con el LLM.
 
         Args:
             command: El comando que contiene el texto a procesar.
         """
-        refined_text = self.llm_service.process_text(command.text)
-        copy_to_clipboard(refined_text)
-        send_notification("✅ Gemini - Copiado", f"{refined_text[:80]}...")
+        try:
+            # Asumimos que llm_service.process_text será async pronto.
+            # Si no lo es, asyncio.to_thread lo manejaría, pero queremos async nativo.
+            # Por ahora, usaremos await si es corutina, o to_thread si no.
+            if asyncio.iscoroutinefunction(self.llm_service.process_text):
+                refined_text = await self.llm_service.process_text(command.text)
+            else:
+                refined_text = await asyncio.to_thread(self.llm_service.process_text, command.text)
+
+            self.clipboard_service.copy(refined_text)
+            self.notification_service.notify("✅ Gemini - Copiado", f"{refined_text[:80]}...")
+
+        except Exception as e:
+            # Fallback: Si falla el LLM, copiamos el texto original
+            self.notification_service.notify("⚠️ Gemini Falló", "Usando texto original...")
+            self.clipboard_service.copy(command.text)
+            self.notification_service.notify("✅ Whisper - Copiado (Raw)", f"{command.text[:80]}...")
 
     def listen_to(self) -> Type[Command]:
         """

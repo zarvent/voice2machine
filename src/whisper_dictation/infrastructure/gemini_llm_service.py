@@ -67,7 +67,7 @@ class GeminiLLMService(LLMService):
             max=config.gemini.retry_max_wait,
         ),
     )
-    def process_text(self, text: str) -> str:
+    async def process_text(self, text: str) -> str:
         """
         Procesa un texto utilizando el modelo de GOOGLE GEMINI.
 
@@ -99,7 +99,7 @@ class GeminiLLMService(LLMService):
                 )
             ]
 
-            response = self.client.models.generate_content(
+            response = await self.client.aio.models.generate_content(
                 model=self.model,
                 contents=contents,
                 config=generation_config

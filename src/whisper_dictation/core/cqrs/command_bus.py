@@ -47,7 +47,7 @@ class CommandBus:
             raise ValueError(f"Ya existe un handler registrado para el comando {command_type}")
         self.handlers[command_type] = handler
 
-    def dispatch(self, command: Command) -> Any:
+    async def dispatch(self, command: Command) -> Any:
         """
         Despacha un comando a su handler correspondiente.
 
@@ -66,4 +66,4 @@ class CommandBus:
         command_type = type(command)
         if command_type not in self.handlers:
             raise ValueError(f"No hay un handler registrado para el comando {command_type}")
-        return self.handlers[command_type].handle(command)
+        return await self.handlers[command_type].handle(command)
