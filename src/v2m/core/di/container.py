@@ -20,6 +20,8 @@ from v2m.application.llm_service import LLMService
 from v2m.core.interfaces import NotificationInterface, ClipboardInterface
 
 from v2m.infrastructure.vad_service import VADService
+from v2m.core.logging import logger
+import threading
 
 class Container:
     """
@@ -47,6 +49,14 @@ class Container:
         # si quisiéramos cambiar de GEMINI a OPENAI solo cambiaríamos esta línea
         self.vad_service = VADService()
         self.transcription_service: TranscriptionService = WhisperTranscriptionService(vad_service=self.vad_service)
+        # precargar el modelo whisper en un hilo para evitar bloqueo al primer uso
+        def _preload_whisper():
+            try:
+                _ = self.transcription_service.model
+                logger.info("Whisper precargado correctamente")
+            except Exception as e:
+                logger.warning(f"No se pudo precargar Whisper: {e}")
+        threading.Thread(target=_preload_whisper, daemon=True).start()
         self.llm_service: LLMService = GeminiLLMService()
 
         # adaptadores de sistema

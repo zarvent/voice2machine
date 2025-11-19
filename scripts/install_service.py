@@ -10,8 +10,10 @@ SOURCE_SERVICE_FILE = Path("v2m.service")
 
 def get_cuda_paths(venv_python):
     """Calcula LD_LIBRARY_PATH consultando las librerías instaladas en el venv."""
+    paths = []
+    
+    # 1. Intenta torch.cuda.lib (torch 2.9.1+)
     try:
-        # Intenta el método nuevo (torch 2.9.1+) primero
         cmd = [
             str(venv_python),
             "-c",
@@ -19,22 +21,31 @@ def get_cuda_paths(venv_python):
             "cuda_lib_path = os.path.join(os.path.dirname(torch.__file__), 'lib'); "
             "print(cuda_lib_path if os.path.exists(cuda_lib_path) else '')"
         ]
-        result = subprocess.check_output(cmd, text=True).strip()
+        result = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL).strip()
         if result:
-            return result
+            paths.append(result)
+    except Exception:
+        pass
 
-        # Fallback al método antiguo
-        cmd = [
-            str(venv_python),
-            "-c",
-            "import nvidia.cublas.lib, nvidia.cudnn.lib, os; "
-            "print(os.path.dirname(nvidia.cublas.lib.__file__) + ':' + "
-            "os.path.dirname(nvidia.cudnn.lib.__file__))"
-        ]
-        return subprocess.check_output(cmd, text=True).strip()
-    except Exception as e:
-        print(f"⚠️  Advertencia: No se pudieron detectar librerías NVIDIA automáticamente: {e}")
-        return ""
+    # 2. Buscar nvidia libs directamente en el venv
+    venv_dir = Path(venv_python).parent.parent
+    nvidia_base = venv_dir / "lib" / "python3.12" / "site-packages" / "nvidia"
+    
+    for lib_name in ["cublas", "cudnn"]:
+        lib_dir = nvidia_base / lib_name / "lib"
+        if lib_dir.exists():
+            paths.append(str(lib_dir))
+
+    if paths:
+        # Eliminar duplicados manteniendo orden
+        unique_paths = []
+        for p in paths:
+            if p not in unique_paths:
+                unique_paths.append(p)
+        return ':'.join(unique_paths)
+    
+    print("⚠️  Advertencia: No se pudieron detectar librerías NVIDIA automáticamente")
+    return ""
 
 def install_service():
     print(f"🔧 Instalando {SERVICE_NAME}...")

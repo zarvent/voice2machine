@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from typing import List, Optional
+import threading
 from v2m.core.logging import logger
 
 class VADService:
@@ -14,27 +15,52 @@ class VADService:
         self.model = None
         self.utils = None
         self.get_speech_timestamps = None
+        self.disabled = False  # si falla la carga, saltar VAD
 
-    def load_model(self):
+    def load_model(self, timeout_sec: float = 10.0):
         """
-        carga el modelo silero vad de forma perezosa
+        carga el modelo silero vad de forma perezosa con timeout
+
+        para evitar bloqueos por descargas de internet, se aplica un timeout. si
+        vence el tiempo, se deshabilita VAD para esta sesión y se continúa sin VAD.
         """
-        if self.model is None:
-            logger.info("cargando modelo silero vad...")
+        if self.disabled:
+            return
+        if self.model is not None:
+            return
+
+        logger.info("cargando modelo silero vad...")
+
+        exc_holder: list[Exception] = []
+
+        def _do_load():
             try:
-                # usamos torch.hub para cargar el modelo desde el repositorio oficial
-                # force_reload=false usa la caché local si existe
                 self.model, self.utils = torch.hub.load(
                     repo_or_dir='snakers4/silero-vad',
                     model='silero_vad',
                     force_reload=False,
-                    onnx=False # usamos pytorch por defecto ya que instalamos torch
+                    onnx=False
                 )
-                (self.get_speech_timestamps, _, _, _, _) = self.utils
-                logger.info("modelo silero vad cargado")
-            except Exception as e:
-                logger.error(f"error al cargar silero vad {e}")
-                raise e
+            except Exception as e:  # capturar y propagar después
+                exc_holder.append(e)
+
+        t = threading.Thread(target=_do_load, daemon=True)
+        t.start()
+        t.join(timeout=timeout_sec)
+
+        if t.is_alive():
+            # aún cargando (probablemente descarga). deshabilitar VAD para no bloquear.
+            self.disabled = True
+            logger.warning("timeout cargando silero VAD; VAD deshabilitado para esta sesión")
+            return
+
+        if exc_holder:
+            self.disabled = True
+            logger.error(f"error al cargar silero vad {exc_holder[0]}")
+            raise exc_holder[0]
+
+        (self.get_speech_timestamps, _, _, _, _) = self.utils
+        logger.info("modelo silero vad cargado")
 
     def process(self, audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
         """
@@ -48,7 +74,20 @@ class VADService:
             un nuevo array de numpy que contiene solo los segmentos de voz concatenados
             si no se detecta voz devuelve un array vacío
         """
-        self.load_model()
+        # si el audio está vacío, retornar de inmediato
+        if audio.size == 0:
+            return np.array([], dtype=np.float32)
+
+        try:
+            self.load_model()
+        except Exception:
+            # si falla la carga del modelo, continuar con el audio original
+            logger.warning("VAD no disponible, se usará audio sin truncar")
+            return audio
+
+        if self.disabled or self.model is None or self.get_speech_timestamps is None:
+            # VAD deshabilitado o no disponible
+            return audio
 
         # convertir numpy array a tensor de torch
         # silero espera un tensor de forma (1 N) o (N)
