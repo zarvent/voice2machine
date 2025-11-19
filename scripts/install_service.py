@@ -11,7 +11,7 @@ SOURCE_SERVICE_FILE = Path("v2m.service")
 def get_cuda_paths(venv_python):
     """Calcula LD_LIBRARY_PATH consultando las librerías instaladas en el venv."""
     paths = []
-    
+
     # 1. Intenta torch.cuda.lib (torch 2.9.1+)
     try:
         cmd = [
@@ -30,7 +30,7 @@ def get_cuda_paths(venv_python):
     # 2. Buscar nvidia libs directamente en el venv
     venv_dir = Path(venv_python).parent.parent
     nvidia_base = venv_dir / "lib" / "python3.12" / "site-packages" / "nvidia"
-    
+
     for lib_name in ["cublas", "cudnn"]:
         lib_dir = nvidia_base / lib_name / "lib"
         if lib_dir.exists():
@@ -43,7 +43,7 @@ def get_cuda_paths(venv_python):
             if p not in unique_paths:
                 unique_paths.append(p)
         return ':'.join(unique_paths)
-    
+
     print("⚠️  Advertencia: No se pudieron detectar librerías NVIDIA automáticamente")
     return ""
 
