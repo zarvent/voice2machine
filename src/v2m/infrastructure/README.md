@@ -43,5 +43,5 @@ graph TD
     *   esta es la capa correcta para hacerlo encapsula la librería en una clase que implemente una interfaz del dominio para que el resto de la aplicación no dependa directamente de esa librería
 
 ### referencias y recursos
-*   `src/whisper_dictation/domain/README.md` para ver las interfaces que esta capa debe implementar
+*   `src/v2m/domain/README.md` para ver las interfaces que esta capa debe implementar
 *   `config.toml` el archivo donde se define la configuración para los componentes de infraestructura

@@ -39,5 +39,5 @@ graph TD
     *   no debe hacerlo a través de las interfaces de repositorio definidas en el `dominio` y que son implementadas por la `infraestructura`
 
 ### referencias y recursos
-*   `src/whisper_dictation/domain/README.md` para entender los objetos de negocio que esta capa orquesta
-*   `src/whisper_dictation/core/README.md` para entender cómo funciona el `command bus`
+*   `src/v2m/domain/README.md` para entender los objetos de negocio que esta capa orquesta
+*   `src/v2m/core/README.md` para entender cómo funciona el `command bus`
