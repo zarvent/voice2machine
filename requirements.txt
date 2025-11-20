@@ -39,7 +39,6 @@ toml
 python-json-logger
 pydantic-settings
 sounddevice
-pyperclip
 silero-vad
 pytest
 pytest-asyncio

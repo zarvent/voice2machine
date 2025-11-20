@@ -49,14 +49,34 @@ class WhisperTranscriptionService(TranscriptionService):
         if self._model == None:
             logger.info("cargando modelo de WHISPER...")
             whisper_config = config.whisper
-            self._model = WhisperModel(
-                whisper_config.model,
-                device=whisper_config.device,
-                compute_type=whisper_config.compute_type,
-                device_index=whisper_config.device_index,
-                num_workers=whisper_config.num_workers
-            )
-            logger.info("modelo de WHISPER cargado")
+
+            try:
+                self._model = WhisperModel(
+                    whisper_config.model,
+                    device=whisper_config.device,
+                    compute_type=whisper_config.compute_type,
+                    device_index=whisper_config.device_index,
+                    num_workers=whisper_config.num_workers
+                )
+                logger.info(f"modelo de WHISPER cargado en {whisper_config.device}")
+            except Exception as e:
+                logger.error(f"Error cargando modelo en {whisper_config.device}: {e}")
+                if whisper_config.device == "cuda":
+                    logger.warning("Intentando fallback a CPU...")
+                    try:
+                        self._model = WhisperModel(
+                            whisper_config.model,
+                            device="cpu",
+                            compute_type="int8", # CPU suele requerir int8 para velocidad
+                            num_workers=whisper_config.num_workers
+                        )
+                        logger.info("modelo de WHISPER cargado en CPU (Fallback)")
+                    except Exception as e2:
+                        logger.critical(f"Fallo crítico: No se pudo cargar el modelo ni en CPU: {e2}")
+                        raise e2
+                else:
+                    raise e
+
         return self._model
 
     def start_recording(self) -> None:
