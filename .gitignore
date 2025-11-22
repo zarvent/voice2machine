@@ -2,9 +2,37 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+
+# Test and QA artifacts
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
 
 # Environment variable files - do NOT commit
 .env
 .env.*
 logs/*.log
 daemon_startup.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg

@@ -65,4 +65,28 @@ flowchart TD
 ```
 ---
 
+## 🛠️ DESARROLLO Y QUALITY ASSURANCE
+
+### Tests y Validación
+```bash
+# Ejecutar tests unitarios
+make test
+
+# Validación QA completa (complejidad, dead code, tipos, tests)
+make qa-full
+
+# Validación QA rápida (pre-commit)
+make qa-quick
+```
+
+### Herramientas QA Incluidas
+- **Radon**: Análisis de complejidad ciclomática
+- **Vulture**: Detección de código muerto
+- **MyPy**: Verificación de tipado estático
+- **Pytest**: Framework de testing con 18+ tests
+
+Para más detalles sobre las mejoras de QA implementadas, ver [`docs/QA_IMPLEMENTATION.md`](docs/QA_IMPLEMENTATION.md)
+
+---
+
 > _**nota sobre la visualización** si los diagramas de flujo no se muestran en tu editor asegúrate de tener instalada una extensión compatible con mermaid_

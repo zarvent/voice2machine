@@ -11,7 +11,7 @@ check-complexity:
 # Detecta funciones, clases y variables no utilizadas
 check-dead-code:
 	@echo "🔍 Buscando código muerto..."
-	@vulture src/ --min-confidence 80 || echo "⚠️  Código sin usar detectado"
+	@vulture src/ .vulture_whitelist.py --min-confidence 80 || echo "⚠️  Código sin usar detectado"
 
 # 3. Tipado Estático (MyPy)
 # Verifica la consistencia de tipos
