@@ -1,65 +1,83 @@
-# 🧩 ARQUITECTURA
+# 🧩 Arquitectura del Sistema
 
-este proyecto sigue principios de diseño robustos como la **inyección de dependencias (DI)** y un **bus de comandos (CQRS)** para orquestar los servicios de una manera desacoplada y fácil de mantener
-
-a continuación se detallan los componentes clave y cómo interactúan entre sí
+**Voice2Machine** está diseñado siguiendo principios de **Arquitectura Hexagonal (Puertos y Adaptadores)** y **CQRS (Command Query Responsibility Segregation)**. Esto asegura un bajo acoplamiento entre la lógica de negocio y los detalles de infraestructura (como la librería de audio o el proveedor de LLM).
 
 ---
 
-### DIAGRAMA DE COMPONENTES
+## Diagrama de Alto Nivel
 
-este diagrama muestra las capas principales de la aplicación y sus responsabilidades
+El siguiente diagrama ilustra el flujo de datos y la separación de responsabilidades entre las capas del sistema.
 
 ```mermaid
 graph TD
-    subgraph A[CAPA DE ENTRADA]
-        direction LR
-        main("main.py<br/>_punto de entrada_")
+    subgraph Client ["🖥️ Cliente / Entrada"]
+        CLI("CLI / Scripts<br>(main.py)")
+        Shortcuts("Atajos de Teclado")
     end
 
-    subgraph B[CAPA DE APLICACIÓN]
-        direction TB
-        bus(COMMAND BUS)
-        handlers("handlers<br/>_lógica de negocio_")
+    subgraph Application ["🧠 Capa de Aplicación"]
+        Bus("Command Bus")
+        Handlers("Command Handlers<br>(Lógica de Negocio)")
     end
 
-    subgraph C[CAPA DE INFRAESTRUCTURA]
-        direction TB
-        whisper("WHISPER<br/>_transcripción_")
-        gemini("GEMINI<br/>_refinado LLM_")
+    subgraph Domain ["💎 Capa de Dominio"]
+        Interfaces("Interfaces<br>(Puertos)")
+        Entities("Entidades y Errores")
     end
 
-    subgraph D[CAPA DE CONFIGURACIÓN]
-        direction LR
-        container("DI CONTAINER<br/>_inyección de dependencias_")
-        config("config.toml<br/>_parámetros_")
+    subgraph Infrastructure ["🔌 Capa de Infraestructura"]
+        Whisper("Whisper Service<br>(faster-whisper)")
+        Gemini("LLM Service<br>(Google Gemini)")
+        Audio("Audio Recorder<br>(sounddevice)")
+        System("System Adapters<br>(xclip, notify-send)")
     end
 
-    main -- "envía comandos" --> bus
-    bus -- "dirige a" --> handlers
-    handlers -- "usan" --> whisper
-    handlers -- "usan" --> gemini
-    container -- "configura" --> handlers
-    config -- "provee a" --> container
+    Shortcuts --> CLI
+    CLI -- "Envía Comandos" --> Bus
+    Bus -- "Despacha a" --> Handlers
+    Handlers -- "Usa Interfaces" --> Interfaces
+    Whisper -.-> |Implementa| Interfaces
+    Gemini -.-> |Implementa| Interfaces
+    Audio -.-> |Implementa| Interfaces
+    System -.-> |Implementa| Interfaces
 
-    style main fill:#8EBBFF,stroke:#333,stroke-width:2px
-    style bus fill:#FFD68E,stroke:#333,stroke-width:2px
-    style handlers fill:#FFD68E,stroke:#333,stroke-width:2px
-    style whisper fill:#A9E5BB,stroke:#333,stroke-width:2px
-    style gemini fill:#A9E5BB,stroke:#333,stroke-width:2px
-    style container fill:#F2C2E0,stroke:#333,stroke-width:2px
-    style config fill:#F2C2E0,stroke:#333,stroke-width:2px
+    Handlers -- "Invoca" --> Infrastructure
+
+    style Client fill:#e1f5fe,stroke:#01579b
+    style Application fill:#fff3e0,stroke:#e65100
+    style Domain fill:#f3e5f5,stroke:#4a148c
+    style Infrastructure fill:#e8f5e9,stroke:#1b5e20
 ```
 
 ---
 
-### DESCRIPCIÓN DE COMPONENTES
+## Componentes Principales
 
-| componente                                | descripción                                                              |
-| ------------------------------------------- | ------------------------------------------------------------------------ |
-| `src/v2m/main.py`             | el **controlador** principal que escucha comandos desde los scripts de shell (`start` `stop` `process`) |
-| `src/v2m/core/di/container.py`  | el **orquestador** donde se conectan las interfaces con sus implementaciones concretas ej `LLMService` se resuelve a `GeminiLLMService` |
-| `src/v2m/application/`        | el **cerebro** con la lógica de negocio pura los comandos y los handlers que definen qué hacer |
-| `src/v2m/infrastructure/`     | las **manos** que interactúan con el mundo real como la API de WHISPER o GOOGLE GEMINI |
-| `config.toml`                               | el **panel de control** para configurar modelos dispositivos y otros parámetros |
-| `.env`                                      | los **secretos** como tu `GEMINI_API_KEY` para mantenerlos fuera del código fuente |
+### 1. Capa de Entrada (Client)
+Es el punto de entrada al sistema. No contiene lógica de negocio, solo se encarga de recibir la intención del usuario y convertirla en un **Comando**.
+*   **`main.py`**: Actúa como el controlador principal. Puede ejecutarse en modo *Daemon* (servidor persistente) o *Client* (envío de comandos efímeros).
+*   **Scripts Bash**: Scripts ligeros (`whisper-toggle.sh`, `process-clipboard.sh`) que sirven como puente entre los atajos del sistema operativo y la aplicación Python.
+
+### 2. Capa de Aplicación (Application)
+Coordina las acciones del sistema.
+*   **Command Bus**: Recibe comandos (ej. `StartRecordingCommand`) y los enruta al manejador correspondiente.
+*   **Command Handlers**: Ejecutan la lógica específica (ej. `StartRecordingHandler` inicia el servicio de audio y notifica al usuario).
+
+### 3. Capa de Dominio (Domain)
+Define las reglas y contratos del sistema. Es agnóstica a la tecnología.
+*   **Interfaces**: Definen *qué* debe hacer un servicio (ej. `TranscriptionService`), pero no *cómo*.
+*   **Errores**: Excepciones semánticas del negocio (ej. `MicrophoneNotFoundError`).
+
+### 4. Capa de Infraestructura (Infrastructure)
+Implementa las interfaces del dominio utilizando librerías y tecnologías concretas.
+*   **WhisperService**: Implementación de `TranscriptionService` usando `faster-whisper`.
+*   **GeminiLLMService**: Implementación de `LLMService` usando la API de Google.
+*   **LinuxAdapters**: Implementaciones para interactuar con el sistema Linux (notificaciones, portapapeles).
+
+---
+
+## Patrones de Diseño Clave
+
+*   **Inyección de Dependencias (DI)**: Utilizada para ensamblar el sistema. Permite cambiar implementaciones (ej. cambiar Gemini por GPT-4) sin tocar la lógica de negocio.
+*   **Singleton**: El modelo de Whisper se carga una sola vez en memoria (en el Daemon) para evitar la latencia de carga en cada petición.
+*   **Lazy Loading**: Los modelos pesados se cargan solo cuando son necesarios o al inicio del Daemon, optimizando el uso de recursos.

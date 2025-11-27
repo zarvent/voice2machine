@@ -1,53 +1,75 @@
-# 🛠️ INSTALACIÓN Y DIAGNÓSTICO
+# 🛠️ Instalación y Configuración
 
-para poner esto en marcha necesitas configurar tres capas el sistema PYTHON y la IA
+Esta guía detalla los pasos necesarios para desplegar **Voice2Machine** en un entorno Linux. El proceso abarca dependencias del sistema, configuración del entorno Python y credenciales de IA.
 
-### 1. DEPENDENCIAS DEL SISTEMA
+---
 
-primero necesitas las herramientas básicas del sistema `ffmpeg` y `pactl` se usan para grabar audio mientras que `xclip` gestiona el portapapeles
+## 1. Requisitos del Sistema
 
-*   **asegúrate de tener** `ffmpeg` `xclip` y `pactl`
-
-> _para usuarios de GPU NVIDIA_
-> si tienes una GPU NVIDIA asegúrate de que los drivers y el CUDA toolkit estén instalados para aprovechar la aceleración por hardware esto es **altamente recomendado** para un rendimiento óptimo
-
-### 2. ENTORNO DE PYTHON
-
-es una buena práctica usar un entorno virtual para mantener las dependencias del proyecto aisladas
+Antes de comenzar, asegúrate de tener instaladas las siguientes herramientas a nivel de sistema operativo. Estas son esenciales para la captura de audio y la gestión del portapapeles.
 
 ```bash
-# paso 1 crear un entorno virtual
+sudo apt update
+sudo apt install ffmpeg xclip pactl python3-venv build-essential python3-dev
+```
+
+### Soporte para GPU (NVIDIA)
+Para un rendimiento óptimo con Whisper, es **crítico** utilizar aceleración por GPU.
+*   **Drivers NVIDIA**: Asegúrate de tener los últimos drivers instalados.
+*   **CUDA Toolkit**: Necesario para `faster-whisper` y `torch`.
+
+> **nota**: si no tienes GPU NVIDIA, funcionará en cpu pero será mucho más lento.
+
+---
+
+## 2. entorno python
+
+Se recomienda encarecidamente utilizar un entorno virtual para aislar las dependencias del proyecto.
+
+### Creación y Activación
+
+```bash
+# 1. Crear el entorno virtual en la raíz del proyecto
 python3 -m venv venv
 
-# paso 2 activar el entorno
+# 2. Activar el entorno
 source venv/bin/activate
+```
 
-# paso 3 instalar dependencias
+### Instalación de Dependencias
+
+```bash
+# 3. Instalar paquetes requeridos
 pip install -r requirements.txt
 ```
 
-### 3. CONFIGURACIÓN DE IA (GOOGLE GEMINI)
+---
 
-para el refinado de texto la aplicación necesita tu clave de API de GOOGLE GEMINI la leemos desde un archivo `.env` para no exponerla en el código
+## 3. Credenciales de IA (Google Gemini)
+
+Para la funcionalidad de refinado de texto (`process-clipboard`), se requiere una API Key de Google Gemini.
+
+1.  Obtén tu clave en [Google AI Studio](https://aistudio.google.com/).
+2.  Crea un archivo `.env` en la raíz del proyecto.
+3.  Añade tu clave siguiendo este formato:
 
 ```bash
-# paso 1 crear el archivo .env si no existe
-touch .env
-
-# paso 2 añadir tu api key de gemini al archivo .env
-echo 'GEMINI_API_KEY="AIzaSy..."' > .env
+echo 'GEMINI_API_KEY="tu_clave_api_aqui"' > .env
 ```
 
-### 4. CONFIGURACIÓN DE LA APLICACIÓN
+---
 
-echa un vistazo a `config.toml` aquí es donde puedes afinar el rendimiento como elegir un modelo de WHISPER más pequeño si `large-v2` es demasiado pesado para tu sistema
+## 4. Verificación de la Instalación
 
-*   **revisa** `config.toml`
-*   **asegúrate** que `[whisper]` apunte al modelo y dispositivo correctos (ej `model = "large-v2"` `device = "cuda"`)
+Para confirmar que todos los componentes están correctamente configurados, ejecuta los scripts de diagnóstico incluidos.
 
-### 5. VERIFICACIÓN
+### Verificar Dependencias y Audio
+```bash
+./scripts/verify-setup.sh
+```
 
-para asegurar que todo esté conectado correctamente puedes usar estos scripts
-
-*   `scripts/verify-setup.sh` te da un chequeo rápido de las dependencias del sistema
-*   `python scripts/test_whisper_gpu.py` es útil para confirmar que `faster-whisper` está usando tu GPU y no el CPU
+### Verificar Aceleración GPU
+Este script cargará un modelo pequeño de Whisper para confirmar que `cuda` está disponible y funcional.
+```bash
+python scripts/test_whisper_gpu.py
+```
