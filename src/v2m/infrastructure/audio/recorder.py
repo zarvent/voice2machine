@@ -72,6 +72,7 @@ class AudioRecorder:
             return np.array([], dtype=np.float32)
 
         audio = np.concatenate(self._frames, axis=0).flatten()
+        self._frames = [] # limpiar buffer para evitar devolver audio antiguo en llamadas subsecuentes
 
         if save_path:
             # convertir float32 a int16 para wav
