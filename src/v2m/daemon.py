@@ -11,12 +11,33 @@ from v2m.core.di.container import container
 from v2m.application.commands import StartRecordingCommand, StopRecordingCommand, ProcessTextCommand
 
 class Daemon:
+    """
+    clase principal del demonio que maneja el ciclo de vida de la aplicacion y las comunicaciones ipc.
+
+    esta clase es responsable de iniciar el servidor ipc, escuchar comandos entrantes
+    y despacharlos al bus de comandos para su ejecucion.
+    """
     def __init__(self):
+        """
+        inicializa la instancia del demonio.
+
+        configura la ruta del socket, el estado de ejecucion y obtiene el bus de comandos
+        del contenedor de inyeccion de dependencias.
+        """
         self.running = False
         self.socket_path = Path(SOCKET_PATH)
         self.command_bus = container.get_command_bus()
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        """
+        maneja las conexiones entrantes de clientes ipc.
+
+        lee el mensaje del socket, lo procesa y envia una respuesta.
+
+        args:
+            reader (asyncio.StreamReader): flujo de lectura para recibir datos.
+            writer (asyncio.StreamWriter): flujo de escritura para enviar respuestas.
+        """
         data = await reader.read(4096)
         message = data.decode().strip()
         logger.info(f"Received IPC message: {message}")
@@ -62,6 +83,12 @@ class Daemon:
             self.stop()
 
     async def start_server(self):
+        """
+        inicia el servidor unix socket.
+
+        verifica si el socket ya existe y lo limpia si es necesario. luego inicia
+        el servidor y espera indefinidamente hasta que se detenga.
+        """
         if self.socket_path.exists():
             # verificar si el socket está realmente vivo
             try:
@@ -84,12 +111,22 @@ class Daemon:
             await server.serve_forever()
 
     def stop(self):
+        """
+        detiene el demonio y limpia los recursos.
+
+        elimina el archivo del socket y termina el proceso.
+        """
         logger.info("Stopping daemon...")
         if self.socket_path.exists():
             self.socket_path.unlink()
         sys.exit(0)
 
     def run(self):
+        """
+        ejecuta el bucle principal del demonio.
+
+        configura los manejadores de senales y ejecuta el servidor asincrono.
+        """
         # configurar manejadores de señales
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

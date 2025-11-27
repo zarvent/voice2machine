@@ -4,6 +4,17 @@ import argparse
 from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand
 
 async def send_command(command: str):
+    """
+    envia un comando al demonio a traves de un socket unix.
+
+    establece una conexion con el socket del demonio, envia el comando y espera una respuesta.
+
+    args:
+        command (str): el comando a enviar.
+
+    returns:
+        str: la respuesta del demonio.
+    """
     try:
         reader, writer = await asyncio.open_unix_connection(SOCKET_PATH)
 
@@ -25,6 +36,11 @@ async def send_command(command: str):
         sys.exit(1)
 
 def main():
+    """
+    punto de entrada para el cliente de linea de comandos.
+
+    analiza los argumentos y envia el comando especificado al demonio.
+    """
     parser = argparse.ArgumentParser(description="Whisper Dictation Client")
     parser.add_argument("command", choices=[e.value for e in IPCCommand], help="Command to send to daemon")
     parser.add_argument("payload", nargs="*", help="Optional payload for the command")

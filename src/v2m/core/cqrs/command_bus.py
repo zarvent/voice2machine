@@ -1,12 +1,12 @@
 """
-módulo que implementa el bus de comandos (command bus)
+modulo que implementa el bus de comandos (command bus).
 
-el command bus es el orquestador central del patrón CQRS en esta aplicación
+el command bus es el orquestador central del patron cqrs en esta aplicacion.
 su responsabilidad es recibir comandos y despacharlos al handler apropiado
-que ha sido previamente registrado para manejarlos
+que ha sido previamente registrado para manejarlos.
 
-este patrón desacopla al emisor de un comando (ej la CLI en `main.py`) del
-receptor (el `commandhandler` que contiene la lógica de negocio)
+este patron desacopla al emisor de un comando (ej la cli en `main.py`) del
+receptor (el `commandhandler` que contiene la logica de negocio).
 """
 
 from typing import Dict, Type, Any
@@ -15,32 +15,32 @@ from .command_handler import CommandHandler
 
 class CommandBus:
     """
-    despacha comandos a sus respectivos handlers
+    despacha comandos a sus respectivos handlers.
 
-    actúa como un mediador que mapea un tipo de comando a la instancia del
-    handler que puede procesarlo
+    actua como un mediador que mapea un tipo de comando a la instancia del
+    handler que puede procesarlo.
     """
 
     def __init__(self) -> None:
         """
-        inicializa el command bus
+        inicializa el command bus.
 
-        crea un diccionario interno para mantener el registro de los handlers
+        crea un diccionario interno para mantener el registro de los handlers.
         """
         self.handlers: Dict[Type[Command], CommandHandler] = {}
 
     def register(self, handler: CommandHandler) -> None:
         """
-        registra un manejador de comandos
+        registra un manejador de comandos.
 
-        durante la inicialización de la aplicación (en el contenedor de DI)
-        este método es llamado para registrar cada handler disponible
+        durante la inicializacion de la aplicacion (en el contenedor de di),
+        este metodo es llamado para registrar cada handler disponible.
 
         args:
-            handler: la instancia del handler a registrar
+            handler (CommandHandler): la instancia del handler a registrar.
 
         raises:
-            valueerror: si ya existe un handler registrado para el mismo tipo de comando
+            ValueError: si ya existe un handler registrado para el mismo tipo de comando.
         """
         command_type = handler.listen_to()
         if command_type in self.handlers:
@@ -49,19 +49,19 @@ class CommandBus:
 
     async def dispatch(self, command: Command) -> Any:
         """
-        despacha un comando a su handler correspondiente
+        despacha un comando a su handler correspondiente.
 
-        este es el método principal que se utiliza en tiempo de ejecución busca el
-        handler apropiado para el comando dado y le delega la ejecución
+        este es el metodo principal que se utiliza en tiempo de ejecucion. busca el
+        handler apropiado para el comando dado y le delega la ejecucion.
 
         args:
-            command: la instancia del comando a despachar
+            command (Command): la instancia del comando a despachar.
 
         returns:
-            el resultado de la ejecución del método `handle` del handler
+            Any: el resultado de la ejecucion del metodo `handle` del handler.
 
         raises:
-            valueerror: si no se encuentra ningún handler registrado para el tipo de comando
+            ValueError: si no se encuentra ningun handler registrado para el tipo de comando.
         """
         command_type = type(command)
         if command_type not in self.handlers:

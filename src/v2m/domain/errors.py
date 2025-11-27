@@ -1,52 +1,52 @@
 """
-módulo que define las excepciones personalizadas del dominio de la aplicación
+modulo que define las excepciones personalizadas del dominio de la aplicacion.
 
-estas excepciones representan errores de negocio específicos y semánticos
-lo que permite un manejo de errores más granular y claro en la capa de aplicación
-en comparación con el uso de excepciones genéricas
+estas excepciones representan errores de negocio especificos y semanticos,
+lo que permite un manejo de errores mas granular y claro en la capa de aplicacion
+en comparacion con el uso de excepciones genericas.
 """
 
 class ApplicationError(Exception):
     """
-    clase base para todas las excepciones personalizadas de la aplicación
+    clase base para todas las excepciones personalizadas de la aplicacion.
 
-    heredar de una clase base común permite capturar todos los errores de
-    negocio conocidos con un solo bloque `except applicationerror`
+    heredar de una clase base comun permite capturar todos los errores de
+    negocio conocidos con un solo bloque `except applicationerror`.
     """
     pass
 
 class MicrophoneNotFoundError(ApplicationError):
     """
-    excepción lanzada cuando no se detecta ningún micrófono funcional
+    excepcion lanzada cuando no se detecta ningun microfono funcional.
 
-    esto puede ocurrir si el dispositivo de grabación por defecto no está
-    disponible o no está configurado correctamente en el sistema
+    esto puede ocurrir si el dispositivo de grabacion por defecto no esta
+    disponible o no esta configurado correctamente en el sistema.
     """
     pass
 
 class RecordingError(ApplicationError):
     """
-    excepción lanzada cuando ocurre un error durante la grabación de audio
+    excepcion lanzada cuando ocurre un error durante la grabacion de audio.
 
     puede ser causada por problemas con `ffmpeg` o con los permisos de acceso
-    al dispositivo de audio
+    al dispositivo de audio.
     """
     pass
 
 class TranscriptionError(ApplicationError):
     """
-    excepción lanzada cuando falla el proceso de transcripción
+    excepcion lanzada cuando falla el proceso de transcripcion.
 
-    esto podría deberse a un modelo de WHISPER corrupto problemas de memoria
-    de la GPU o un formato de audio inválido
+    esto podria deberse a un modelo de whisper corrupto, problemas de memoria
+    de la gpu o un formato de audio invalido.
     """
     pass
 
 class LLMError(ApplicationError):
     """
-    excepción lanzada cuando hay un error en la comunicación con el LLM
+    excepcion lanzada cuando hay un error en la comunicacion con el llm.
 
-    puede ser causada por una clave de API inválida problemas de red o
-    errores internos del servicio del LLM
+    puede ser causada por una clave de api invalida, problemas de red o
+    errores internos del servicio del llm.
     """
     pass

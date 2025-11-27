@@ -20,6 +20,12 @@ from v2m.core.ipc_protocol import IPCCommand
 from v2m.core.logging import logger
 
 def main() -> None:
+    """
+    funcion principal que analiza los argumentos y ejecuta el demonio o envia comandos.
+
+    analiza los argumentos de la linea de comandos para determinar si iniciar el servicio
+    en segundo plano (demonio) o actuar como cliente enviando comandos ipc.
+    """
     parser = argparse.ArgumentParser(description="Whisper Dictation Main Entrypoint")
 
     # argumento para iniciar como demonio

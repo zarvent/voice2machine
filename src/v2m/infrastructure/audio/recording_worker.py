@@ -20,6 +20,12 @@ signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
 def main():
+    """
+    punto de entrada para el worker de grabacion independiente.
+
+    este script se ejecuta como un proceso separado para aislar la grabacion de audio
+    del proceso principal, evitando bloqueos y problemas de gil.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=str, required=True)
     args = parser.parse_args()

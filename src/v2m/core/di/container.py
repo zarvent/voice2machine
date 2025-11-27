@@ -1,13 +1,13 @@
 """
-módulo que implementa el contenedor de inyección de dependencias (DI)
+modulo que implementa el contenedor de inyeccion de dependencias (di).
 
-el contenedor es responsable de "cablear" la aplicación esto significa que
+el contenedor es responsable de "cablear" la aplicacion. esto significa que
 instancia las clases concretas (infraestructura) y las inyecta en las clases
-que las necesitan (handlers de aplicación) desacoplando las capas entre sí
+que las necesitan (handlers de aplicacion), desacoplando las capas entre si.
 
-este es el único lugar de la aplicación donde las implementaciones concretas
-(ej `whispertranscriptionservice`) son conocidas el resto de la aplicación
-depende de abstracciones (interfaces)
+este es el unico lugar de la aplicacion donde las implementaciones concretas
+(ej `whispertranscriptionservice`) son conocidas. el resto de la aplicacion
+depende de abstracciones (interfaces).
 """
 
 from v2m.core.cqrs.command_bus import CommandBus
@@ -25,24 +25,24 @@ import threading
 
 class Container:
     """
-    contenedor de DI que gestiona el ciclo de vida y las dependencias de los objetos
+    contenedor de di que gestiona el ciclo de vida y las dependencias de los objetos.
     """
     def __init__(self) -> None:
         """
-        inicializa y configura todas las dependencias de la aplicación
+        inicializa y configura todas las dependencias de la aplicacion.
 
-        el proceso de configuración sigue estos pasos
-        1.  **instanciar servicios de infraestructura** se crean las implementaciones
-            concretas de los servicios (ej para WHISPER para GEMINI) se manejan
-            como singletons para que solo haya una instancia por servicio
+        el proceso de configuracion sigue estos pasos:
+        1.  **instanciar servicios de infraestructura**: se crean las implementaciones
+            concretas de los servicios (ej para whisper, para gemini). se manejan
+            como singletons para que solo haya una instancia por servicio.
 
-        2.  **instanciar handlers de aplicación** se crean los manejadores de comandos
+        2.  **instanciar handlers de aplicacion**: se crean los manejadores de comandos
             y se les inyectan las instancias de los servicios que necesitan para
-            funcionar
+            funcionar.
 
-        3.  **configurar el command bus** se instancia el bus de comandos y se
-            registran todos los handlers para que el bus sepa a quién despachar
-            cada comando
+        3.  **configurar el command bus**: se instancia el bus de comandos y se
+            registran todos los handlers para que el bus sepa a quien despachar
+            cada comando.
         """
         # --- 1 instanciar servicios (como singletons) ---
         # aquí se decide qué implementación concreta usar para cada interfaz
@@ -90,10 +90,10 @@ class Container:
 
     def get_command_bus(self) -> CommandBus:
         """
-        provee acceso al command bus configurado
+        provee acceso al command bus configurado.
 
         returns:
-            la instancia única del command bus
+            CommandBus: la instancia unica del command bus.
         """
         return self.command_bus
 

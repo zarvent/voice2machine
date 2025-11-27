@@ -1,68 +1,138 @@
-# 🗣️ HERRAMIENTA DE DICTADO POR VOZ
+# 🗣️ herramienta de dictado por voz
 
 _una herramienta de dictado por voz para transcribir audio en cualquier campo de texto del sistema operativo_
 
 ---
 
-### 📚 DOCUMENTACIÓN COMPLETA
+### 📚 documentacion completa
 
-> **toda la documentación detallada se encuentra en la carpeta `/docs`**
+> **toda la documentacion detallada se encuentra en la carpeta `/docs`**
 >
-> explora la guía de instalación la arquitectura y más navegando en esa carpeta
+> explora la guia de instalacion, la arquitectura y mas navegando en esa carpeta.
 
 ---
 
-## 🎯 PROPÓSITO
+## 🎯 proposito
 
-el objetivo es simple
+el objetivo es simple:
 
-> poder dictar texto en cualquier lugar del sistema operativo
+> poder dictar texto en cualquier lugar del sistema operativo.
 
-la idea es transcribir audio con una GPU para máxima velocidad sin importar la aplicación que estés usando
+la idea es transcribir audio con una gpu para maxima velocidad, sin importar la aplicacion que estes usando.
 
-este proyecto es una refactorización de un script simple a una aplicación modular en PYTHON para separar responsabilidades y facilitar el mantenimiento a futuro
+este proyecto es una refactorizacion de un script simple a una aplicacion modular en python para separar responsabilidades y facilitar el mantenimiento a futuro.
 
 ---
 
-## 🕹️ FLUJO DE TRABAJO
+## ⚙️ configuracion y desarrollo
 
-la interacción tiene dos funciones principales activadas por atajos de teclado globales para no interrumpir tu trabajo
+### requisitos previos
 
-#### 1. FLUJO DE DICTADO (VOZ → TEXTO)
+*   python 3.10+
+*   ffmpeg (para procesamiento de audio)
+*   xclip o wl-clipboard (para gestion del portapapeles en linux)
+*   gpu nvidia (opcional, pero recomendada para whisper)
 
-este es el flujo principal para capturar tu voz y convertirla en texto se activa con `scripts/whisper-toggle.sh`
+### instalacion
 
-```mermaid
-%%{init: {"flowchart": {"htmlLabels": false}} }%%
-flowchart TD
-    subgraph VOZ A TEXTO
-        A["🎤 ATAMO 1<br/>_inicia grabación_"] --> B{"transcribe con WHISPER"}
-        B --> C["📋 COPIADO<br/>_texto en portapapeles_"]
-    end
+1.  clona el repositorio:
+    ```bash
+    git clone <url-del-repo>
+    cd v2m
+    ```
 
-    style A fill:#8EBBFF,stroke:#333,stroke-width:2px
-    style B fill:#FFD68E,stroke:#333,stroke-width:2px
-    style C fill:#A9E5BB,stroke:#333,stroke-width:2px
+2.  crea un entorno virtual:
+    ```bash
+    python -m venv venv
+    source venv/bin/activate
+    ```
+
+3.  instala las dependencias:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4.  configura las variables de entorno:
+    crea un archivo `.env` basado en el ejemplo (si existe) o configura manualmente:
+    ```env
+    gemini_api_key=tu_api_key_aqui
+    ```
+
+---
+
+## 🚀 uso
+
+la aplicacion funciona con un demonio en segundo plano y scripts clientes que envian comandos.
+
+### iniciar el demonio
+
+el demonio carga los modelos en memoria y espera comandos.
+
+```bash
+python -m v2m.main --daemon
 ```
 
-#### 2. FLUJO DE REFINADO (TEXTO → TEXTO MEJORADO)
+### comandos del cliente
 
-a veces la transcripción no es perfecta este flujo toma el texto de tu portapapeles y usa un LLM para limpiarlo corregirlo o formatearlo se activa con `scripts/process-clipboard.sh`
+puedes controlar el demonio enviando comandos desde otra terminal:
 
-```mermaid
-%%{init: {"flowchart": {"htmlLabels": false}} }%%
-flowchart TD
-    subgraph TEXTO A TEXTO MEJORADO
-        A["📋 COPIAS TEXTO"] --> B["🧠 ATAJO 2<br/>_inicia refinado_"]
-        B --> C{"procesa con LLM<br/>_GOOGLE GEMINI_"}
-        C --> D["📋 REEMPLAZA<br/>_texto mejorado en portapapeles_"]
-    end
+*   **iniciar grabacion:**
+    ```bash
+    python -m v2m.main start_recording
+    ```
 
-    style A fill:#F2C2E0,stroke:#333,stroke-width:2px
-    style B fill:#8EBBFF,stroke:#333,stroke-width:2px
-    style C fill:#FFD68E,stroke:#333,stroke-width:2px
-    style D fill:#A9E5BB,stroke:#333,stroke-width:2px
-```
+*   **detener grabacion y transcribir:**
+    ```bash
+    python -m v2m.main stop_recording
+    ```
+
+*   **procesar texto del portapapeles (refinado con llm):**
+    ```bash
+    python -m v2m.main process_text "texto a procesar"
+    ```
+
 ---
 
-> _**nota sobre la visualización** si los diagramas de flujo no se muestran en tu editor asegúrate de tener instalada una extensión compatible con mermaid_
+## 🕹️ flujo de trabajo
+
+la interaccion tiene dos funciones principales activadas por atajos de teclado globales (configurados en tu gestor de ventanas) para no interrumpir tu trabajo.
+
+#### 1. flujo de dictado (voz -> texto)
+
+este es el flujo principal para capturar tu voz y convertirla en texto. se activa tipicamente con un script wrapper como `scripts/v2m-toggle.sh`.
+
+```mermaid
+%%{init: {"flowchart": {"htmllabels": false}} }%%
+flowchart td
+    subgraph voz a texto
+        a["🎤 atajo 1<br/>_inicia grabacion_"] --> b{"transcribe con whisper"}
+        b --> c["📋 copiado<br/>_texto en portapapeles_"]
+    end
+
+    style a fill:#8ebbff,stroke:#333,stroke-width:2px
+    style b fill:#ffd68e,stroke:#333,stroke-width:2px
+    style c fill:#a9e5bb,stroke:#333,stroke-width:2px
+```
+
+#### 2. flujo de refinado (texto -> texto mejorado)
+
+a veces la transcripcion no es perfecta. este flujo toma el texto de tu portapapeles y usa un llm para limpiarlo, corregirlo o formatearlo. se activa con `scripts/v2m-process.sh`.
+
+```mermaid
+%%{init: {"flowchart": {"htmllabels": false}} }%%
+flowchart td
+    subgraph texto a texto mejorado
+        a["📋 copias texto"] --> b["🧠 atajo 2<br/>_inicia refinado_"]
+        b --> c{"procesa con llm<br/>_google gemini_"}
+        c --> d["📋 reemplaza<br/>_texto mejorado en portapapeles_"]
+    end
+
+    style a fill:#f2c2e0,stroke:#333,stroke-width:2px
+    style b fill:#8ebbff,stroke:#333,stroke-width:2px
+    style c fill:#ffd68e,stroke:#333,stroke-width:2px
+    style d fill:#a9e5bb,stroke:#333,stroke-width:2px
+```
+
+---
+
+> _**nota sobre la visualizacion**: si los diagramas de flujo no se muestran en tu editor, asegurate de tener instalada una extension compatible con mermaid._

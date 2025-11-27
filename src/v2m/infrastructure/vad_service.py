@@ -6,10 +6,10 @@ from v2m.core.logging import logger
 
 class VADService:
     """
-    servicio para la detección de actividad de voz (VAD) utilizando silero vad
+    servicio para la deteccion de actividad de voz (vad) utilizando silero vad.
 
-    permite truncar los silencios del audio antes de enviarlo a WHISPER
-    mejorando la eficiencia y reduciendo el tiempo de inferencia
+    permite truncar los silencios del audio antes de enviarlo a whisper,
+    mejorando la eficiencia y reduciendo el tiempo de inferencia.
     """
     def __init__(self):
         self.model = None
@@ -19,10 +19,13 @@ class VADService:
 
     def load_model(self, timeout_sec: float = 10.0):
         """
-        carga el modelo silero vad de forma perezosa con timeout
+        carga el modelo silero vad de forma perezosa con timeout.
 
         para evitar bloqueos por descargas de internet, se aplica un timeout. si
-        vence el tiempo, se deshabilita VAD para esta sesión y se continúa sin VAD.
+        vence el tiempo, se deshabilita vad para esta sesion y se continua sin vad.
+
+        args:
+            timeout_sec (float): tiempo maximo de espera en segundos.
         """
         if self.disabled:
             return
@@ -64,15 +67,15 @@ class VADService:
 
     def process(self, audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
         """
-        procesa el audio y elimina los segmentos de silencio
+        procesa el audio y elimina los segmentos de silencio.
 
         args:
-            audio: array de numpy con el audio (float32)
-            sample_rate: frecuencia de muestreo (debe ser 8000 o 16000 para silero)
+            audio (np.ndarray): array de numpy con el audio (float32).
+            sample_rate (int): frecuencia de muestreo (debe ser 8000 o 16000 para silero).
 
         returns:
-            un nuevo array de numpy que contiene solo los segmentos de voz concatenados
-            si no se detecta voz devuelve un array vacío
+            np.ndarray: un nuevo array de numpy que contiene solo los segmentos de voz concatenados.
+            si no se detecta voz devuelve un array vacio.
         """
         # si el audio está vacío, retornar de inmediato
         if audio.size == 0:
