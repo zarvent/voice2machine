@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 class ClipboardInterface(ABC):
-     """
+    """
     interfaz abstracta para operaciones del portapapeles.
 
     define los metodos necesarios para interactuar con el portapapeles del sistema,
