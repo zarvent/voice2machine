@@ -114,5 +114,10 @@ class GeminiLLMService(LLMService):
             # se captura cualquier excepción de la librería de GOOGLE o de red
             # y se relanza como un error de dominio para no filtrar detalles
             # de la infraestructura a la capa de aplicación
+            error_msg = str(e)
+            if "API key not valid" in error_msg:
+                logger.critical("GEMINI_API_KEY invalida o expirada")
+                raise LLMError("API Key de Gemini inválida. Revisa tu archivo .env") from e
+
             logger.error(f"error procesando texto con GEMINI {e}")
             raise LLMError("falló el procesamiento de texto con GEMINI") from e

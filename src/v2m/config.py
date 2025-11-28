@@ -72,8 +72,8 @@ class WhisperConfig(BaseModel):
     compute_type: str = "float16"
     device_index: int = 0
     num_workers: int = 4
-    beam_size: int = 5
-    best_of: int = 5
+    beam_size: int = 2
+    best_of: int = 2
     temperature: float = 0.0
     vad_filter: bool = True
     vad_parameters: VadParametersConfig = Field(default_factory=VadParametersConfig)

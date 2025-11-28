@@ -8,6 +8,8 @@ de la logica de bajo nivel para:
 -   realizar la transcripcion del audio grabado directamente desde la memoria.
 """
 
+import gc
+import torch
 from typing import Optional
 from faster_whisper import WhisperModel
 from v2m.application.transcription_service import TranscriptionService
@@ -104,6 +106,7 @@ class WhisperTranscriptionService(TranscriptionService):
         2.  aplica vad (smart truncation) si esta disponible.
         3.  verifica que se haya grabado audio valido.
         4.  utiliza el modelo de whisper para transcribir el audio directamente desde memoria.
+        5.  limpia recursos (gc, cuda cache) para minimizar uso de memoria.
 
         returns:
             str: el texto transcrito.
@@ -127,7 +130,6 @@ class WhisperTranscriptionService(TranscriptionService):
                 audio_data = self.vad_service.process(audio_data)
                 if audio_data.size == 0:
                     logger.warning("VAD eliminó todo el audio (solo silencio detectado)")
-                    # podríamos lanzar error o retornar string vacío
                     return ""
             except Exception as e:
                 logger.error(f"fallo en VAD usando audio original {e}")
@@ -136,34 +138,42 @@ class WhisperTranscriptionService(TranscriptionService):
         logger.info("transcribiendo audio...")
         whisper_config = config.whisper
 
-        # 1 lógica para auto-detección
-        lang = whisper_config.language
-        if lang == "auto":
-            lang = None  # none activa la detección automática en faster-whisper
+        try:
+            # 1 lógica para auto-detección
+            lang = whisper_config.language
+            if lang == "auto":
+                lang = None  # none activa la detección automática en faster-whisper
 
-        # 2 prompt inicial (optimización bilingüe)
-        # esto le dice al modelo "oye el audio será en español o inglés"
-        # ayuda mucho con audios cortos que podrían confundirse
-        bilingual_prompt = "esta es una transcripción en español this is also in english"
+            # 2 prompt inicial (optimización bilingüe)
+            bilingual_prompt = "esta es una transcripción en español this is also in english"
 
-        # faster-whisper acepta numpy array directamente
-        segments, info = self.model.transcribe(
-            audio_data,
-            language=lang,
-            task="transcribe",  # <--- bloquea la traducción
-            initial_prompt=bilingual_prompt,  # <--- inyección de contexto
-            beam_size=whisper_config.beam_size,
-            best_of=whisper_config.best_of,
-            temperature=whisper_config.temperature,
-            vad_filter=whisper_config.vad_filter,
-            vad_parameters=whisper_config.vad_parameters.model_dump()
-        )
+            # faster-whisper acepta numpy array directamente
+            segments, info = self.model.transcribe(
+                audio_data,
+                language=lang,
+                task="transcribe",
+                initial_prompt=bilingual_prompt,
+                beam_size=whisper_config.beam_size,
+                best_of=whisper_config.best_of,
+                temperature=whisper_config.temperature,
+                vad_filter=whisper_config.vad_filter,
+                vad_parameters=whisper_config.vad_parameters.model_dump()
+            )
 
-        # si es detección automática podemos loguear qué idioma detectó
-        if lang is None:
-            logger.info(f"idioma detectado {info.language} (prob {info.language_probability:.2f})")
+            if lang is None:
+                logger.info(f"idioma detectado {info.language} (prob {info.language_probability:.2f})")
 
-        text = " ".join([segment.text.strip() for segment in segments])
-        logger.info("transcripción completada")
+            text = " ".join([segment.text.strip() for segment in segments])
+            logger.info("transcripción completada")
+            return text
 
-        return text
+        except Exception as e:
+            logger.error(f"Error durante transcripción: {e}")
+            raise e
+        finally:
+            # --- LIMPIEZA DE RECURSOS ---
+            # forzar recolección de basura y vaciar caché de CUDA
+            # esto es vital para demonios de larga duración
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()

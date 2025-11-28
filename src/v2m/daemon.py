@@ -9,6 +9,7 @@ from v2m.core.logging import logger
 from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand
 from v2m.core.di.container import container
 from v2m.application.commands import StartRecordingCommand, StopRecordingCommand, ProcessTextCommand
+from v2m.config import config
 
 class Daemon:
     """
@@ -27,6 +28,11 @@ class Daemon:
         self.running = False
         self.socket_path = Path(SOCKET_PATH)
         self.command_bus = container.get_command_bus()
+
+        # limpiar flag de grabación si existe (recuperación de crash)
+        if config.paths.recording_flag.exists():
+            logger.warning("Limpiando flag de grabación huérfano")
+            config.paths.recording_flag.unlink()
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """

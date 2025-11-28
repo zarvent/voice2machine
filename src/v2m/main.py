@@ -14,7 +14,7 @@ modos de operación
 import argparse
 import asyncio
 import sys
-from v2m.daemon import Daemon
+
 from v2m.client import send_command
 from v2m.core.ipc_protocol import IPCCommand
 from v2m.core.logging import logger
@@ -38,6 +38,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.daemon:
+        from v2m.daemon import Daemon
         logger.info("Starting Whisper Dictation Daemon...")
         daemon = Daemon()
         daemon.run()
