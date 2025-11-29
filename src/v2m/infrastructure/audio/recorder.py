@@ -85,9 +85,9 @@ class AudioRecorder:
             RecordingError: si no hay una grabacion en curso.
         """
         if not self._recording:
-             # si los fotogramas están vacíos y no se está grabando entonces no ha pasado nada
-             if not self._frames and not self._stream:
-                 raise RecordingError("no hay grabación en curso")
+            # si los fotogramas están vacíos y no se está grabando entonces no ha pasado nada
+            if not self._frames and not self._stream:
+                raise RecordingError("no hay grabación en curso")
 
         with self._lock:
             self._recording = False

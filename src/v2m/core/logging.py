@@ -8,7 +8,7 @@ cuando se integran con sistemas de recoleccion de logs.
 
 import logging
 import sys
-from pythonjsonlogger import jsonlogger
+from pythonjsonlogger.json import JsonFormatter
 
 def setup_logging():
     """
@@ -33,7 +33,7 @@ def setup_logging():
     # se utiliza un streamhandler para enviar logs a stdout
     handler = logging.StreamHandler(sys.stdout)
     # se usa jsonformatter para asegurar que todos los logs sean objetos json
-    formatter = jsonlogger.JsonFormatter(
+    formatter = JsonFormatter(
         "%(asctime)s %(name)s %(levelname)s %(message)s"
     )
     handler.setFormatter(formatter)
