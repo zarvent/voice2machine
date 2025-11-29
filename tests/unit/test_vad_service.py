@@ -21,6 +21,8 @@ def test_vad_process_empty_audio(vad_service):
 def test_vad_process_no_speech(vad_service):
     """Test processing audio with no speech returns empty array."""
     vad_service.load_model = MagicMock()
+    # Also set model to non-None so the check passes
+    vad_service.model = MagicMock()
     vad_service.get_speech_timestamps = MagicMock(return_value=[])
 
     # 1 second of silence
@@ -32,6 +34,8 @@ def test_vad_process_no_speech(vad_service):
 def test_vad_process_with_speech(vad_service):
     """Test processing audio with speech returns concatenated segments."""
     vad_service.load_model = MagicMock()
+    # Also set model to non-None so the check passes
+    vad_service.model = MagicMock()
     # Mock timestamps: speech from 1000-2000 and 3000-4000
     vad_service.get_speech_timestamps = MagicMock(return_value=[
         {'start': 1000, 'end': 2000},

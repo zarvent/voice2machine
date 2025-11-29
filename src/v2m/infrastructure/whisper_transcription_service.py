@@ -48,7 +48,7 @@ class WhisperTranscriptionService(TranscriptionService):
         returns:
             WhisperModel: la instancia del modelo de whisper cargado.
         """
-        if self._model == None:
+        if self._model is None:
             logger.info("cargando modelo de WHISPER...")
             whisper_config = config.whisper
 

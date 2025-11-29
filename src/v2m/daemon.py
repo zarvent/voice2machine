@@ -84,6 +84,7 @@ class Daemon:
         writer.write(response.encode())
         await writer.drain()
         writer.close()
+        await writer.wait_closed()
 
         if message == IPCCommand.SHUTDOWN:
             self.stop()
