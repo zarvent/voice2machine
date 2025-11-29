@@ -3,6 +3,7 @@ import numpy as np
 from typing import List, Optional
 import threading
 from v2m.core.logging import logger
+from v2m.config import config
 
 class VADService:
     """
@@ -97,12 +98,13 @@ class VADService:
         audio_tensor = torch.from_numpy(audio)
 
         # obtener timestamps de voz
-        # threshold umbral de probabilidad de voz (0.5 es default)
+        # usar el threshold configurado en config.whisper.vad_parameters
+        vad_threshold = config.whisper.vad_parameters.threshold
         timestamps = self.get_speech_timestamps(
             audio_tensor,
             self.model,
             sampling_rate=sample_rate,
-            threshold=0.5
+            threshold=vad_threshold
         )
 
         if not timestamps:
