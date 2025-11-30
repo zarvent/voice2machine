@@ -1,4 +1,59 @@
 #!/bin/bash
+#
+# v2m-verify.sh - Script de verificación del entorno V2M
+#
+# DESCRIPCIÓN:
+#   Este script realiza una verificación completa del entorno de
+#   Voice2Machine, comprobando todas las dependencias, configuraciones
+#   y permisos necesarios para el correcto funcionamiento.
+#
+# USO:
+#   ./scripts/v2m-verify.sh
+#
+# VERIFICACIONES REALIZADAS:
+#   1. Entorno virtual (venv/)
+#   2. faster-whisper instalado
+#   3. CUDA disponible (PyTorch)
+#   4. LD_LIBRARY_PATH configurado
+#   5. Script v2m-toggle.sh ejecutable
+#   6. Atajo de teclado Ctrl+Shift+Space
+#   7. Micrófono detectado (pactl)
+#   8. FFmpeg instalado
+#   9. xclip instalado
+#
+# CÓDIGOS DE COLOR:
+#   Verde  - Verificación exitosa
+#   Rojo   - Verificación fallida (requiere acción)
+#   Amarillo - Advertencia (puede funcionar pero no es óptimo)
+#
+# SALIDA:
+#   El script muestra un resumen al final indicando:
+#   - Número de problemas encontrados
+#   - Instrucciones de reinstalación si hay fallas
+#   - Próximos pasos si todo está bien
+#
+# DEPENDENCIAS:
+#   - gsettings: Para verificar atajos de teclado GNOME
+#   - pactl: Para verificar configuración de audio
+#   - Python con torch instalado
+#
+# EJEMPLOS:
+#   # Verificación completa
+#   ./scripts/v2m-verify.sh
+#
+#   # Guardar resultado a archivo
+#   ./scripts/v2m-verify.sh > verificacion.log 2>&1
+#
+# NOTAS:
+#   - Ejecutar antes de reportar problemas
+#   - Los atajos de teclado solo se verifican en GNOME
+#
+# AUTOR:
+#   Voice2Machine Team
+#
+# DESDE:
+#   v1.0.0
+#
 
 echo "🔍 Verificando setup de Whisper..."
 echo "=================================="

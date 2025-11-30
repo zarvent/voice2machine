@@ -1,7 +1,42 @@
 #!/usr/bin/env python3
 """
-Script de monitoreo de recursos para V2M.
-Genera reporte del consumo de memoria, GPU, disco y procesos activos.
+Monitoreo de recursos - ¿Cuánto consume V2M?
+
+¿Para qué sirve?
+    Te genera un reporte de cuánta memoria, GPU y disco está usando
+    V2M. Útil cuando:
+    - Sientes que tu computadora está lenta
+    - Quieres saber cuánta VRAM usa el modelo
+    - Necesitas diagnosticar problemas de rendimiento
+
+¿Cómo lo uso?
+    # Ver el reporte en pantalla
+    $ python scripts/monitor_resources.py
+
+    # Guardar el reporte a un archivo
+    $ python scripts/monitor_resources.py --save mi-reporte.md
+
+¿Qué incluye el reporte?
+    - Procesos V2M activos
+    - Memoria del daemon
+    - Uso de GPU (VRAM, utilización)
+    - Espacio en disco por directorio
+    - Cantidad de archivos de cache
+
+¿Cuántos recursos debería usar V2M?
+    Valores típicos:
+    - Memoria daemon: 200-500 MB (sin modelo cargado)
+    - VRAM con modelo large-v2: ~5-6 GB
+    - Disco total del proyecto: 3-5 GB
+
+¿Qué hago si consume demasiado?
+    1. Limpia el cache: python scripts/cleanup.py --all
+    2. Revisa si hay .venv duplicado (puede ser ~10 GB extra!)
+    3. Reinicia el daemon: ./scripts/v2m-daemon.sh restart
+
+Para desarrolladores:
+    El script usa subprocesos para llamar a nvidia-smi, ps, du, etc.
+    Si nvidia-smi no está disponible, simplemente omite esa sección.
 """
 
 import os
@@ -10,13 +45,24 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
+# Rutas del proyecto
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 VENV_DIR = PROJECT_ROOT / "venv"
 LOGS_DIR = PROJECT_ROOT / "logs"
+"""Path: Directorio de archivos de log."""
 
 
-def get_process_info():
-    """Obtiene información del daemon V2M."""
+def get_process_info() -> None:
+    """
+    Te muestra qué procesos de V2M están corriendo ahora mismo.
+
+    Básicamente hace un `ps aux | grep v2m` pero más bonito.
+    Útil para verificar que el daemon esté vivo y ver cuánto
+    CPU está usando.
+
+    Si no aparece ningún proceso, el daemon probablemente esté
+    apagado o hubo algún crash.
+    """
     print("## PROCESOS V2M / V2M PROCESSES\n")
 
     try:
@@ -44,8 +90,18 @@ def get_process_info():
         print(f"❌ Error obteniendo procesos: {e}\n")
 
 
-def get_daemon_memory():
-    """Obtiene uso de memoria del daemon."""
+def get_daemon_memory() -> None:
+    """
+    Consulta cuánta memoria RAM está usando el daemon.
+
+    Le pregunta a systemd cuál es el PID del servicio v2m.service
+    y extrae el dato de memoria de ahí. Es la forma más precisa
+    de saber si el daemon está consumiendo mucha RAM.
+
+    Tip:
+        Si ves que la memoria sigue creciendo con el tiempo,
+        podría haber un memory leak. Avisanos si pasa.
+    """
     print("## MEMORIA DEL DAEMON / DAEMON MEMORY\n")
 
     try:
@@ -82,8 +138,18 @@ def get_daemon_memory():
         print(f"❌ Error obteniendo memoria del daemon: {e}\n")
 
 
-def get_gpu_usage():
-    """Obtiene uso de GPU (NVIDIA)."""
+def get_gpu_usage() -> None:
+    """
+    Muestra cuánto de tu GPU NVIDIA está usando V2M.
+
+    Usa nvidia-smi (la herramienta oficial de NVIDIA) para mostrarte:
+        - Qué GPU tenés
+        - Cuánta VRAM está en uso (Whisper puede comer bastante)
+        - El porcentaje de utilización del GPU
+
+    Si no tenés GPU NVIDIA o nvidia-smi no está instalado,
+    simplemente te avisa y sigue adelante sin explotar.
+    """
     print("## USO DE GPU / GPU USAGE\n")
 
     try:
@@ -107,8 +173,16 @@ def get_gpu_usage():
         print(f"❌ Error obteniendo info de GPU: {e}\n")
 
 
-def get_disk_usage():
-    """Obtiene uso de disco del proyecto."""
+def get_disk_usage() -> None:
+    """
+    Te muestra qué carpetas del proyecto ocupan más espacio.
+
+    Corre `du` por debajo para calcular el tamaño de cada
+    subcarpeta y te muestra las 10 más gordas. Útil para
+    encontrar qué está llenando tu disco.
+
+    Spoiler: casi siempre es venv/ o algún cache.
+    """
     print("## USO DE DISCO / DISK USAGE\n")
 
     try:
@@ -142,8 +216,17 @@ def get_disk_usage():
         print(f"❌ Error obteniendo uso de disco: {e}\n")
 
 
-def check_cache_bloat():
-    """Cuenta directorios __pycache__ y archivos .pyc."""
+def check_cache_bloat() -> None:
+    """
+    Revisa si hay demasiado cache de Python acumulado.
+
+    Cuenta los directorios __pycache__ y archivos .pyc. Si hay
+    una cantidad ridiculosa (más de 100 dirs o 1000 archivos),
+    te avisa que es hora de una limpieza.
+
+    No borra nada automáticamente, solo te dice qué encontró.
+    Para limpiar, corré: python scripts/cleanup.py --cache
+    """
     print("## CACHE PYTHON / PYTHON CACHE\n")
 
     try:
@@ -177,9 +260,22 @@ def check_cache_bloat():
         print(f"❌ Error contando cache: {e}\n")
 
 
-def generate_report():
-    """Genera reporte completo en markdown."""
+def generate_report() -> None:
+    """
+    Genera un reporte completo de recursos en formato Markdown.
 
+    Ejecuta todas las funciones de diagnóstico y muestra el resultado
+    en un formato estructurado con secciones para cada tipo de recurso.
+    Al final incluye una sección de acciones recomendadas.
+
+    Secciones del reporte:
+        1. Procesos V2M activos
+        2. Memoria del daemon
+        3. Uso de GPU
+        4. Uso de disco
+        5. Cache Python
+        6. Acciones recomendadas
+    """
     print("\n" + "="*70)
     print(f"# REPORTE DE RECURSOS V2M / V2M RESOURCE REPORT")
     print(f"**Fecha**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -200,7 +296,23 @@ def generate_report():
     print("="*70 + "\n")
 
 
-def main():
+def main() -> None:
+    """
+    Punto de entrada principal del script de monitoreo.
+
+    Procesa los argumentos de línea de comandos y genera el reporte
+    de recursos. Puede mostrar el reporte en pantalla o guardarlo
+    en un archivo Markdown.
+
+    Opciones de línea de comandos:
+        --save FILE: Guarda el reporte en el archivo especificado
+                    en lugar de mostrarlo en pantalla.
+
+    Example:
+        >>> # Desde línea de comandos:
+        >>> # python scripts/monitor_resources.py
+        >>> # python scripts/monitor_resources.py --save status.md
+    """
     import argparse
 
     parser = argparse.ArgumentParser(

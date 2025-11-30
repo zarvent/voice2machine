@@ -1,16 +1,42 @@
-"""Pruebas unitarias para el módulo de configuración.
+"""Pruebas unitarias del sistema de configuración.
 
-Este módulo contiene las pruebas unitarias para verificar que el sistema
-de configuración de v2m carga correctamente los valores desde el archivo
-config.toml y los expone a través de la clase Settings.
+Propósito
+---------
+Verificar que el módulo de configuración cargue correctamente los valores
+desde config.toml y los exponga de manera consistente a través de Settings.
 
-Las pruebas verifican:
-    - Carga correcta del modelo de Whisper configurado.
-    - Configuración del idioma de transcripción.
-    - Parámetros de reintentos para la API de Gemini.
+Contexto técnico
+----------------
+La configuración en v2m sigue el patrón de "configuración externa":
+los parámetros de la aplicación (modelo de ML, idioma, timeouts, etc.)
+se definen en un archivo separado (config.toml), no en el código fuente.
 
-Ejemplo de uso típico:
-    pytest tests/unit/test_config.py -v
+Ventajas de este enfoque:
+    * Separación de concerns: El código no conoce valores específicos.
+    * Flexibilidad: Cambiar comportamiento sin recompilar/redesplegar.
+    * Ambientes múltiples: Diferentes configs para dev/staging/prod.
+
+Este archivo verifica
+---------------------
+    * Que config.toml se parsee correctamente.
+    * Que los valores críticos tengan los defaults esperados.
+    * Que la estructura jerárquica (whisper.model, gemini.retry_attempts)
+      se mapee correctamente al objeto Settings.
+
+Estrategia de testing
+---------------------
+Usamos assertions directas contra valores conocidos del config.toml
+actual. Si estos valores cambian, las pruebas fallarán intencionalmente
+para alertar sobre el cambio de configuración.
+
+Nota importante:
+    Estas pruebas son "contract tests" - verifican el contrato entre
+    config.toml y el código que lo consume. Si necesitas cambiar un
+    valor en config.toml, actualiza también estas pruebas.
+
+Ejecución
+---------
+    >>> pytest tests/unit/test_config.py -v
 """
 
 import pytest
@@ -18,22 +44,67 @@ from v2m.config import Settings
 
 
 def test_config_loading() -> None:
-    """Verifica que la configuración se carga correctamente desde config.toml.
+    """Verifica la carga correcta de parámetros desde config.toml.
 
-    Esta prueba asegura que los valores definidos en el archivo de
-    configuración config.toml se cargan correctamente en la instancia
-    de Settings y están disponibles para su uso en la aplicación.
+    Caso de prueba
+    --------------
+    Instanciar Settings y validar que los valores críticos coincidan
+    con los definidos en config.toml.
+
+    Valores verificados
+    -------------------
+    whisper.model = "large-v3-turbo"
+        Modelo de transcripción. "large-v3-turbo" ofrece balance óptimo
+        entre precisión y velocidad para uso en producción.
+
+    whisper.language = "auto"
+        Modo de detección automática de idioma. Whisper analizará el
+        audio para determinar el idioma hablado.
+
+    gemini.retry_attempts = 3
+        Número de reintentos ante fallos de la API de Gemini. El valor 3
+        sigue la práctica común de "three strikes" antes de fallar
+        definitivamente.
+
+    Metodología
+    -----------
+    Este test sigue el patrón de "smoke test" o "sanity check":
+    verifica que los componentes básicos funcionen antes de ejecutar
+    pruebas más complejas.
 
     Returns:
-        None
+        None. Los tests en pytest no retornan valores; comunican
+        resultados mediante assertions y excepciones.
 
     Raises:
-        AssertionError: Si el modelo de Whisper no coincide con 'large-v3-turbo'.
-        AssertionError: Si el idioma de Whisper no es 'auto'.
-        AssertionError: Si los reintentos de Gemini no son 3.
+        AssertionError: Si algún valor de configuración no coincide
+            con el esperado. Esto indica que config.toml fue modificado
+            o hay un problema en el parser de configuración.
+
+    Example:
+        >>> config = Settings()
+        >>> config.whisper.model
+        'large-v3-turbo'
     """
     config = Settings()
-    # El nombre del modelo debe coincidir con config.toml (actualmente large-v3-turbo)
-    assert config.whisper.model == "large-v3-turbo"
-    assert config.whisper.language == "auto"
-    assert config.gemini.retry_attempts == 3
+
+    # Validación del modelo de Whisper
+    # large-v3-turbo: 6x más rápido que large-v3 con calidad comparable
+    assert config.whisper.model == "large-v3-turbo", (
+        f"Modelo inesperado: {config.whisper.model}. "
+        "¿Se modificó config.toml sin actualizar este test?"
+    )
+
+    # Validación del idioma
+    # "auto" = detección automática mediante análisis espectral
+    assert config.whisper.language == "auto", (
+        f"Idioma inesperado: {config.whisper.language}. "
+        "El valor debe ser 'auto' para detección automática."
+    )
+
+    # Validación de política de reintentos
+    # 3 reintentos: práctica estándar en sistemas distribuidos
+    assert config.gemini.retry_attempts == 3, (
+        f"Reintentos inesperados: {config.gemini.retry_attempts}. "
+        "El valor recomendado es 3 para balancear resiliencia y latencia."
+    )

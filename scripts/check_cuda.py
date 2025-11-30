@@ -1,37 +1,40 @@
 #!/usr/bin/env python3
 """
-Script de verificación de CUDA y cuDNN para Voice2Machine (V2M).
+Verificación de CUDA - ¿Mi GPU funciona con V2M?
 
-Este módulo proporciona funcionalidades para verificar la disponibilidad
-y correcto funcionamiento de CUDA y cuDNN en el sistema. Es fundamental
-para asegurar que la aceleración por GPU esté disponible para la
-transcripción con Whisper.
+¿Para qué sirve este script?
+    V2M usa la GPU de tu computadora para transcribir audio rápidamente.
+    Este script verifica que tu tarjeta gráfica NVIDIA esté configurada
+    correctamente y lista para usar.
 
-Ejemplo de uso:
+¿Cómo lo uso?
+    Simplemente ejecuta:
+
     $ python scripts/check_cuda.py
 
-    Salida esperada:
-        Python: /path/to/python
-        LD_LIBRARY_PATH: /path/to/libs
-        CUDA Available: True
-        CUDA Device: NVIDIA GeForce RTX 3060
-        ✅ Operación cuDNN básica exitosa
+¿Qué debería ver si todo está bien?
+    Python: /home/tu-usuario/v2m/venv/bin/python
+    CUDA Available: True
+    CUDA Device: NVIDIA GeForce RTX 3060
+    ✅ Operación cuDNN básica exitosa
 
-Dependencias:
-    - torch: Para verificar la disponibilidad de CUDA.
-    - nvidia-cudnn-cu12: Librerías cuDNN para operaciones de convolución.
+¿Qué pasa si CUDA no está disponible?
+    El script mostrará "CUDA Available: False". En ese caso:
 
-Notas:
-    Si CUDA no está disponible, verifica:
-    1. Que los drivers de NVIDIA estén instalados correctamente.
-    2. Que LD_LIBRARY_PATH incluya las rutas a las librerías CUDA.
-    3. Que las versiones de CUDA, cuDNN y PyTorch sean compatibles.
+    1. Verifica que tengas drivers NVIDIA instalados:
+       $ nvidia-smi
 
-Author:
-    Voice2Machine Team
+    2. Si eso falla, instala los drivers:
+       $ sudo apt install nvidia-driver-535
 
-Since:
-    v1.0.0
+    3. Si tienes drivers pero CUDA sigue sin funcionar, prueba:
+       $ ./scripts/repair_libs.sh
+
+Nota para desarrolladores:
+    Este script usa PyTorch para detectar CUDA y ejecuta una operación
+    de convolución simple para verificar que cuDNN funcione. Si la
+    operación tiene éxito, significa que todo el stack de GPU está
+    funcionando correctamente.
 """
 
 import torch
@@ -41,28 +44,22 @@ import sys
 
 def check_cuda_availability() -> bool:
     """
-    Verifica la disponibilidad de CUDA y cuDNN en el sistema.
+    Verifica si CUDA y cuDNN están funcionando.
 
-    Esta función realiza las siguientes verificaciones:
-    1. Imprime información del entorno Python.
-    2. Verifica si CUDA está disponible.
-    3. Si CUDA está disponible, muestra el dispositivo y prueba cuDNN.
+    ¿Qué hace exactamente?
+        1. Muestra qué Python estás usando
+        2. Muestra las rutas de librerías CUDA
+        3. Prueba si CUDA está disponible
+        4. Si lo está, hace una prueba rápida con cuDNN
 
-    Returns:
-        bool: True si CUDA está disponible y cuDNN funciona correctamente,
-              False en caso contrario.
+    Retorna:
+        True si todo funciona, False si hay algún problema.
 
-    Raises:
-        No lanza excepciones directamente, pero captura errores de cuDNN.
-
-    Example:
-        >>> check_cuda_availability()
-        Python: /home/user/v2m/venv/bin/python
-        LD_LIBRARY_PATH: /path/to/nvidia/libs
-        CUDA Available: True
-        CUDA Device: NVIDIA GeForce RTX 3060
-        ✅ Operación cuDNN básica exitosa
-        True
+    Ejemplo:
+        >>> if check_cuda_availability():
+        ...     print("Listo para usar GPU")
+        ... else:
+        ...     print("Usando CPU (más lento)")
     """
     print(f"Python: {sys.executable}")
     print(f"LD_LIBRARY_PATH: {os.environ.get('LD_LIBRARY_PATH', 'Not Set')}")

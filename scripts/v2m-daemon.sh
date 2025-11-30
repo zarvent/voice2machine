@@ -1,7 +1,55 @@
 #!/bin/bash
-
-# v2m-daemon - Script para gestionar el daemon de Voice2Machine
-# USO: ./scripts/v2m-daemon.sh [start|stop|restart|status|logs]
+#
+# v2m-daemon.sh - Script de gestión del daemon Voice2Machine
+#
+# DESCRIPCIÓN:
+#   Este script proporciona una interfaz de línea de comandos para
+#   gestionar el daemon de V2M que corre en segundo plano. Permite
+#   iniciar, detener, reiniciar y verificar el estado del daemon.
+#
+# USO:
+#   ./scripts/v2m-daemon.sh [start|stop|restart|status|logs]
+#
+# COMANDOS:
+#   start    - Inicia el daemon en segundo plano
+#   stop     - Detiene el daemon de forma segura
+#   restart  - Reinicia el daemon (stop + start)
+#   status   - Muestra el estado actual y prueba conectividad
+#   logs     - Muestra los logs del daemon
+#
+# ARCHIVOS:
+#   /tmp/v2m_daemon.log  - Archivo de logs del daemon
+#   /tmp/v2m_daemon.pid  - Archivo con el PID del proceso
+#
+# VARIABLES DE ENTORNO:
+#   LD_LIBRARY_PATH - Se configura automáticamente para CUDA/cuDNN
+#   PYTHONPATH      - Se configura para incluir src/
+#
+# DEPENDENCIAS:
+#   - Python 3.12+ con entorno virtual en ./venv
+#   - Librerías NVIDIA en el venv (opcional, para GPU)
+#
+# EJEMPLOS:
+#   # Iniciar el daemon
+#   ./scripts/v2m-daemon.sh start
+#
+#   # Ver estado y probar conectividad
+#   ./scripts/v2m-daemon.sh status
+#
+#   # Ver logs en tiempo real
+#   ./scripts/v2m-daemon.sh logs
+#
+# NOTAS:
+#   - El daemon usa un socket Unix para comunicación IPC
+#   - Los logs se rotan automáticamente con cleanup.py
+#   - Si CUDA no está disponible, usa CPU automáticamente
+#
+# AUTOR:
+#   Voice2Machine Team
+#
+# DESDE:
+#   v1.0.0
+#
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )"

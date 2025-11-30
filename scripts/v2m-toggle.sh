@@ -1,4 +1,58 @@
 #!/bin/bash
+#
+# v2m-toggle.sh - Script de conmutación de grabación por voz
+#
+# DESCRIPCIÓN:
+#   Este es el script principal para control por voz. Alterna entre
+#   iniciar y detener la grabación de audio. Diseñado para asignarse
+#   a un atajo de teclado (recomendado: Ctrl+Shift+Space).
+#
+# USO:
+#   ./scripts/v2m-toggle.sh
+#
+# FLUJO DE TRABAJO:
+#   Primera ejecución:
+#     1. Verifica/inicia el daemon si no está corriendo
+#     2. Inicia la grabación de audio
+#     3. Crea archivo de bandera /tmp/v2m_recording.pid
+#
+#   Segunda ejecución:
+#     1. Detecta que hay una grabación en curso
+#     2. Detiene la grabación
+#     3. Transcribe el audio con Whisper
+#     4. Copia el resultado al portapapeles
+#     5. Elimina el archivo de bandera
+#
+# CONFIGURACIÓN DE ATAJO EN GNOME:
+#   # Crear atajo personalizado
+#   KEYBINDING_PATH="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/whisper0/"
+#   gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings \
+#     "['$KEYBINDING_PATH']"
+#   gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:$KEYBINDING_PATH \
+#     name 'V2M Toggle'
+#   gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:$KEYBINDING_PATH \
+#     command '$HOME/v2m/scripts/v2m-toggle.sh'
+#   gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:$KEYBINDING_PATH \
+#     binding '<Control><Shift>space'
+#
+# DEPENDENCIAS:
+#   - v2m-daemon.sh: Para gestión del daemon
+#   - notify-send: Para notificaciones de escritorio
+#   - Entorno virtual de Python en ./venv
+#
+# ARCHIVOS:
+#   /tmp/v2m_recording.pid - Bandera de grabación activa
+#
+# NOTAS:
+#   - El daemon se inicia automáticamente si no está corriendo
+#   - Las notificaciones indican el estado de la operación
+#
+# AUTOR:
+#   Voice2Machine Team
+#
+# DESDE:
+#   v1.0.0
+#
 
 # --- Configuración ---
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"

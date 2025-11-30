@@ -1,17 +1,65 @@
 #!/usr/bin/env python3
 """
-Diagnóstico de Audio - Voice2Machine (V2M)
-Prueba todos los dispositivos de entrada y muestra amplitudes en tiempo real.
+Diagnóstico de Audio - ¿Por qué V2M no escucha mi voz?
+
+¿Cuándo usar este script?
+    - V2M graba pero no transcribe nada
+    - Sospechas que tu micrófono no funciona
+    - Quieres encontrar el mejor micrófono disponible
+    - Acabas de conectar un nuevo mic y quieres probarlo
+
+¿Cómo funciona?
+    El script te guía paso a paso:
+
+    1. Te muestra todos los micrófonos que detecta tu computadora
+    2. Te deja elegir cuál probar
+    3. Te pide que hables por 3 segundos
+    4. Te dice si detectó algo o no
+
+¿Cómo lo uso?
+    $ python scripts/diagnose_audio.py
+
+    Sigue las instrucciones en pantalla. Es interactivo.
+
+¿Qué significan los resultados?
+    - Amplitud > 0.1: ¡Excelente! El mic funciona bien
+    - Amplitud 0.01 - 0.1: Funciona, pero la señal es débil
+    - Amplitud < 0.01: Prácticamente silencio (hay un problema)
+
+¿Qué hago si no detecta nada?
+    1. Verifica que el mic esté conectado y encendido
+    2. Abre pavucontrol y revisa que el mic correcto esté seleccionado
+    3. Sube el volumen del mic en alsamixer
+    4. Asegúrate de que tu usuario esté en el grupo 'audio':
+       $ groups | grep audio
+
+Para desarrolladores:
+    Este script usa sounddevice para captura de audio y numpy para
+    calcular estadísticas de señal (amplitud máxima, media, RMS).
+    El umbral de detección es 0.01, que es bastante sensible.
 """
 
 import sounddevice as sd
 import numpy as np
 import sys
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict, Any
 
 
 def list_audio_devices() -> List[Tuple[int, str, int]]:
-    """Lista todos los dispositivos de entrada disponibles."""
+    """
+    Encuentra todos los micrófonos que tenés conectados.
+
+    Escanea el sistema buscando dispositivos de audio con entrada
+    y te los lista con toda la info que necesitás para config.toml.
+
+    Returns:
+        Lista de tuplas (id, nombre, sample_rate) de cada micrófono.
+
+    Ejemplo:
+        >>> devices = list_audio_devices()
+        >>> for idx, name, sr in devices:
+        ...     print(f"ID {idx}: {name}")
+    """
     devices = sd.query_devices()
     input_devices = []
 
@@ -34,8 +82,36 @@ def list_audio_devices() -> List[Tuple[int, str, int]]:
     return input_devices
 
 
-def test_device(device_id: int, duration: int = 3, sample_rate: int = 16000):
-    """Prueba un dispositivo específico y muestra estadísticas de amplitud."""
+def test_device(
+    device_id: int,
+    duration: int = 3,
+    sample_rate: int = 16000
+) -> Optional[Dict[str, Any]]:
+    """
+    Prueba un micrófono grabando unos segundos y midiendo el volumen.
+
+    Graba audio del dispositivo que le pases y calcula métricas
+    para saber si está funcionando o no. Te dice si detectó señal
+    y qué tan fuerte fue.
+
+    Args:
+        device_id: El número del dispositivo (lo ves con list_audio_devices).
+        duration: Cuántos segundos grabar. Por defecto 3.
+        sample_rate: Frecuencia de muestreo. 16000 es lo estándar para Whisper.
+
+    Returns:
+        Un diccionario con los resultados:
+            - device_id: El ID que probaste
+            - max_amplitude: Pico más alto (0.0 a 1.0)
+            - has_signal: True si detectó algo más que silencio
+
+        Devuelve None si algo falló durante la prueba.
+
+    Tip:
+        Si max_amplitude < 0.01 es prácticamente silencio.
+        Si está entre 0.01 y 0.1, funciona pero la señal es débil.
+        Arriba de 0.1 es excelente.
+    """
     print("=" * 70)
     print(f" PROBANDO DISPOSITIVO {device_id}")
     print("=" * 70)
@@ -95,8 +171,25 @@ def test_device(device_id: int, duration: int = 3, sample_rate: int = 16000):
         return None
 
 
-def main():
-    """Función principal del diagnóstico."""
+def main() -> None:
+    """
+    Corre el diagnóstico completo de audio de forma interactiva.
+
+    Te guía paso a paso para encontrar cuál es el mejor micrófono
+    para usar con V2M. El proceso es así:
+
+        1. Lista todos los micrófonos que detecta el sistema.
+        2. Te pregunta cuál querés probar (o si querés probar todos).
+        3. Graba unos segundos de cada uno y mide el volumen.
+        4. Te dice cuál funcionó mejor y qué poner en config.toml.
+
+    Modos de prueba:
+        - Opción 1: Solo el micrófono por defecto (la más rápida).
+        - Opción 2: Probar todos uno por uno (si tenés problemas).
+        - Opción 3: Probar uno específico por su número.
+
+    Ctrl+C para cancelar en cualquier momento sin romper nada.
+    """
     print("\n🔍 INICIANDO DIAGNÓSTICO DE AUDIO\n")
 
     # Listar dispositivos
