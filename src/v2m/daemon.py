@@ -1,3 +1,36 @@
+"""
+Daemon principal de voice2machine.
+
+Este módulo implementa el proceso daemon que mantiene el modelo Whisper
+cargado en memoria y escucha comandos IPC a través de un socket Unix.
+El daemon es el componente central de la arquitectura, responsable de:
+
+    - Mantener el modelo de transcripción precargado para respuesta rápida.
+    - Escuchar y procesar comandos IPC de los clientes.
+    - Despachar comandos al bus de comandos (patrón CQRS).
+    - Gestionar el ciclo de vida del servicio.
+
+Arquitectura:
+    El daemon utiliza asyncio para manejar múltiples conexiones de clientes
+    de forma concurrente. Los comandos recibidos son despachados al
+    ``CommandBus`` que los redirige al handler apropiado.
+
+    Socket Unix -> Daemon -> CommandBus -> Handler -> Servicios
+
+Ejemplo:
+    Iniciar el daemon directamente::
+
+        python -m v2m.daemon
+
+    O a través del punto de entrada principal::
+
+        python -m v2m.main --daemon
+
+Note:
+    El daemon debe ejecutarse con permisos para acceder al micrófono
+    y crear archivos en /tmp/.
+"""
+
 import asyncio
 import os
 import signal
@@ -12,18 +45,37 @@ from v2m.application.commands import StartRecordingCommand, StopRecordingCommand
 from v2m.config import config
 
 class Daemon:
-    """
-    clase principal del demonio que maneja el ciclo de vida de la aplicacion y las comunicaciones ipc.
+    """Clase principal del daemon que gestiona el ciclo de vida y las comunicaciones IPC.
 
-    esta clase es responsable de iniciar el servidor ipc, escuchar comandos entrantes
-    y despacharlos al bus de comandos para su ejecucion.
-    """
-    def __init__(self):
-        """
-        inicializa la instancia del demonio.
+    El daemon es un proceso persistente diseñado para ejecutarse en segundo plano.
+    Mantiene el modelo Whisper en memoria para evitar tiempos de carga en cada
+    transcripción y proporciona una interfaz IPC para recibir comandos.
 
-        configura la ruta del socket, el estado de ejecucion y obtiene el bus de comandos
-        del contenedor de inyeccion de dependencias.
+    Attributes:
+        running: Indica si el daemon está activo y procesando comandos.
+        socket_path: Ruta al archivo del socket Unix para comunicación IPC.
+        command_bus: Instancia del bus de comandos para despachar operaciones.
+
+    Example:
+        Iniciar el daemon::
+
+            daemon = Daemon()
+            daemon.run()  # Bloquea hasta SIGTERM o SIGINT
+
+    Warning:
+        Solo debe haber una instancia del daemon ejecutándose a la vez.
+        El daemon detecta instancias previas mediante el socket Unix.
+    """
+    def __init__(self) -> None:
+        """Inicializa la instancia del daemon.
+
+        Configura la ruta del socket, obtiene el bus de comandos del contenedor
+        de inyección de dependencias y limpia archivos huérfanos de ejecuciones
+        anteriores que pudieron terminar de forma inesperada.
+
+        Note:
+            Si existe un archivo de bandera de grabación de una ejecución
+            anterior (crash), será eliminado automáticamente.
         """
         self.running = False
         self.socket_path = Path(SOCKET_PATH)
@@ -34,15 +86,28 @@ class Daemon:
             logger.warning("Limpiando flag de grabación huérfano")
             config.paths.recording_flag.unlink()
 
-    async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        """
-        maneja las conexiones entrantes de clientes ipc.
+    async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        """Maneja las conexiones entrantes de clientes IPC.
 
-        lee el mensaje del socket, lo procesa y envia una respuesta.
+        Este método es llamado por el servidor asyncio para cada nueva conexión.
+        Lee el mensaje del socket, lo decodifica, ejecuta el comando correspondiente
+        y envía una respuesta al cliente.
 
-        args:
-            reader (asyncio.StreamReader): flujo de lectura para recibir datos.
-            writer (asyncio.StreamWriter): flujo de escritura para enviar respuestas.
+        Args:
+            reader: Flujo de lectura asíncrono para recibir datos del cliente.
+            writer: Flujo de escritura asíncrono para enviar respuestas al cliente.
+
+        Comandos soportados:
+            - ``START_RECORDING``: Inicia la grabación de audio.
+            - ``STOP_RECORDING``: Detiene y transcribe el audio.
+            - ``PROCESS_TEXT <texto>``: Refina el texto con LLM.
+            - ``PING``: Verifica que el daemon esté activo (responde PONG).
+            - ``SHUTDOWN``: Detiene el daemon de forma ordenada.
+
+        Note:
+            Los errores durante el procesamiento de comandos son capturados
+            y devueltos como respuesta ``ERROR: <mensaje>`` sin terminar
+            la conexión del daemon.
         """
         data = await reader.read(4096)
         message = data.decode().strip()
@@ -88,12 +153,19 @@ class Daemon:
         if message == IPCCommand.SHUTDOWN:
             self.stop()
 
-    async def start_server(self):
-        """
-        inicia el servidor unix socket.
+    async def start_server(self) -> None:
+        """Inicia el servidor de socket Unix.
 
-        verifica si el socket ya existe y lo limpia si es necesario. luego inicia
-        el servidor y espera indefinidamente hasta que se detenga.
+        Verifica si existe un socket previo y determina si hay otro daemon
+        activo. Si el socket existe pero no hay daemon escuchando, lo elimina
+        y crea uno nuevo.
+
+        Raises:
+            SystemExit: Si ya hay otro daemon activo escuchando en el socket.
+
+        Note:
+            Este método bloquea indefinidamente hasta que se llame a ``stop()``
+            o se reciba una señal de terminación.
         """
         if self.socket_path.exists():
             # verificar si el socket está realmente vivo
@@ -116,22 +188,40 @@ class Daemon:
         async with server:
             await server.serve_forever()
 
-    def stop(self):
-        """
-        detiene el demonio y limpia los recursos.
+    def stop(self) -> None:
+        """Detiene el daemon y libera recursos.
 
-        elimina el archivo del socket y termina el proceso.
+        Realiza una limpieza ordenada eliminando el archivo del socket Unix
+        y terminando el proceso. Este método es llamado automáticamente al
+        recibir señales SIGINT o SIGTERM, o al procesar el comando SHUTDOWN.
+
+        Raises:
+            SystemExit: Siempre termina con código 0 (exit exitoso).
         """
         logger.info("Stopping daemon...")
         if self.socket_path.exists():
             self.socket_path.unlink()
         sys.exit(0)
 
-    def run(self):
-        """
-        ejecuta el bucle principal del demonio.
+    def run(self) -> None:
+        """Ejecuta el bucle principal del daemon.
 
-        configura los manejadores de senales y ejecuta el servidor asincrono.
+        Configura los manejadores de señales POSIX (SIGINT, SIGTERM) para
+        permitir una terminación ordenada, crea un nuevo event loop de asyncio
+        y ejecuta el servidor hasta que sea detenido.
+
+        Este método es bloqueante y no retorna hasta que el daemon termine.
+
+        Señales manejadas:
+            - ``SIGINT``: Interrupción de teclado (Ctrl+C).
+            - ``SIGTERM``: Señal de terminación estándar.
+
+        Example:
+            Uso típico::
+
+                if __name__ == "__main__":
+                    daemon = Daemon()
+                    daemon.run()
         """
         # configurar manejadores de señales
         loop = asyncio.new_event_loop()

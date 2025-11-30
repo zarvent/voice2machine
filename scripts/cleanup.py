@@ -1,7 +1,37 @@
 #!/usr/bin/env python3
 """
-Script de limpieza automática para el proyecto V2M.
-Elimina archivos temporales, cache y entornos virtuales duplicados.
+Script de limpieza automática para el proyecto Voice2Machine (V2M).
+
+Este módulo proporciona funcionalidades para mantener limpio el proyecto,
+eliminando archivos temporales, cache de Python, entornos virtuales
+duplicados, logs antiguos y archivos huérfanos.
+
+Características principales:
+    - Limpieza de cache Python (__pycache__, .pyc, .pyo)
+    - Eliminación de entornos virtuales duplicados (.venv vs venv)
+    - Rotación de logs antiguos (configurable, por defecto 7 días)
+    - Eliminación de archivos huérfanos generados por pip
+
+Ejemplo de uso:
+    $ python scripts/cleanup.py --dry-run    # Ver qué se eliminaría
+    $ python scripts/cleanup.py --all        # Limpieza completa
+    $ python scripts/cleanup.py --cache      # Solo cache Python
+    $ python scripts/cleanup.py --fix-venv   # Solo .venv duplicado
+
+Dependencias:
+    - pathlib: Para manejo de rutas de archivos.
+    - shutil: Para eliminación recursiva de directorios.
+    - subprocess: Para verificar configuración de systemd.
+
+Notas:
+    El script verifica que el venv primario esté en uso por systemd
+    antes de eliminar el .venv duplicado, por seguridad.
+
+Author:
+    Voice2Machine Team
+
+Since:
+    v1.0.0
 """
 
 import os
@@ -20,24 +50,73 @@ LOG_RETENTION_DAYS = 7
 ORPHAN_FILES = ["=1.0.3", "=4.5.0"]
 
 class CleanupStats:
-    """Estadísticas de limpieza."""
-    def __init__(self):
+    """
+    Clase para rastrear estadísticas de operaciones de limpieza.
+
+    Esta clase mantiene un registro del espacio liberado y la cantidad
+    de archivos y directorios eliminados durante las operaciones de limpieza.
+
+    Attributes:
+        bytes_freed (int): Total de bytes liberados durante la limpieza.
+        files_deleted (int): Número total de archivos eliminados.
+        dirs_deleted (int): Número total de directorios eliminados.
+
+    Example:
+        >>> stats = CleanupStats()
+        >>> stats.add_file(1024)
+        >>> stats.add_dir(2048)
+        >>> print(f"Espacio liberado: {stats.to_gb():.2f} GB")
+        Espacio liberado: 0.00 GB
+    """
+
+    def __init__(self) -> None:
+        """
+        Inicializa las estadísticas de limpieza en cero.
+
+        Todos los contadores comienzan en 0 y se van incrementando
+        conforme se realizan las operaciones de limpieza.
+        """
         self.bytes_freed = 0
         self.files_deleted = 0
         self.dirs_deleted = 0
 
-    def add_file(self, size: int):
+    def add_file(self, size: int):-> None:
+        """
+        Registra la eliminación de un archivo.
+
+        Args:
+            size: Tamaño del archivo eliminado en bytes.
+        """
         self.bytes_freed += size
         self.files_deleted += 1
 
-    def add_dir(self, size: int):
+    def add_dir(self, size: int) -> None:
+        """
+        Registra la eliminación de un directorio.
+
+        Args:
+            size: Tamaño total del directorio eliminado en bytes.
+        """
         self.bytes_freed += size
         self.dirs_deleted += 1
 
     def to_gb(self) -> float:
+        """
+        Convierte los bytes liberados a gigabytes.
+
+        Returns:
+            float: Espacio liberado expresado en gigabytes.
+        """
         return self.bytes_freed / (1024**3)
 
-    def report(self):
+    def report(self) -> None:-> None:
+        """
+        Muestra un reporte formateado de las estadísticas de limpieza.
+
+        Imprime en consola un resumen visual con el número de archivos
+        y directorios eliminados, así como el espacio total liberado
+        en gigabytes.
+        """
         print(f"\n{'='*60}")
         print(f"📊 REPORTE DE LIMPIEZA / CLEANUP REPORT")
         print(f"{'='*60}")
@@ -48,7 +127,24 @@ class CleanupStats:
 
 
 def get_dir_size(path: Path) -> int:
-    """Calcula el tamaño de un directorio recursivamente."""
+    """
+    Calcula el tamaño total de un directorio recursivamente.
+
+    Recorre todos los archivos dentro del directorio especificado
+    y suma sus tamaños para obtener el tamaño total.
+
+    Args:
+        path: Ruta al directorio cuyo tamaño se desea calcular.
+
+    Returns:
+        int: Tamaño total del directorio en bytes. Retorna 0 si
+             el directorio no existe o no se puede acceder.
+
+    Example:
+        >>> from pathlib import Path
+        >>> size = get_dir_size(Path("/home/user/proyecto"))
+        >>> print(f"Tamaño: {size / 1024**2:.2f} MB")
+    """
     total = 0
     try:
         for entry in path.rglob('*'):
@@ -59,8 +155,23 @@ def get_dir_size(path: Path) -> int:
     return total
 
 
-def clean_pycache(stats: CleanupStats, dry_run: bool = False):
-    """Elimina todos los directorios __pycache__ y archivos .pyc"""
+def clean_pycache(stats: CleanupStats, dry_run: bool = False) -> None:
+    """
+    Elimina todos los directorios __pycache__ y archivos .pyc/.pyo.
+
+    Busca recursivamente en el proyecto todos los artefactos de cache
+    de Python y los elimina para liberar espacio en disco.
+
+    Args:
+        stats: Objeto CleanupStats para registrar las estadísticas
+               de los archivos y directorios eliminados.
+        dry_run: Si es True, solo muestra qué se eliminaría sin
+                 hacer cambios reales. Por defecto es False.
+
+    Note:
+        Los errores de permisos o acceso se muestran como advertencias
+        pero no detienen la ejecución del script.
+    """
     print("🧹 Limpiando cache de Python...")
 
     pycache_dirs = list(PROJECT_ROOT.rglob("__pycache__"))
@@ -100,8 +211,25 @@ def clean_pycache(stats: CleanupStats, dry_run: bool = False):
     print(f"   ✓ Cache Python eliminado: {stats.dirs_deleted} dirs, {stats.files_deleted} archivos")
 
 
-def clean_duplicate_venv(stats: CleanupStats, dry_run: bool = False):
-    """Elimina el entorno virtual duplicado .venv si venv está en uso."""
+def clean_duplicate_venv(stats: CleanupStats, dry_run: bool = False) -> None:
+    """
+    Elimina el entorno virtual duplicado .venv si venv está en uso.
+
+    Verifica que el entorno virtual primario (venv/) esté siendo
+    utilizado por el servicio systemd antes de eliminar el duplicado
+    (.venv/) para evitar eliminar accidentalmente el entorno activo.
+
+    Args:
+        stats: Objeto CleanupStats para registrar las estadísticas
+               del directorio eliminado.
+        dry_run: Si es True, solo muestra qué se eliminaría sin
+                 hacer cambios reales. Por defecto es False.
+
+    Warning:
+        Esta función verifica la configuración de systemd antes de
+        eliminar. Si no puede verificar o el venv primario no está
+        en uso, no elimina nada por seguridad.
+    """
     print("\n🔧 Validando entornos virtuales...")
 
     if not VENV_DUPLICATE.exists():
@@ -146,8 +274,24 @@ def clean_duplicate_venv(stats: CleanupStats, dry_run: bool = False):
         print(f"   ❌ Error eliminando .venv: {e}")
 
 
-def rotate_logs(stats: CleanupStats, dry_run: bool = False):
-    """Elimina logs antiguos (>7 días)."""
+def rotate_logs(stats: CleanupStats, dry_run: bool = False) -> None:
+    """
+    Elimina archivos de log más antiguos que el período de retención.
+
+    Busca en el directorio de logs todos los archivos .log cuya fecha
+    de modificación sea anterior al período de retención configurado
+    (por defecto 7 días) y los elimina.
+
+    Args:
+        stats: Objeto CleanupStats para registrar las estadísticas
+               de los archivos eliminados.
+        dry_run: Si es True, solo muestra qué se eliminaría sin
+                 hacer cambios reales. Por defecto es False.
+
+    Note:
+        El período de retención está definido por la constante
+        LOG_RETENTION_DAYS al inicio del módulo.
+    """
     print(f"\n📋 Rotando logs (retención: {LOG_RETENTION_DAYS} días)...")
 
     if not LOGS_DIR.exists():
@@ -183,8 +327,25 @@ def rotate_logs(stats: CleanupStats, dry_run: bool = False):
             print(f"   ⚠️  Error eliminando {log.name}: {e}")
 
 
-def remove_orphans(stats: CleanupStats, dry_run: bool = False):
-    """Elimina archivos huérfanos detectados."""
+def remove_orphans(stats: CleanupStats, dry_run: bool = False) -> None:
+    """
+    Elimina archivos huérfanos conocidos del proyecto.
+
+    Busca y elimina archivos que fueron creados erróneamente por
+    pip u otras herramientas. Los nombres de archivos huérfanos
+    están definidos en la constante ORPHAN_FILES.
+
+    Args:
+        stats: Objeto CleanupStats para registrar las estadísticas
+               de los archivos eliminados.
+        dry_run: Si es True, solo muestra qué se eliminaría sin
+                 hacer cambios reales. Por defecto es False.
+
+    Example:
+        Archivos huérfanos típicos incluyen:
+        - "=1.0.3": Generado por instalaciones pip incorrectas
+        - "=4.5.0": Residuos de dependencias mal especificadas
+    """
     print("\n🗑️  Eliminando archivos huérfanos...")
 
     found_orphans = []
@@ -218,7 +379,27 @@ def remove_orphans(stats: CleanupStats, dry_run: bool = False):
             print(f"   ⚠️  Error eliminando {orphan.name}: {e}")
 
 
-def main():
+def main() -> None:
+    """
+    Punto de entrada principal del script de limpieza.
+
+    Procesa los argumentos de línea de comandos y ejecuta las
+    operaciones de limpieza correspondientes según las opciones
+    especificadas por el usuario.
+
+    Opciones disponibles:
+        --dry-run: Mostrar qué se eliminaría sin hacer cambios.
+        --all: Ejecutar todas las operaciones de limpieza.
+        --cache: Limpiar solo cache Python.
+        --fix-venv: Eliminar solo .venv duplicado.
+        --logs: Rotar solo logs antiguos.
+        --orphans: Eliminar solo archivos huérfanos.
+
+    Example:
+        >>> # Desde línea de comandos:
+        >>> # python scripts/cleanup.py --all
+        >>> # python scripts/cleanup.py --dry-run --cache
+    """
     import argparse
 
     parser = argparse.ArgumentParser(

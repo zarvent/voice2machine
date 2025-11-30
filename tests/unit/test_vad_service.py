@@ -1,10 +1,31 @@
+"""Pruebas unitarias para el servicio de Detección de Actividad de Voz (VAD).
+
+Este módulo contiene las pruebas unitarias para verificar el correcto
+funcionamiento del servicio VADService, que es responsable de detectar
+y extraer segmentos de audio que contienen voz humana.
+
+El servicio VAD es crítico para optimizar el procesamiento de audio,
+eliminando silencios y ruido de fondo antes de enviar el audio al
+modelo de transcripción.
+
+Las pruebas incluyen:
+    - Procesamiento de audio vacío.
+    - Procesamiento de audio sin voz detectada.
+    - Procesamiento de audio con segmentos de voz.
+    - Verificación de uso correcto del umbral configurado.
+
+Ejemplo de uso típico:
+    pytest tests/unit/test_vad_service.py -v
+"""
+
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from v2m.infrastructure.vad_service import VADService
 
+
 @pytest.fixture
-def vad_service():
+def vad_service() -> VADService:
     return VADService()
 
 @pytest.fixture

@@ -1,13 +1,45 @@
 """
-modulo que implementa el contenedor de inyeccion de dependencias (di).
+Contenedor de inyección de dependencias (DI) para voice2machine.
 
-el contenedor es responsable de "cablear" la aplicacion. esto significa que
-instancia las clases concretas (infraestructura) y las inyecta en las clases
-que las necesitan (handlers de aplicacion), desacoplando las capas entre si.
+Este módulo implementa el patrón de Inyección de Dependencias que "cablea"
+toda la aplicación. Es el único lugar donde las implementaciones concretas
+son conocidas y donde se decide qué implementación usar para cada interfaz.
 
-este es el unico lugar de la aplicacion donde las implementaciones concretas
-(ej `whispertranscriptionservice`) son conocidas. el resto de la aplicacion
-depende de abstracciones (interfaces).
+Responsabilidades del contenedor:
+    1. **Instanciar servicios de infraestructura**: Crea las implementaciones
+       concretas como singletons (WhisperService, GeminiService, etc.).
+    2. **Instanciar handlers de aplicación**: Crea los command handlers
+       inyectándoles las dependencias que necesitan.
+    3. **Configurar el CommandBus**: Registra todos los handlers para que
+       el bus sepa a quién despachar cada tipo de comando.
+
+Beneficios:
+    - **Desacoplamiento**: Los handlers dependen de interfaces, no implementaciones.
+    - **Testabilidad**: Fácil sustituir servicios reales por mocks.
+    - **Configurabilidad**: Cambiar implementaciones (ej. Gemini -> OpenAI)
+      solo requiere modificar este archivo.
+
+Diagrama de dependencias:
+    ::
+
+        Container
+        ├── VADService
+        ├── WhisperTranscriptionService (usa VADService)
+        ├── GeminiLLMService
+        ├── LinuxNotificationAdapter
+        ├── LinuxClipboardAdapter
+        ├── StartRecordingHandler (usa Transcription, Notification)
+        ├── StopRecordingHandler (usa Transcription, Notification, Clipboard)
+        ├── ProcessTextHandler (usa LLM, Notification, Clipboard)
+        └── CommandBus (registra todos los handlers)
+
+Example:
+    Acceso al contenedor desde otros módulos::
+
+        from v2m.core.di.container import container
+
+        bus = container.get_command_bus()
+        await bus.dispatch(MiComando())
 """
 
 from v2m.core.cqrs.command_bus import CommandBus
@@ -24,25 +56,57 @@ from v2m.core.logging import logger
 import threading
 
 class Container:
-    """
-    contenedor de di que gestiona el ciclo de vida y las dependencias de los objetos.
+    """Contenedor de DI que gestiona el ciclo de vida y dependencias de objetos.
+
+    El contenedor es instanciado una única vez al inicio de la aplicación
+    y proporciona acceso a los servicios configurados durante toda la
+    ejecución del programa.
+
+    Attributes:
+        vad_service: Servicio de detección de actividad de voz (Silero VAD).
+        transcription_service: Servicio de transcripción (faster-whisper).
+        llm_service: Servicio de LLM para refinamiento de texto (Gemini).
+        notification_service: Adaptador de notificaciones del sistema.
+        clipboard_service: Adaptador del portapapeles del sistema.
+        start_recording_handler: Handler para el comando StartRecording.
+        stop_recording_handler: Handler para el comando StopRecording.
+        process_text_handler: Handler para el comando ProcessText.
+        command_bus: Bus de comandos configurado con todos los handlers.
+
+    Example:
+        Uso típico (ya pre-instanciado como singleton global)::
+
+            from v2m.core.di.container import container
+
+            # Obtener el bus de comandos
+            bus = container.get_command_bus()
+
+            # Acceso directo a servicios (menos común)
+            transcription = container.transcription_service
     """
     def __init__(self) -> None:
-        """
-        inicializa y configura todas las dependencias de la aplicacion.
+        """Inicializa y configura todas las dependencias de la aplicación.
 
-        el proceso de configuracion sigue estos pasos:
-        1.  **instanciar servicios de infraestructura**: se crean las implementaciones
-            concretas de los servicios (ej para whisper, para gemini). se manejan
-            como singletons para que solo haya una instancia por servicio.
+        El proceso de configuración sigue estos pasos:
 
-        2.  **instanciar handlers de aplicacion**: se crean los manejadores de comandos
-            y se les inyectan las instancias de los servicios que necesitan para
-            funcionar.
+        1. **Servicios de infraestructura** (como singletons):
+           Se crean las implementaciones concretas de los servicios.
+           Aquí se decide qué implementación usar para cada interfaz.
+           Por ejemplo, para cambiar de Gemini a OpenAI, solo se modificaría
+           esta línea.
 
-        3.  **configurar el command bus**: se instancia el bus de comandos y se
-            registran todos los handlers para que el bus sepa a quien despachar
-            cada comando.
+        2. **Handlers de aplicación**:
+           Se crean los manejadores de comandos inyectándoles las
+           dependencias que necesitan para funcionar.
+
+        3. **CommandBus**:
+           Se configura el bus registrando todos los handlers para que
+           sepa a cuál despachar cada tipo de comando.
+
+        Note:
+            El modelo Whisper se precarga en un hilo de fondo para evitar
+            latencia en la primera transcripción. Si falla la precarga,
+            se cargará de forma lazy en el primer uso.
         """
         # --- 1 instanciar servicios (como singletons) ---
         # aquí se decide qué implementación concreta usar para cada interfaz
@@ -89,11 +153,21 @@ class Container:
         self.command_bus.register(self.process_text_handler)
 
     def get_command_bus(self) -> CommandBus:
-        """
-        provee acceso al command bus configurado.
+        """Proporciona acceso al CommandBus configurado.
 
-        returns:
-            CommandBus: la instancia unica del command bus.
+        Este es el punto de acceso principal para despachar comandos.
+        El bus ya tiene todos los handlers registrados y está listo para usar.
+
+        Returns:
+            La instancia única del CommandBus con todos los handlers
+            registrados. Usar esta instancia para despachar comandos
+            desde cualquier parte de la aplicación.
+
+        Example:
+            Despachar un comando::
+
+                bus = container.get_command_bus()
+                await bus.dispatch(StartRecordingCommand())
         """
         return self.command_bus
 

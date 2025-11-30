@@ -1,15 +1,33 @@
 """
-punto de entrada principal para la aplicación de dictado por voz
+Punto de entrada principal para la aplicación voice2machine.
 
-este script ahora actúa como un lanzador unificado puede iniciar el demonio (servidor)
-o actuar como un cliente que envía comandos al demonio a través de IPC
+Este módulo actúa como un lanzador unificado que puede operar en dos modos:
 
-modos de operación
-1.  daemon `python -m v2m.main --daemon`
-    inicia el proceso persistente que carga el modelo en memoria y escucha comandos
+    1. **Modo Daemon** (``--daemon``): Inicia el proceso persistente que
+       mantiene el modelo Whisper en memoria y escucha comandos IPC.
 
-2.  client `python -m v2m.main <COMMAND>`
-    envía un comando (START_RECORDING STOP_RECORDING etc) al demonio en ejecución
+    2. **Modo Cliente** (``<COMMAND>``): Envía comandos al daemon en
+       ejecución a través de socket Unix.
+
+Ejemplos de uso:
+    Iniciar el daemon (proceso en primer plano)::
+
+        python -m v2m.main --daemon
+
+    Enviar comandos al daemon::
+
+        python -m v2m.main START_RECORDING
+        python -m v2m.main STOP_RECORDING
+        python -m v2m.main PING
+        python -m v2m.main SHUTDOWN
+
+    Procesar texto con LLM::
+
+        python -m v2m.main PROCESS_TEXT "texto a refinar"
+
+Note:
+    Para uso en producción, se recomienda ejecutar el daemon como servicio
+    systemd. Ver ``scripts/install_service.py`` para más detalles.
 """
 import argparse
 import asyncio
@@ -20,11 +38,42 @@ from v2m.core.ipc_protocol import IPCCommand
 from v2m.core.logging import logger
 
 def main() -> None:
-    """
-    funcion principal que analiza los argumentos y ejecuta el demonio o envia comandos.
+    """Función principal que procesa argumentos y ejecuta el modo apropiado.
 
-    analiza los argumentos de la linea de comandos para determinar si iniciar el servicio
-    en segundo plano (demonio) o actuar como cliente enviando comandos ipc.
+    Analiza los argumentos de línea de comandos para determinar si debe
+    iniciar el servicio en segundo plano (daemon) o actuar como cliente
+    enviando comandos IPC.
+
+    Argumentos CLI:
+        --daemon: Si está presente, inicia el daemon en primer plano.
+            El proceso no se bifurca (no fork), permitiendo ver logs
+            directamente. Para ejecutar en segundo plano, usar nohup
+            o un gestor de servicios como systemd.
+
+        command: Comando IPC a enviar (si no se usa --daemon).
+            Valores válidos: ``START_RECORDING``, ``STOP_RECORDING``,
+            ``PING``, ``SHUTDOWN``, ``PROCESS_TEXT``.
+
+        payload: Argumentos adicionales para el comando (opcional).
+            Solo aplicable a comandos que requieren datos adicionales
+            como ``PROCESS_TEXT``.
+
+    Returns:
+        None. En modo daemon, nunca retorna (ejecuta indefinidamente).
+        En modo cliente, termina después de enviar el comando.
+
+    Raises:
+        SystemExit: Con código 1 si no se proporcionan argumentos o
+            si hay un error de comunicación con el daemon.
+
+    Example:
+        Desde Python::
+
+            from v2m.main import main
+            import sys
+
+            sys.argv = ['v2m', '--daemon']
+            main()  # Inicia daemon
     """
     parser = argparse.ArgumentParser(description="Whisper Dictation Main Entrypoint")
 
