@@ -37,6 +37,21 @@ from v2m.client import send_command
 from v2m.core.ipc_protocol import IPCCommand
 from v2m.core.logging import logger
 
+
+def _setup_uvloop() -> None:
+    """Configura uvloop como event loop si está disponible.
+
+    uvloop es 2-4x más rápido que el asyncio loop estándar.
+    Si no está instalado, usa el loop estándar sin error.
+    """
+    try:
+        import uvloop
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        logger.debug("uvloop habilitado para mejor rendimiento")
+    except ImportError:
+        pass  # uvloop no instalado, usar loop estándar
+
+
 def main() -> None:
     """Función principal que procesa argumentos y ejecuta el modo apropiado.
 
@@ -87,6 +102,9 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.daemon:
+        # Habilitar uvloop para el daemon (mejora rendimiento IPC)
+        _setup_uvloop()
+
         from v2m.daemon import Daemon
         logger.info("Starting Whisper Dictation Daemon...")
         daemon = Daemon()

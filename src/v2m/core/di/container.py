@@ -53,7 +53,8 @@ from v2m.core.interfaces import NotificationInterface, ClipboardInterface
 
 from v2m.infrastructure.vad_service import VADService
 from v2m.core.logging import logger
-import threading
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 class Container:
     """Contenedor de DI que gestiona el ciclo de vida y dependencias de objetos.
@@ -113,14 +114,12 @@ class Container:
         # si quisiéramos cambiar de GEMINI a OPENAI solo cambiaríamos esta línea
         self.vad_service = VADService()
         self.transcription_service: TranscriptionService = WhisperTranscriptionService(vad_service=self.vad_service)
-        # precargar el modelo whisper en un hilo para evitar bloqueo al primer uso
-        def _preload_whisper():
-            try:
-                _ = self.transcription_service.model
-                logger.info("Whisper precargado correctamente")
-            except Exception as e:
-                logger.warning(f"No se pudo precargar Whisper: {e}")
-        threading.Thread(target=_preload_whisper, daemon=True).start()
+
+        # ThreadPoolExecutor para warmup - libera el GIL mejor que threading.Thread
+        # porque permite que el event loop siga procesando durante la carga
+        self._warmup_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="warmup")
+        self._warmup_future = self._warmup_executor.submit(self._preload_models)
+
         self.llm_service: LLMService = GeminiLLMService()
 
         # adaptadores de sistema
@@ -170,6 +169,49 @@ class Container:
                 await bus.dispatch(StartRecordingCommand())
         """
         return self.command_bus
+
+    def _preload_models(self) -> None:
+        """Precarga modelos de ML en background para reducir latencia del primer uso.
+
+        Ejecuta en ThreadPoolExecutor para no bloquear el event loop.
+        La carga de Whisper involucra:
+        - Descarga/verificación del modelo (~1-2GB)
+        - Allocación de VRAM en GPU
+        - Compilación de kernels CUDA (primera vez)
+        """
+        try:
+            # Precargar Whisper (el más pesado)
+            _ = self.transcription_service.model
+            logger.info("✅ Whisper precargado correctamente")
+        except Exception as e:
+            logger.warning(f"⚠️ No se pudo precargar Whisper: {e}")
+
+        try:
+            # Precargar Silero VAD (más ligero)
+            self.vad_service.load_model(timeout_sec=15.0)
+            logger.info("✅ Silero VAD precargado correctamente")
+        except Exception as e:
+            logger.warning(f"⚠️ No se pudo precargar VAD: {e}")
+
+    async def wait_for_warmup(self, timeout: float = 30.0) -> bool:
+        """Espera a que los modelos terminen de cargar (async-safe).
+
+        Args:
+            timeout: Tiempo máximo de espera en segundos.
+
+        Returns:
+            True si la carga fue exitosa, False si hubo timeout.
+        """
+        loop = asyncio.get_event_loop()
+        try:
+            await asyncio.wait_for(
+                loop.run_in_executor(None, self._warmup_future.result),
+                timeout=timeout
+            )
+            return True
+        except asyncio.TimeoutError:
+            logger.warning(f"Warmup timeout después de {timeout}s")
+            return False
 
 # --- instancia global del contenedor ---
 # se crea una única instancia del contenedor que será accesible desde toda la

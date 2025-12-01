@@ -121,10 +121,10 @@ class TestAudioRecorder(unittest.TestCase):
 
         self.recorder.start()
 
-        # Inyectamos datos de prueba: 1 segundo de silencio
+        # Inyectamos datos de prueba: 1 segundo de silencio directamente en el buffer pre-allocado
         # 16000 muestras porque trabajamos a 16kHz (estándar en procesamiento de voz)
-        fake_data = np.zeros((16000, 1), dtype=np.float32)
-        self.recorder._frames.append(fake_data)
+        self.recorder._buffer[:16000] = np.zeros(16000, dtype=np.float32)
+        self.recorder._write_pos = 16000
 
         # ACT: Ejecutamos la acción que queremos probar
         audio1 = self.recorder.stop()
@@ -133,6 +133,70 @@ class TestAudioRecorder(unittest.TestCase):
         self.assertEqual(len(audio1), 16000)
 
         # La segunda llamada debe fallar - no hay nada que devolver
+        with self.assertRaises(RecordingError):
+            self.recorder.stop()
+
+    def test_stop_raises_error_with_orphaned_buffer_data(self) -> None:
+        """Verifica que stop() falle incluso si hay datos huérfanos en el buffer.
+
+        Caso de prueba (regresión)
+        --------------------------
+        Este test documenta y previene la regresión de un bug donde
+        stop() no lanzaba RecordingError cuando _recording=False pero
+        existían datos en el buffer o un stream de una sesión anterior.
+
+        El problema original
+        --------------------
+        La lógica anterior era:
+            if not self._recording:
+                if not self._frames and not self._stream:
+                    raise RecordingError(...)
+
+        Esto permitía que stop() continuara silenciosamente si había
+        datos residuales, potencialmente retornando audio de una sesión
+        anterior o procesando un stream huérfano.
+
+        El comportamiento correcto
+        --------------------------
+        stop() debe lanzar RecordingError si _recording=False,
+        independientemente del estado del buffer o _stream. El estado
+        interno puede estar sucio por un crash o interrupción, pero
+        el contrato del método debe respetarse.
+
+        Raises:
+            AssertionError: Si stop() no lanza RecordingError cuando
+                hay datos huérfanos pero _recording=False.
+        """
+        # ARRANGE: Simulamos un estado inconsistente con datos huérfanos en el buffer
+        # Esto podría ocurrir después de un crash o interrupción
+        self.recorder._recording = False
+        self.recorder._buffer[:1000] = np.zeros(1000, dtype=np.float32)
+        self.recorder._write_pos = 1000
+
+        # ACT & ASSERT: Debe lanzar error, no retornar datos huérfanos
+        with self.assertRaises(RecordingError):
+            self.recorder.stop()
+
+    def test_stop_raises_error_with_orphaned_stream(self) -> None:
+        """Verifica que stop() falle incluso si hay un stream huérfano.
+
+        Caso de prueba (regresión)
+        --------------------------
+        Similar al test anterior, pero verifica el caso donde existe
+        un stream no cerrado de una sesión anterior.
+
+        El problema original permitía que stop() continuara si había
+        un stream activo, aunque _recording=False.
+
+        Raises:
+            AssertionError: Si stop() no lanza RecordingError cuando
+                hay un stream huérfano pero _recording=False.
+        """
+        # ARRANGE: Simulamos un stream huérfano
+        self.recorder._recording = False
+        self.recorder._stream = MagicMock()  # Stream simulado no cerrado
+
+        # ACT & ASSERT: Debe lanzar error, no procesar el stream huérfano
         with self.assertRaises(RecordingError):
             self.recorder.stop()
 

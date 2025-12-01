@@ -11,6 +11,7 @@ y la logica de negocio real.
 """
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import Type
 from v2m.core.cqrs.command import Command
 from v2m.core.cqrs.command_handler import CommandHandler
@@ -19,6 +20,10 @@ from v2m.application.transcription_service import TranscriptionService
 from v2m.application.llm_service import LLMService
 from v2m.core.interfaces import NotificationInterface, ClipboardInterface
 from v2m.config import config
+
+# Executor dedicado para operaciones de ML (single worker para evitar contención GPU)
+# Esto es más eficiente que el default ThreadPoolExecutor de asyncio.to_thread
+_ml_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ml-inference")
 
 class StartRecordingHandler(CommandHandler):
     """
@@ -100,8 +105,12 @@ class StopRecordingHandler(CommandHandler):
 
         self.notification_service.notify("⚡ V2M Processing", "Procesando...")
 
-        # la transcripción es pesada (CPU/GPU bound) debe correr en un hilo aparte
-        transcription = await asyncio.to_thread(self.transcription_service.stop_and_transcribe)
+        # Usar executor dedicado para ML - evita contención con otras tareas async
+        loop = asyncio.get_event_loop()
+        transcription = await loop.run_in_executor(
+            _ml_executor,
+            self.transcription_service.stop_and_transcribe
+        )
 
         # si la transcripción está vacía no tiene sentido copiarla
         if not transcription.strip():
