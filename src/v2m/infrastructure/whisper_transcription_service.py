@@ -144,8 +144,14 @@ class WhisperTranscriptionService(TranscriptionService):
             if lang == "auto":
                 lang = None  # none activa la detección automática en faster-whisper
 
-            # 2 prompt inicial (optimización bilingüe)
-            bilingual_prompt = "esta es una transcripción en español this is also in english"
+            # 2 prompt inicial optimizado (Español Latinoamericano + Inglés Técnico)
+            # Este prompt fuerza puntuación correcta, evita alucinaciones y calibra el estilo.
+            # Incluye términos técnicos de programación para mejor reconocimiento de spanglish.
+            bilingual_prompt = (
+                "La siguiente es una transcripción precisa en español latinoamericano e inglés técnico. "
+                "Por favor, mantén la puntuación correcta, nombres propios y términos de programación. "
+                "Ok, let's start coding."
+            )
 
             # faster-whisper acepta numpy array directamente
             # NOTA: VAD interno DESHABILITADO - ya aplicamos Silero VAD arriba
@@ -158,6 +164,7 @@ class WhisperTranscriptionService(TranscriptionService):
                 beam_size=whisper_config.beam_size,
                 best_of=whisper_config.best_of,
                 temperature=whisper_config.temperature,
+                patience=1.5,  # Mejora precisión: explora más opciones antes de decidir
                 vad_filter=False,  # Silero VAD ya procesó el audio
             )
 
