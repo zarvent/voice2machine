@@ -11,6 +11,7 @@ device = "cuda"
 compute_type = "float16"
 device_index = 0
 num_workers = 4  # Recuperar concurrencia CPU para pre-procesamiento de tensores
+
 beam_size = 4  # Subido de 3→4: mejor ROI precisión vs latencia para bilingüe
 best_of = 4  # Ajustado para coincidir con beam_size
 temperature = 0.0
@@ -18,9 +19,10 @@ vad_filter = true  # Recomendado activarlo para producción
 
 [whisper.vad_parameters]
 # VAD ajustado para NO cortar frases y detectar voces suaves
-threshold = 0.35  # Bajado de 0.5→0.35: más sensible a voces suaves/lejanas
+threshold = 0.3  # Bajado de 0.5→0.3: más sensible a voces suaves/lejanas
 min_speech_duration_ms = 300  # Subido de 250→300: evitar falsos positivos de ruidos breves
 min_silence_duration_ms = 500  # Subido de 100→500: CRÍTICO - no cortar final de frases
+backend = "torch"  # Forzamos PyTorch por estabilidad (ONNX estaba fallando en detección)
 
 [gemini]
 model = "models/gemini-1.5-flash-latest"

@@ -23,7 +23,7 @@ class AudioRecorder:
     # Tamaño del chunk en samples (match con sounddevice default ~1024)
     CHUNK_SIZE = 1024
 
-    def __init__(self, sample_rate: int = 16000, channels: int = 1, max_duration_sec: int = 600):
+    def __init__(self, sample_rate: int = 16000, channels: int = 1, max_duration_sec: int = 600, device_index: Optional[int] = None):
         """
         inicializa el grabador de audio con buffer pre-allocado.
 
@@ -31,9 +31,11 @@ class AudioRecorder:
             sample_rate (int): frecuencia de muestreo en hz.
             channels (int): numero de canales de audio.
             max_duration_sec (int): duracion maxima de grabacion en segundos (default 10 min).
+            device_index (Optional[int]): indice del dispositivo de audio a usar.
         """
         self.sample_rate = sample_rate
         self.channels = channels
+        self.device_index = device_index
         self._recording = False
         self._stream: Optional[sd.InputStream] = None
         self._lock = threading.Lock()
@@ -80,6 +82,7 @@ class AudioRecorder:
                 channels=self.channels,
                 callback=callback,
                 dtype="float32",
+                device=self.device_index,
                 blocksize=self.CHUNK_SIZE  # Consistente para menor latencia
             )
             self._stream.start()

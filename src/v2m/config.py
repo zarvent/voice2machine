@@ -100,9 +100,10 @@ class VadParametersConfig(BaseModel):
         Estos parámetros se pasan directamente a faster-whisper cuando
         ``vad_filter=True`` está habilitado en WhisperConfig.
     """
-    threshold: float = 0.5
+    threshold: float = 0.3
     min_speech_duration_ms: int = 250
     min_silence_duration_ms: int = 500
+    backend: str = "torch"  # 'onnx' o 'torch'. Torch es más pesado pero más robusto históricamente.
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -158,6 +159,7 @@ class WhisperConfig(BaseModel):
     best_of: int = 2
     temperature: float = 0.0
     vad_filter: bool = True
+    audio_device_index: Optional[int] = None
     vad_parameters: VadParametersConfig = Field(default_factory=VadParametersConfig)
 
     def __getitem__(self, item):

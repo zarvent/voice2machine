@@ -33,7 +33,7 @@ class WhisperTranscriptionService(TranscriptionService):
             vad_service (Optional[VADService]): servicio opcional para truncado de silencios.
         """
         self._model: Optional[WhisperModel] = None
-        self.recorder = AudioRecorder()
+        self.recorder = AudioRecorder(device_index=config.whisper.audio_device_index)
         self.vad_service = vad_service
 
     @property

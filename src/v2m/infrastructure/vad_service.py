@@ -33,10 +33,40 @@ class VADService:
         self.utils = None
         self.get_speech_timestamps: Optional[Callable] = None
         self.disabled = False
-        self._prefer_onnx = prefer_onnx
+
+        # Determinar preferencia desde config
+        backend_config = config.whisper.vad_parameters.backend
+        self._prefer_onnx = (backend_config == "onnx")
+        if prefer_onnx is False: # Override manual si se pasa en init
+             self._prefer_onnx = False
+
         self._backend: Optional[str] = None  # 'onnx' o 'torch'
         self._onnx_session = None
         self._state: Optional[np.ndarray] = None  # Estado LSTM para ONNX
+
+    def _normalize_audio(self, audio: np.ndarray) -> np.ndarray:
+        """
+        Normaliza el audio (peak normalization) para mejorar la detección del VAD.
+        Si el volumen es muy bajo, lo amplifica hasta un nivel seguro (0.9).
+        """
+        max_val = np.max(np.abs(audio))
+        if max_val == 0:
+            return audio
+
+        # Solo normalizar si el audio es bajo (< 0.5) para evitar distorsión en audio ya fuerte
+        # O siempre normalizar a un target seguro?
+        # Estrategia: Peak Normalization a 0.9 si el max es bajo.
+        target = 0.9
+        if max_val < target:
+            gain = target / max_val
+            # Limitar ganancia máxima para no amplificar solo ruido de fondo excesivamente
+            # e.g., max 10x (20dB)
+            gain = min(gain, 10.0)
+
+            logger.debug(f"VAD Normalization: gain={gain:.2f}x (original max={max_val:.3f})")
+            return np.clip(audio * gain, -1.0, 1.0)
+
+        return audio
 
     def load_model(self, timeout_sec: float = 10.0):
         """
@@ -214,6 +244,9 @@ class VADService:
         # si el audio está vacío, retornar de inmediato
         if audio.size == 0:
             return np.array([], dtype=np.float32)
+
+        # Normalizar audio antes de VAD para mejorar detección en volúmenes bajos
+        audio = self._normalize_audio(audio)
 
         try:
             self.load_model()
