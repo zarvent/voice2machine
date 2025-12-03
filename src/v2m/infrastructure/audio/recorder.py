@@ -89,6 +89,9 @@ class AudioRecorder:
             logger.info("grabación de audio iniciada")
         except Exception as e:
             self._recording = False
+            if self._stream:
+                self._stream.close()
+                self._stream = None
             raise RecordingError(f"falló al iniciar la grabación {e}") from e
 
     def stop(self, save_path: Optional[Path] = None) -> np.ndarray:
