@@ -41,6 +41,7 @@
 # --- Configuración ---
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )"
+NOTIFY_EXPIRE_TIME=3000
 
 # --- Rutas Derivadas ---
 VENV_PATH="${PROJECT_DIR}/venv"
@@ -51,7 +52,7 @@ run_orchestrator() {
     local text_to_process=$1
 
     if [ ! -f "${VENV_PATH}/bin/activate" ]; then
-        notify-send "❌ Error de V2M" "Entorno virtual no encontrado en ${VENV_PATH}"
+        notify-send --expire-time=${NOTIFY_EXPIRE_TIME} "❌ Error de V2M" "Entorno virtual no encontrado en ${VENV_PATH}"
         exit 1
     fi
 
@@ -65,6 +66,6 @@ clipboard_content=$(xclip -o -selection clipboard)
 if [ -n "${clipboard_content}" ]; then
     run_orchestrator "${clipboard_content}"
 else
-    notify-send "❌ Error" "El portapapeles está vacío."
+    notify-send --expire-time=${NOTIFY_EXPIRE_TIME} "❌ Error" "El portapapeles está vacío."
     exit 1
 fi
