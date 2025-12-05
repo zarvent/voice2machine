@@ -48,13 +48,26 @@ class VADService:
         """
         normaliza el audio (peak normalization) para mejorar la detección del vad
         si el volumen es muy bajo lo amplifica hasta un nivel seguro (0.9)
+
+        maneja casos edge de audio corrupto (nan/inf) retornando audio sin modificar
         """
+        # VALIDACIÓN ROBUSTA: Detectar audio corrupto antes de procesar
+        # np.isfinite() retorna False para NaN e Inf
+        if not np.all(np.isfinite(audio)):
+            logger.warning("VAD: Audio contiene NaN o Inf, omitiendo normalización")
+            # Reemplazar NaN/Inf con ceros para evitar propagación de corrupción
+            audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
+            if audio.size == 0 or np.max(np.abs(audio)) == 0:
+                return audio  # Audio era todo NaN/Inf, retornar silencio
+
         max_val = np.max(np.abs(audio))
-        if max_val == 0:
+
+        # Silencio absoluto o valores demasiado pequeños para normalizar
+        # 1e-10 es un threshold seguro para evitar overflow en división
+        if max_val < 1e-10:
             return audio
 
-        # Solo normalizar si el audio es bajo (< 0.5) para evitar distorsión en audio ya fuerte
-        # O siempre normalizar a un target seguro?
+        # Solo normalizar si el audio es bajo (< 0.9) para evitar distorsión en audio ya fuerte
         # Estrategia: Peak Normalization a 0.9 si el max es bajo.
         target = 0.9
         if max_val < target:
