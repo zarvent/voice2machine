@@ -1,33 +1,33 @@
 """
-Punto de entrada principal para la aplicación voice2machine.
+punto de entrada principal para la aplicación voice2machine
 
-Este módulo actúa como un lanzador unificado que puede operar en dos modos:
+este módulo actúa como un lanzador unificado que puede operar en dos modos
 
-    1. **Modo Daemon** (``--daemon``): Inicia el proceso persistente que
-       mantiene el modelo Whisper en memoria y escucha comandos IPC.
+    1 **modo daemon** (``--daemon``) inicia el proceso persistente que
+       mantiene el modelo whisper en memoria y escucha comandos ipc
 
-    2. **Modo Cliente** (``<COMMAND>``): Envía comandos al daemon en
-       ejecución a través de socket Unix.
+    2 **modo cliente** (``<COMMAND>``) envía comandos al daemon en
+       ejecución a través de socket unix
 
-Ejemplos de uso:
-    Iniciar el daemon (proceso en primer plano)::
+ejemplos de uso
+    iniciar el daemon (proceso en primer plano)::
 
         python -m v2m.main --daemon
 
-    Enviar comandos al daemon::
+    enviar comandos al daemon::
 
         python -m v2m.main START_RECORDING
         python -m v2m.main STOP_RECORDING
         python -m v2m.main PING
         python -m v2m.main SHUTDOWN
 
-    Procesar texto con LLM::
+    procesar texto con llm::
 
         python -m v2m.main PROCESS_TEXT "texto a refinar"
 
-Note:
-    Para uso en producción, se recomienda ejecutar el daemon como servicio
-    systemd. Ver ``scripts/install_service.py`` para más detalles.
+note
+    para uso en producción se recomienda ejecutar el daemon como servicio
+    systemd ver ``scripts/install_service.py`` para más detalles
 """
 import argparse
 import asyncio
@@ -39,10 +39,11 @@ from v2m.core.logging import logger
 
 
 def _setup_uvloop() -> None:
-    """Configura uvloop como event loop si está disponible.
+    """
+    configura uvloop como event loop si está disponible
 
-    uvloop es 2-4x más rápido que el asyncio loop estándar.
-    Si no está instalado, usa el loop estándar sin error.
+    uvloop es 2-4x más rápido que el asyncio loop estándar
+    si no está instalado usa el loop estándar sin error
     """
     try:
         import uvloop
@@ -53,36 +54,37 @@ def _setup_uvloop() -> None:
 
 
 def main() -> None:
-    """Función principal que procesa argumentos y ejecuta el modo apropiado.
+    """
+    función principal que procesa argumentos y ejecuta el modo apropiado
 
-    Analiza los argumentos de línea de comandos para determinar si debe
+    analiza los argumentos de línea de comandos para determinar si debe
     iniciar el servicio en segundo plano (daemon) o actuar como cliente
-    enviando comandos IPC.
+    enviando comandos ipc
 
-    Argumentos CLI:
-        --daemon: Si está presente, inicia el daemon en primer plano.
-            El proceso no se bifurca (no fork), permitiendo ver logs
-            directamente. Para ejecutar en segundo plano, usar nohup
-            o un gestor de servicios como systemd.
+    argumentos cli
+        --daemon: si está presente inicia el daemon en primer plano
+            el proceso no se bifurca (no fork) permitiendo ver logs
+            directamente para ejecutar en segundo plano usar nohup
+            o un gestor de servicios como systemd
 
-        command: Comando IPC a enviar (si no se usa --daemon).
-            Valores válidos: ``START_RECORDING``, ``STOP_RECORDING``,
-            ``PING``, ``SHUTDOWN``, ``PROCESS_TEXT``.
+        command: comando ipc a enviar (si no se usa --daemon)
+            valores válidos ``START_RECORDING`` ``STOP_RECORDING``
+            ``PING`` ``SHUTDOWN`` ``PROCESS_TEXT``
 
-        payload: Argumentos adicionales para el comando (opcional).
-            Solo aplicable a comandos que requieren datos adicionales
-            como ``PROCESS_TEXT``.
+        payload: argumentos adicionales para el comando (opcional)
+            solo aplicable a comandos que requieren datos adicionales
+            como ``PROCESS_TEXT``
 
-    Returns:
-        None. En modo daemon, nunca retorna (ejecuta indefinidamente).
-        En modo cliente, termina después de enviar el comando.
+    returns:
+        none en modo daemon nunca retorna (ejecuta indefinidamente)
+        en modo cliente termina después de enviar el comando
 
-    Raises:
-        SystemExit: Con código 1 si no se proporcionan argumentos o
-            si hay un error de comunicación con el daemon.
+    raises:
+        SystemExit: con código 1 si no se proporcionan argumentos o
+            si hay un error de comunicación con el daemon
 
-    Example:
-        Desde Python::
+    example
+        desde python::
 
             from v2m.main import main
             import sys

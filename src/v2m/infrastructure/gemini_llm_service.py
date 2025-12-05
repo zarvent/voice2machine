@@ -1,9 +1,9 @@
 """
-modulo que implementa el servicio de llm utilizando la api de google gemini.
+módulo que implementa el servicio de llm utilizando la api de google gemini
 
-esta es una implementacion concreta de la interfaz `llmservice`. es responsable
-de toda la logica de comunicacion con el servicio de google gemini, incluyendo
-la autenticacion, la construccion de la solicitud y el manejo de reintentos.
+esta es una implementación concreta de la interfaz `llmservice` es responsable
+de toda la lógica de comunicación con el servicio de google gemini incluyendo
+la autenticación la construcción de la solicitud y el manejo de reintentos
 """
 
 from v2m.application.llm_service import LLMService
@@ -19,22 +19,22 @@ import httpx
 
 class GeminiLLMService(LLMService):
     """
-    implementacion del `llmservice` que se conecta con google gemini.
+    implementación del `llmservice` que se conecta con google gemini
 
-    gestiona la configuracion del cliente de la api, la formulacion de las
-    peticiones y la logica de reintentos para asegurar una comunicacion robusta.
+    gestiona la configuración del cliente de la api la formulación de las
+    peticiones y la lógica de reintentos para asegurar una comunicación robusta
     """
     def __init__(self) -> None:
         """
-        inicializa el servicio de google gemini.
+        inicializa el servicio de google gemini
 
-        este constructor realiza las siguientes acciones:
-        1.  obtiene la configuracion y la api key desde `config.py` (pydantic settings).
-        2.  configura e instancia el cliente de la api de google.
-        3.  almacena los parametros del modelo y la configuracion de reintentos.
+        este constructor realiza las siguientes acciones
+        1 obtiene la configuración y la api key desde `config.py` (pydantic settings)
+        2 configura e instancia el cliente de la api de google
+        3 almacena los parámetros del modelo y la configuración de reintentos
 
         raises:
-            LLMError: si la `GEMINI_API_KEY` no se encuentra en la configuracion.
+            LLMError: si la `GEMINI_API_KEY` no se encuentra en la configuración
         """
         # --- carga de configuración y secretos ---
         gemini_config = config.gemini
@@ -74,19 +74,19 @@ class GeminiLLMService(LLMService):
     )
     async def process_text(self, text: str) -> str:
         """
-        procesa un texto utilizando el modelo de google gemini.
+        procesa un texto utilizando el modelo de google gemini
 
         implementa una estrategia de reintentos con `tenacity` para manejar
-        errores transitorios de red o de la api de forma resiliente.
+        errores transitorios de red o de la api de forma resiliente
 
         args:
-            text (str): el texto a procesar.
+            text: el texto a procesar
 
         returns:
-            str: el texto refinado por el llm.
+            el texto refinado por el llm
 
         raises:
-            LLMError: si la comunicacion con la api falla despues de todos los reintentos.
+            LLMError: si la comunicación con la api falla después de todos los reintentos
         """
         try:
             logger.info("procesando texto con GEMINI...")

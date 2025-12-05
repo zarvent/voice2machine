@@ -1,10 +1,18 @@
+"""
+script worker para grabación de audio en proceso independiente
+
+este script se utiliza para ejecutar la grabación de audio en un proceso
+separado aislando la captura de audio del proceso principal de la aplicación
+esto ayuda a evitar problemas de bloqueo por el gil y mejora la estabilidad
+"""
+
 import sys
 import time
 import signal
 import argparse
 from pathlib import Path
 # añadir src a la ruta para permitir importaciones
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from v2m.infrastructure.audio.recorder import AudioRecorder
 from v2m.config import config
@@ -13,6 +21,9 @@ from v2m.config import config
 stop_requested = False
 
 def signal_handler(sig, frame):
+    """
+    manejador de señales para detener la grabación limpiamente
+    """
     global stop_requested
     stop_requested = True
 
@@ -21,13 +32,13 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 def main():
     """
-    punto de entrada para el worker de grabacion independiente.
+    punto de entrada para el worker de grabación independiente
 
-    este script se ejecuta como un proceso separado para aislar la grabacion de audio
-    del proceso principal, evitando bloqueos y problemas de gil.
+    este script se ejecuta como un proceso separado para aislar la grabación de audio
+    del proceso principal evitando bloqueos y problemas de gil
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=str, required=True)
+    parser.add_argument("--output", type=str, required=True, help="Ruta del archivo de salida")
     args = parser.parse_args()
 
     recorder = AudioRecorder()

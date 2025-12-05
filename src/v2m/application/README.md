@@ -1,43 +1,12 @@
-# APPLICATION
+# application
 
-### qué es esta carpeta
-esta carpeta corresponde a la `capa de aplicación` en nuestra arquitectura DDD es la capa que define las acciones que el software puede realizar y orquesta la ejecución de estas acciones
+la capa de aplicación orquesta la lógica de negocio coordinando las entidades de dominio y las interfaces de infraestructura aquí residen los casos de uso del sistema
 
-### para qué sirve
-su función principal es coordinar los casos de uso de la aplicación actúa como un intermediario entre la `infraestructura` (que recibe las peticiones del exterior) y el `dominio` (que contiene la lógica de negocio) esta capa no contiene lógica de negocio en sí misma sino que utiliza los objetos y servicios del dominio para llevar a cabo las tareas
+contenido
+- `commands.py` definiciones de los comandos disponibles (ej `StartRecordingCommand`)
+- `command_handlers.py` implementaciones de la lógica para cada comando
+- `llm_service.py` interfaz abstracta para servicios de modelos de lenguaje
+- `transcription_service.py` interfaz abstracta para servicios de transcripción
 
-### qué puedo encontrar aquí
-*   `servicios de aplicación` clases que exponen los casos de uso principales (eg `transcribir_audio_service`)
-*   `comandos` objetos que representan una intención de cambiar el estado del sistema (eg `iniciar_grabacion_command`)
-*   `queries` objetos que representan una solicitud de información sin modificar el estado (eg `obtener_ultima_transcripcion_query`)
-*   `handlers` manejadores que procesan los `comandos` y `queries` interactuando con el `dominio` y la `infraestructura` a través de sus interfaces
-
-### arquitectura o diagramas
-el flujo de una operación típica en esta capa sigue el patrón `CQRS` (separación de responsabilidades de comandos y consultas)
-
-```mermaid
-graph TD
-    A[petición externa] --> B{command/query bus}
-    B --> C[command handler]
-    B --> D[query handler]
-    C --> E(lógica de dominio)
-    D --> F(repositorio de lectura)
-    E --> G[respuesta]
-    F --> G
-```
-
-### cómo contribuir
-1.  **define un comando o query** crea una nueva clase para representar la acción o la consulta
-2.  **crea un handler** implementa un manejador que reciba el comando/query
-3.  **orquesta la lógica** dentro del handler utiliza los repositorios y servicios del dominio para ejecutar la lógica de negocio no implementes lógica de negocio aquí
-4.  **registra en el bus** asegúrate de que el nuevo handler esté registrado en el `command bus` del `core`
-
-### faqs o preguntas frecuentes
-*   **cuál es la diferencia entre un servicio de aplicación y un servicio de dominio**
-    *   un `servicio de aplicación` orquesta un caso de uso (eg procesar un pago) mientras que un `servicio de dominio` contiene lógica de negocio pura que no encaja en una entidad (eg calcular un impuesto complejo)
-*   **puede esta capa acceder directamente a la base de datos**
-    *   no debe hacerlo a través de las interfaces de repositorio definidas en el `dominio` y que son implementadas por la `infraestructura`
-
-### referencias y recursos
-*   `src/v2m/domain/README.md` para entender los objetos de negocio que esta capa orquesta
-*   `src/v2m/core/README.md` para entender cómo funciona el `command bus`
+responsabilidad
+esta capa traduce las intenciones del usuario (comandos) en acciones concretas coordinando los servicios necesarios pero sin conocer los detalles de implementación (ej sabe que debe "transcribir" pero no sabe que usa whisper)

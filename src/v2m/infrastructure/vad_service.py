@@ -13,21 +13,21 @@ _VAD_WINDOW_SIZE = 512  # Silero VAD window size para 16kHz
 
 class VADService:
     """
-    servicio para la deteccion de actividad de voz (vad) utilizando silero vad.
+    servicio para la detección de actividad de voz (vad) utilizando silero vad
 
-    soporta dos backends:
-    - ONNX Runtime (recomendado): ~100MB footprint, más rápido en CPU
-    - PyTorch (fallback): ~500MB footprint, necesario si ONNX no está disponible
+    soporta dos backends
+    - onnx runtime (recomendado) ~100mb footprint más rápido en cpu
+    - pytorch (fallback) ~500mb footprint necesario si onnx no está disponible
 
-    permite truncar los silencios del audio antes de enviarlo a whisper,
-    mejorando la eficiencia y reduciendo el tiempo de inferencia.
+    permite truncar los silencios del audio antes de enviarlo a whisper
+    mejorando la eficiencia y reduciendo el tiempo de inferencia
     """
     def __init__(self, prefer_onnx: bool = True):
         """
-        inicializa el servicio vad.
+        inicializa el servicio vad
 
         args:
-            prefer_onnx: si true, intenta usar onnx runtime primero (menor footprint).
+            prefer_onnx: si true intenta usar onnx runtime primero (menor footprint)
         """
         self.model = None
         self.utils = None
@@ -46,8 +46,8 @@ class VADService:
 
     def _normalize_audio(self, audio: np.ndarray) -> np.ndarray:
         """
-        Normaliza el audio (peak normalization) para mejorar la detección del VAD.
-        Si el volumen es muy bajo, lo amplifica hasta un nivel seguro (0.9).
+        normaliza el audio (peak normalization) para mejorar la detección del vad
+        si el volumen es muy bajo lo amplifica hasta un nivel seguro (0.9)
         """
         max_val = np.max(np.abs(audio))
         if max_val == 0:
@@ -70,12 +70,12 @@ class VADService:
 
     def load_model(self, timeout_sec: float = 10.0):
         """
-        carga el modelo silero vad de forma perezosa con timeout.
+        carga el modelo silero vad de forma perezosa con timeout
 
-        intenta cargar onnx primero (menor footprint), fallback a pytorch.
+        intenta cargar onnx primero (menor footprint) fallback a pytorch
 
         args:
-            timeout_sec (float): tiempo maximo de espera en segundos.
+            timeout_sec: tiempo máximo de espera en segundos
         """
         if self.disabled:
             return
@@ -94,7 +94,9 @@ class VADService:
         self._load_torch_model(timeout_sec)
 
     def _load_onnx_model(self):
-        """Carga el modelo Silero VAD usando ONNX Runtime (~100MB footprint)."""
+        """
+        carga el modelo silero vad usando onnx runtime (~100mb footprint)
+        """
         import onnxruntime as ort
 
         # Descargar modelo ONNX si no existe
@@ -118,7 +120,9 @@ class VADService:
         logger.info("✅ Silero VAD cargado (ONNX Runtime - footprint reducido)")
 
     def _get_onnx_model_path(self) -> Path:
-        """Obtiene la ruta al modelo ONNX, descargándolo si es necesario."""
+        """
+        obtiene la ruta al modelo onnx descargándolo si es necesario
+        """
         # Buscar en cache local de torch hub (subcarpeta src/silero_vad/data)
         local_cache = Path.home() / ".cache" / "torch" / "hub" / "snakers4_silero-vad_master"
         local_onnx = local_cache / "src" / "silero_vad" / "data" / "silero_vad.onnx"
@@ -156,12 +160,16 @@ class VADService:
             raise FileNotFoundError(f"No se encontró modelo ONNX de Silero VAD: {e}")
 
     def _reset_onnx_states(self):
-        """Resetea los estados LSTM para una nueva secuencia de audio."""
+        """
+        resetea los estados lstm para una nueva secuencia de audio
+        """
         # Silero VAD ONNX: state shape [2, batch, 128]
         self._state = np.zeros((2, 1, 128), dtype=np.float32)
 
     def _load_torch_model(self, timeout_sec: float):
-        """Carga el modelo usando PyTorch (fallback, ~500MB footprint)."""
+        """
+        carga el modelo usando pytorch (fallback ~500mb footprint)
+        """
         logger.info("cargando modelo silero vad (PyTorch)...")
 
         exc_holder: list[Exception] = []
@@ -198,10 +206,10 @@ class VADService:
 
     def _vad_onnx(self, audio_chunk: np.ndarray, sr: int = 16000) -> float:
         """
-        Ejecuta inferencia VAD con ONNX Runtime.
+        ejecuta inferencia vad con onnx runtime
 
         args:
-            audio_chunk: chunk de audio (512 samples para 16kHz)
+            audio_chunk: chunk de audio (512 samples para 16khz)
             sr: sample rate
 
         returns:
@@ -231,15 +239,15 @@ class VADService:
 
     def process(self, audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
         """
-        procesa el audio y elimina los segmentos de silencio.
+        procesa el audio y elimina los segmentos de silencio
 
         args:
-            audio (np.ndarray): array de numpy con el audio (float32).
-            sample_rate (int): frecuencia de muestreo (debe ser 8000 o 16000 para silero).
+            audio: array de numpy con el audio (float32)
+            sample_rate: frecuencia de muestreo (debe ser 8000 o 16000 para silero)
 
         returns:
-            np.ndarray: un nuevo array de numpy que contiene solo los segmentos de voz concatenados.
-            si no se detecta voz devuelve un array vacio.
+            un nuevo array de numpy que contiene solo los segmentos de voz concatenados
+            si no se detecta voz devuelve un array vacío
         """
         # si el audio está vacío, retornar de inmediato
         if audio.size == 0:
@@ -264,7 +272,9 @@ class VADService:
             return self._process_torch(audio, sample_rate)
 
     def _process_onnx(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
-        """Procesa audio usando ONNX backend (optimizado para latencia)."""
+        """
+        procesa audio usando onnx backend (optimizado para latencia)
+        """
         self._reset_onnx_states()
 
         # Pre-calcular constantes (evita acceso a config en cada iteración)
@@ -336,7 +346,9 @@ class VADService:
         return result
 
     def _process_torch(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
-        """Procesa audio usando PyTorch backend (fallback)."""
+        """
+        procesa audio usando pytorch backend (fallback)
+        """
         if self.model is None or self.get_speech_timestamps is None:
             return audio
 

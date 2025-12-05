@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-Descarga y prueba del modelo Whisper
+descarga y prueba del modelo whisper
 
-¿Qué hace este script?
-    Descarga el modelo de transcripción (Whisper large-v2) y verifica
-    que se cargue correctamente en tu GPU. Es lo primero que debes
-    correr después de instalar V2M.
+¿qué hace este script?
+    descarga el modelo de transcripción (whisper large-v2) y verifica
+    que se cargue correctamente en tu gpu es lo primero que debes
+    correr después de instalar v2m
 
-¿Por qué tarda tanto la primera vez?
-    El modelo pesa ~3 GB y se descarga de internet. La primera
-    ejecución puede tomar 5-10 minutos dependiendo de tu conexión.
-    Las siguientes veces es instantáneo porque ya está en caché.
+¿por qué tarda tanto la primera vez?
+    el modelo pesa ~3 gb y se descarga de internet la primera
+    ejecución puede tomar 5-10 minutos dependiendo de tu conexión
+    las siguientes veces es instantáneo porque ya está en caché
 
-¿Cómo lo uso?
+¿cómo lo uso?
     $ python scripts/test_whisper_gpu.py
 
-¿Qué debería ver?
+¿qué debería ver?
     🚀 Descargando modelo large-v2 (3GB, primera vez solamente)...
     ✅ Modelo cargado exitosamente en GPU RTX 3060!
     📊 Info del modelo:
@@ -23,22 +23,22 @@ Descarga y prueba del modelo Whisper
        - Precisión: float16
        - Memoria GPU disponible: ~6GB
 
-¿Cuánta VRAM necesito?
-    El modelo large-v2 necesita ~5-6 GB de VRAM. Funciona bien en:
-    - RTX 3060 (12 GB) ✅
-    - RTX 3070/3080 ✅
-    - RTX 2060 (6 GB) - Justo, pero funciona
-    - GTX 1060 (6 GB) - Muy justo
+¿cuánta vram necesito?
+    el modelo large-v2 necesita ~5-6 gb de vram funciona bien en
+    - rtx 3060 (12 gb) ✅
+    - rtx 3070/3080 ✅
+    - rtx 2060 (6 gb) - justo pero funciona
+    - gtx 1060 (6 gb) - muy justo
 
-¿Qué hago si no tengo suficiente VRAM?
-    Puedes usar un modelo más pequeño editando config.toml:
-    - "medium" necesita ~3 GB
-    - "small" necesita ~1 GB
-    - "tiny" necesita ~500 MB (calidad más baja)
+¿qué hago si no tengo suficiente vram?
+    puedes usar un modelo más pequeño editando config.toml
+    - "medium" necesita ~3 gb
+    - "small" necesita ~1 gb
+    - "tiny" necesita ~500 mb (calidad más baja)
 
-Para desarrolladores:
-    El modelo se guarda en ~/.cache/huggingface/hub/
-    Para limpiar el caché: rm -rf ~/.cache/huggingface/hub/
+para desarrolladores
+    el modelo se guarda en ~/.cache/huggingface/hub/
+    para limpiar el caché rm -rf ~/.cache/huggingface/hub/
 """
 
 from faster_whisper import WhisperModel
@@ -47,10 +47,13 @@ import time
 
 def load_whisper_model() -> WhisperModel:
     """
-    Descarga y carga el modelo Whisper en GPU.
+    descarga y carga el modelo whisper en gpu
 
-    Retorna el modelo listo para transcribir. La primera vez
-    descarga ~3 GB, después usa el caché.
+    retorna el modelo listo para transcribir la primera vez
+    descarga ~3 gb después usa el caché
+
+    returns:
+        el modelo whispermodel cargado
     """
     print("🚀 Descargando modelo large-v2 (3GB, primera vez solamente)...")
     print("Esto puede tomar 5-10 minutos dependiendo de tu internet.\n")
@@ -68,10 +71,10 @@ def load_whisper_model() -> WhisperModel:
 
 def main() -> None:
     """
-    Función principal de prueba del modelo Whisper.
+    función principal de prueba del modelo whisper
 
-    Carga el modelo y muestra información sobre la configuración
-    y tiempos de transcripción estimados.
+    carga el modelo y muestra información sobre la configuración
+    y tiempos de transcripción estimados
     """
     model = load_whisper_model()
 

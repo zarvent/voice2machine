@@ -1,11 +1,11 @@
 """
-modulo que implementa el servicio de transcripcion utilizando `faster-whisper`.
+módulo que implementa el servicio de transcripción utilizando `faster-whisper`
 
-esta es la implementacion concreta de la interfaz `transcriptionservice`. se encarga
-de la logica de bajo nivel para:
--   gestionar el proceso de grabacion de audio usando `audiorecorder`.
--   cargar el modelo de whisper.
--   realizar la transcripcion del audio grabado directamente desde la memoria.
+esta es la implementación concreta de la interfaz `transcriptionservice` se encarga
+de la lógica de bajo nivel para
+-   gestionar el proceso de grabación de audio usando `audiorecorder`
+-   cargar el modelo de whisper
+-   realizar la transcripción del audio grabado directamente desde la memoria
 """
 
 import torch
@@ -20,16 +20,16 @@ from v2m.infrastructure.vad_service import VADService
 
 class WhisperTranscriptionService(TranscriptionService):
     """
-    implementacion del `transcriptionservice` que usa `faster-whisper` y `audiorecorder`.
+    implementación del `transcriptionservice` que usa `faster-whisper` y `audiorecorder`
     """
     def __init__(self, vad_service: Optional[VADService] = None) -> None:
         """
-        inicializa el servicio de transcripcion.
+        inicializa el servicio de transcripción
 
-        no carga el modelo de whisper en este punto para acelerar el inicio de la aplicacion.
+        no carga el modelo de whisper en este punto para acelerar el inicio de la aplicación
 
         args:
-            vad_service (Optional[VADService]): servicio opcional para truncado de silencios.
+            vad_service: servicio opcional para truncado de silencios
         """
         self._model: Optional[WhisperModel] = None
         self.recorder = AudioRecorder(device_index=config.whisper.audio_device_index)
@@ -38,14 +38,14 @@ class WhisperTranscriptionService(TranscriptionService):
     @property
     def model(self) -> WhisperModel:
         """
-        carga el modelo de `faster-whisper` de forma perezosa (lazy loading).
+        carga el modelo de `faster-whisper` de forma perezosa (lazy loading)
 
         el modelo solo se carga en memoria la primera vez que se accede a esta
-        propiedad. esto evita un consumo de recursos innecesario si solo se
-        inicia la grabacion sin completarla.
+        propiedad esto evita un consumo de recursos innecesario si solo se
+        inicia la grabación sin completarla
 
         returns:
-            WhisperModel: la instancia del modelo de whisper cargado.
+            la instancia del modelo de whisper cargado
         """
         if self._model is None:
             logger.info("cargando modelo de WHISPER...")
@@ -82,12 +82,12 @@ class WhisperTranscriptionService(TranscriptionService):
 
     def start_recording(self) -> None:
         """
-        inicia la grabacion de audio.
+        inicia la grabación de audio
 
-        utiliza `audiorecorder` para capturar audio en un hilo separado.
+        utiliza `audiorecorder` para capturar audio en un hilo separado
 
         raises:
-            RecordingError: si ya hay una grabacion en proceso o falla el inicio.
+            RecordingError: si ya hay una grabación en proceso o falla el inicio
         """
         try:
             self.recorder.start()
@@ -98,20 +98,20 @@ class WhisperTranscriptionService(TranscriptionService):
 
     def stop_and_transcribe(self) -> str:
         """
-        detiene la grabacion y transcribe el audio.
+        detiene la grabación y transcribe el audio
 
-        realiza los siguientes pasos:
-        1.  detiene el `audiorecorder` y obtiene los datos de audio en memoria (numpy array).
-        2.  aplica vad (smart truncation) si esta disponible.
-        3.  verifica que se haya grabado audio valido.
-        4.  utiliza el modelo de whisper para transcribir el audio directamente desde memoria.
-        5.  limpia recursos (gc, cuda cache) para minimizar uso de memoria.
+        realiza los siguientes pasos
+        1  detiene el `audiorecorder` y obtiene los datos de audio en memoria (numpy array)
+        2  aplica vad (smart truncation) si esta disponible
+        3  verifica que se haya grabado audio válido
+        4  utiliza el modelo de whisper para transcribir el audio directamente desde memoria
+        5  limpia recursos (gc cuda cache) para minimizar uso de memoria
 
         returns:
-            str: el texto transcrito.
+            el texto transcrito
 
         raises:
-            RecordingError: si no hay una grabacion activa o si el audio es invalido.
+            RecordingError: si no hay una grabación activa o si el audio es inválido
         """
         try:
             # detener grabación y obtener audio (sin guardar a disco)
