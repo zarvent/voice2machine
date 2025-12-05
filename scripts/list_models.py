@@ -1,33 +1,33 @@
 #!/usr/bin/env python3
 """
-Ver modelos de Gemini disponibles
+ver modelos de gemini disponibles
 
-¿Para qué sirve?
-    Te muestra todos los modelos de Gemini AI que puedes usar
-    con tu API key. Útil para:
-    - Verificar que tu API key funciona
-    - Ver qué modelos tienes disponibles
-    - Elegir qué modelo usar en config.toml
+¿para qué sirve?
+    te muestra todos los modelos de gemini ai que puedes usar
+    con tu api key útil para
+    - verificar que tu api key funciona
+    - ver qué modelos tienes disponibles
+    - elegir qué modelo usar en config.toml
 
-¿Cómo lo uso?
+¿cómo lo uso?
     $ python scripts/list_models.py
 
-¿Qué voy a ver?
+¿qué voy a ver?
     Available models:
     models/gemini-1.5-pro        <- El más potente
     models/gemini-1.5-flash      <- Rápido y económico (recomendado)
     models/gemini-pro            <- Versión anterior
 
-¿Qué modelo debería usar?
-    Para V2M recomendamos gemini-1.5-flash:
-    - Es rápido (importa para dictado)
-    - Es económico (si pagas por uso)
-    - Calidad suficiente para corrección de texto
+¿qué modelo debería usar?
+    para v2m recomendamos gemini-1.5-flash
+    - es rápido (importa para dictado)
+    - es económico (si pagas por uso)
+    - calidad suficiente para corrección de texto
 
-¿Me sale error de API key?
-    1. Verifica que tengas un archivo .env en la raíz del proyecto
-    2. Que contenga: GEMINI_API_KEY=tu-clave-aqui
-    3. Sin espacios alrededor del =
+¿me sale error de api key?
+    1 verifica que tengas un archivo .env en la raíz del proyecto
+    2 que contenga gemini_api_key=tu-clave-aqui
+    3 sin espacios alrededor del =
 """
 
 import google.generativeai as genai
@@ -37,10 +37,10 @@ from dotenv import load_dotenv
 
 def list_available_models() -> None:
     """
-    Muestra los modelos de Gemini que puedes usar.
+    muestra los modelos de gemini que puedes usar
 
-    Lee tu API key del archivo .env y consulta a Google qué modelos
-    tienes disponibles. Solo muestra los que sirven para generar texto.
+    lee tu api key del archivo .env y consulta a google qué modelos
+    tienes disponibles solo muestra los que sirven para generar texto
     """
     load_dotenv()
 

@@ -9,13 +9,13 @@ from v2m.domain.errors import RecordingError
 
 class AudioRecorder:
     """
-    clase responsable de la grabacion de audio utilizando `sounddevice`.
+    clase responsable de la grabación de audio utilizando `sounddevice`
 
-    maneja el flujo de entrada de audio, almacena los frames en un buffer
-    pre-allocado y permite detener la grabacion devolviendo los datos como
-    un array de numpy con zero-copy cuando es posible.
+    maneja el flujo de entrada de audio almacena los frames en un buffer
+    pre-allocado y permite detener la grabación devolviendo los datos como
+    un array de numpy con zero-copy cuando es posible
 
-    optimizaciones:
+    optimizaciones
     - buffer pre-allocado para evitar reallocaciones
     - zero-copy slice al detener
     - dtype float32 consistente
@@ -25,13 +25,13 @@ class AudioRecorder:
 
     def __init__(self, sample_rate: int = 16000, channels: int = 1, max_duration_sec: int = 600, device_index: Optional[int] = None):
         """
-        inicializa el grabador de audio con buffer pre-allocado.
+        inicializa el grabador de audio con buffer pre-allocado
 
         args:
-            sample_rate (int): frecuencia de muestreo en hz.
-            channels (int): numero de canales de audio.
-            max_duration_sec (int): duracion maxima de grabacion en segundos (default 10 min).
-            device_index (Optional[int]): indice del dispositivo de audio a usar.
+            sample_rate: frecuencia de muestreo en hz
+            channels: número de canales de audio
+            max_duration_sec: duración máxima de grabación en segundos (default 10 min)
+            device_index: índice del dispositivo de audio a usar
         """
         self.sample_rate = sample_rate
         self.channels = channels
@@ -54,10 +54,10 @@ class AudioRecorder:
 
     def start(self):
         """
-        inicia la grabacion de audio en un hilo de fondo (callback).
+        inicia la grabación de audio en un hilo de fondo (callback)
 
         raises:
-            RecordingError: si la grabacion ya esta en progreso o falla al iniciar el stream.
+            RecordingError: si la grabación ya está en progreso o falla al iniciar el stream
         """
         if self._recording:
             raise RecordingError("grabación ya en progreso")
@@ -111,17 +111,17 @@ class AudioRecorder:
 
     def stop(self, save_path: Optional[Path] = None) -> np.ndarray:
         """
-        detiene la grabacion y devuelve el audio capturado.
+        detiene la grabación y devuelve el audio capturado
 
         args:
-            save_path (Optional[Path]): ruta opcional para guardar el audio como archivo wav.
+            save_path: ruta opcional para guardar el audio como archivo wav
 
         returns:
-            np.ndarray: el audio grabado como un array de numpy (float32).
-            NOTA: retorna una vista (no copia) del buffer para zero-copy.
+            el audio grabado como un array de numpy (float32)
+            nota: retorna una copia del buffer para evitar corrupción de datos
 
         raises:
-            RecordingError: si no hay una grabacion en curso.
+            RecordingError: si no hay una grabación en curso
         """
         if not self._recording:
             raise RecordingError("no hay grabación en curso")

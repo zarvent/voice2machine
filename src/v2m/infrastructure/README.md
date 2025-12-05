@@ -1,47 +1,13 @@
-# INFRASTRUCTURE
+# infrastructure
 
-### qué es esta carpeta
-esta carpeta corresponde a la `capa de infraestructura` en nuestra arquitectura DDD es la capa más externa de la aplicación y se encarga de todos los detalles técnicos y de la comunicación con el mundo exterior
+esta capa contiene las implementaciones concretas de las interfaces definidas en `core` y `application` aquí es donde la aplicación interactúa con el mundo exterior (hardware apis sistema operativo)
 
-### para qué sirve
-su propósito es proporcionar las implementaciones concretas de las abstracciones (principalmente interfaces de repositorios) definidas en la `capa de dominio` esta capa contiene el código "pegamento" que conecta la lógica de negocio con las tecnologías específicas que se utilizan
+contenido
+- `audio/` manejo de grabación de audio y dispositivos
+- `gemini_llm_service.py` implementación del servicio llm usando google gemini
+- `linux_adapters.py` adaptadores para interactuar con el escritorio linux (notificaciones portapapeles)
+- `vad_service.py` servicio de detección de actividad de voz usando silero vad
+- `whisper_transcription_service.py` implementación de transcripción usando faster-whisper
 
-### qué puedo encontrar aquí
-*   `implementaciones de repositorios` código que realmente guarda y recupera datos de una base de datos específica (eg `sqlite_transcripcion_repository`)
-*   `clientes de API` clases para comunicarse con servicios externos (eg `GOOGLE_GEMINI_CLIENT` `OPENAI_WHISPER_CLIENT`)
-*   `adaptadores de framework` código que integra la aplicación con frameworks específicos como servidores web o librerías de interfaz de usuario
-*   `manejo de archivos` utilidades para interactuar con el sistema de archivos del sistema operativo
-*   `servicios de sistema` implementaciones de interfaces para acceder a hardware como el micrófono
-
-### arquitectura o diagramas
-esta capa implementa el `principio de inversión de dependencias` el `dominio` define un contrato (interfaz) y la `infraestructura` proporciona la implementación esto permite cambiar de tecnología sin afectar al `dominio`
-
-```mermaid
-graph TD
-    subgraph DOMINIO
-        A[transcription_repository (interfaz)]
-    end
-
-    subgraph INFRAESTRUCTURA
-        B[sqlite_repository (implementación)]
-        C[in_memory_repository (implementación)]
-    end
-
-    B -- implementa --> A
-    C -- implementa --> A
-```
-
-### cómo contribuir
-1.  **implementa una interfaz del dominio** si necesitas añadir soporte para una nueva base de datos o API crea una nueva clase que implemente la interfaz correspondiente del `dominio`
-2.  **registra la implementación** utiliza el `contenedor de inyección de dependencias` del `core` para registrar tu nueva implementación de modo que la `capa de aplicación` pueda resolverla
-3.  **maneja la configuración** asegúrate de que cualquier clave de API cadena de conexión u otra configuración se cargue desde el archivo `config.toml` y no esté codificada directamente
-
-### faqs o preguntas frecuentes
-*   **puedo llamar a la capa de dominio desde aquí**
-    *   no directamente la infraestructura implementa las interfaces del dominio pero no debería llamar a los servicios de dominio su rol es ser "llamada por" la capa de aplicación que a su vez orquesta el dominio
-*   **y si necesito usar una nueva librería externa**
-    *   esta es la capa correcta para hacerlo encapsula la librería en una clase que implemente una interfaz del dominio para que el resto de la aplicación no dependa directamente de esa librería
-
-### referencias y recursos
-*   `src/v2m/domain/README.md` para ver las interfaces que esta capa debe implementar
-*   `config.toml` el archivo donde se define la configuración para los componentes de infraestructura
+filosofía
+este es el único lugar donde se permite importar librerías de terceros pesadas o específicas de plataforma (ej `sounddevice` `google-generativeai` `faster_whisper`)

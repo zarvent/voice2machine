@@ -1,40 +1,40 @@
 #!/usr/bin/env python3
 """
-Verificación de CUDA - ¿Mi GPU funciona con V2M?
+verificación de cuda - ¿mi gpu funciona con v2m?
 
-¿Para qué sirve este script?
-    V2M usa la GPU de tu computadora para transcribir audio rápidamente.
-    Este script verifica que tu tarjeta gráfica NVIDIA esté configurada
-    correctamente y lista para usar.
+¿para qué sirve este script?
+    v2m usa la gpu de tu computadora para transcribir audio rápidamente
+    este script verifica que tu tarjeta gráfica nvidia esté configurada
+    correctamente y lista para usar
 
-¿Cómo lo uso?
-    Simplemente ejecuta:
+¿cómo lo uso?
+    simplemente ejecuta
 
     $ python scripts/check_cuda.py
 
-¿Qué debería ver si todo está bien?
+¿qué debería ver si todo está bien?
     Python: /home/tu-usuario/v2m/venv/bin/python
     CUDA Available: True
     CUDA Device: NVIDIA GeForce RTX 3060
     ✅ Operación cuDNN básica exitosa
 
-¿Qué pasa si CUDA no está disponible?
-    El script mostrará "CUDA Available: False". En ese caso:
+¿qué pasa si cuda no está disponible?
+    el script mostrará "CUDA Available: False" en ese caso
 
-    1. Verifica que tengas drivers NVIDIA instalados:
+    1 verifica que tengas drivers nvidia instalados
        $ nvidia-smi
 
-    2. Si eso falla, instala los drivers:
+    2 si eso falla instala los drivers
        $ sudo apt install nvidia-driver-535
 
-    3. Si tienes drivers pero CUDA sigue sin funcionar, prueba:
+    3 si tienes drivers pero cuda sigue sin funcionar prueba
        $ ./scripts/repair_libs.sh
 
-Nota para desarrolladores:
-    Este script usa PyTorch para detectar CUDA y ejecuta una operación
-    de convolución simple para verificar que cuDNN funcione. Si la
-    operación tiene éxito, significa que todo el stack de GPU está
-    funcionando correctamente.
+nota para desarrolladores
+    este script usa pytorch para detectar cuda y ejecuta una operación
+    de convolución simple para verificar que cudnn funcione si la
+    operación tiene éxito significa que todo el stack de gpu está
+    funcionando correctamente
 """
 
 import torch
@@ -44,18 +44,18 @@ import sys
 
 def check_cuda_availability() -> bool:
     """
-    Verifica si CUDA y cuDNN están funcionando.
+    verifica si cuda y cudnn están funcionando
 
-    ¿Qué hace exactamente?
-        1. Muestra qué Python estás usando
-        2. Muestra las rutas de librerías CUDA
-        3. Prueba si CUDA está disponible
-        4. Si lo está, hace una prueba rápida con cuDNN
+    ¿qué hace exactamente?
+        1 muestra qué python estás usando
+        2 muestra las rutas de librerías cuda
+        3 prueba si cuda está disponible
+        4 si lo está hace una prueba rápida con cudnn
 
-    Retorna:
-        True si todo funciona, False si hay algún problema.
+    returns:
+        true si todo funciona false si hay algún problema
 
-    Ejemplo:
+    example
         >>> if check_cuda_availability():
         ...     print("Listo para usar GPU")
         ... else:

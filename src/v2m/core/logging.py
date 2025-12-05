@@ -1,24 +1,24 @@
 """
-Configuración de logging estructurado en formato JSON para voice2machine.
+configuración de logging estructurado en formato json para voice2machine
 
-Este módulo configura un sistema de logging estructurado que emite
-registros en formato JSON, facilitando el análisis automatizado, búsqueda
-y agregación de logs en sistemas de monitoreo.
+este módulo configura un sistema de logging estructurado que emite
+registros en formato json facilitando el análisis automatizado búsqueda
+y agregación de logs en sistemas de monitoreo
 
-Características:
-    - Formato JSON para cada entrada de log.
-    - Incluye timestamp, nivel, nombre del logger y mensaje.
-    - Salida a stdout para compatibilidad con systemd/journald.
-    - Instancia global pre-configurada para uso en toda la aplicación.
+características
+    - formato json para cada entrada de log
+    - incluye timestamp nivel nombre del logger y mensaje
+    - salida a stdout para compatibilidad con systemd/journald
+    - instancia global pre-configurada para uso en toda la aplicación
 
-Formato de salida:
-    Cada línea es un objeto JSON independiente::
+formato de salida
+    cada línea es un objeto json independiente::
 
         {"asctime": "2024-01-15 10:30:45", "name": "v2m", "levelname": "INFO",
          "message": "grabación iniciada"}
 
-Uso:
-    Importar el logger global desde cualquier módulo::
+uso
+    importar el logger global desde cualquier módulo::
 
         from v2m.core.logging import logger
 
@@ -26,9 +26,9 @@ Uso:
         logger.error(f"Error: {e}")
         logger.debug("Datos de depuración")
 
-Note:
-    El nivel por defecto es INFO. Los mensajes DEBUG no se mostrarán
-    a menos que se modifique el nivel del logger.
+note
+    el nivel por defecto es INFO los mensajes DEBUG no se mostrarán
+    a menos que se modifique el nivel del logger
 """
 
 import logging
@@ -36,25 +36,26 @@ import sys
 from pythonjsonlogger import jsonlogger
 
 def setup_logging() -> logging.Logger:
-    """Configura y retorna un logger estructurado en formato JSON.
+    """
+    configura y retorna un logger estructurado en formato json
 
-    Crea un logger nombrado 'v2m' configurado para emitir mensajes de nivel
-    INFO o superior a stdout en formato JSON. Si el módulo se importa
-    múltiples veces, evita duplicar handlers.
+    crea un logger nombrado 'v2m' configurado para emitir mensajes de nivel
+    INFO o superior a stdout en formato json si el módulo se importa
+    múltiples veces evita duplicar handlers
 
-    El formato JSON incluye los siguientes campos:
-        - ``asctime``: Timestamp ISO del evento.
-        - ``name``: Nombre del logger (siempre 'v2m').
-        - ``levelname``: Nivel del mensaje (INFO, WARNING, ERROR, etc.).
-        - ``message``: Contenido del mensaje de log.
+    el formato json incluye los siguientes campos
+        - ``asctime`` timestamp iso del evento
+        - ``name`` nombre del logger (siempre 'v2m')
+        - ``levelname`` nivel del mensaje (INFO WARNING ERROR etc)
+        - ``message`` contenido del mensaje de log
 
-    Returns:
-        Una instancia de ``logging.Logger`` configurada y lista para usar.
-        Todos los módulos deberían importar la instancia global ``logger``
-        en lugar de llamar esta función directamente.
+    returns:
+        una instancia de ``logging.Logger`` configurada y lista para usar
+        todos los módulos deberían importar la instancia global ``logger``
+        en lugar de llamar esta función directamente
 
-    Example:
-        Configuración automática al importar::
+    example
+        configuración automática al importar::
 
             from v2m.core.logging import logger
             logger.info("Aplicación iniciada")

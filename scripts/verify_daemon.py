@@ -1,32 +1,32 @@
 #!/usr/bin/env python3
 """
-Verificación completa del daemon - la prueba de fuego para V2M.
+verificación completa del daemon - la prueba de fuego para v2m
 
-¿Qué hace esto?
-    Este es el script que corre todas las pruebas de integración del sistema
-    V2M de principio a fin. Básicamente levanta un daemon de prueba, le manda
-    comandos reales (como si fueras vos usando la aplicación), y verifica que
-    todo responda correctamente.
+¿qué hace esto?
+    este es el script que corre todas las pruebas de integración del sistema
+    v2m de principio a fin básicamente levanta un daemon de prueba le manda
+    comandos reales (como si fueras vos usando la aplicación) y verifica que
+    todo responda correctamente
 
-    Piénsalo como un "smoke test" completo del sistema.
+    piénsalo como un "smoke test" completo del sistema
 
-¿Cuándo usarlo?
-    - Después de hacer cambios al daemon o al cliente.
-    - Cuando algo raro pasa y querés descartar problemas de comunicación.
-    - Antes de un release o deploy para asegurarte que todo funciona.
-    - Si el daemon no responde y querés ver exactamente dónde falla.
+¿cuándo usarlo?
+    - después de hacer cambios al daemon o al cliente
+    - cuando algo raro pasa y querés descartar problemas de comunicación
+    - antes de un release o deploy para asegurarte que todo funciona
+    - si el daemon no responde y querés ver exactamente dónde falla
 
-Lo que prueba:
-    1. Levanta un daemon fresco desde cero.
-    2. Manda un PING y espera el PONG (prueba de conectividad básica).
-    3. Inicia una grabación y la detiene (simula el flujo real).
-    4. Manda texto a Gemini para procesamiento.
-    5. Limpia todo al final (mata el daemon de prueba).
+lo que prueba
+    1 levanta un daemon fresco desde cero
+    2 manda un ping y espera el pong (prueba de conectividad básica)
+    3 inicia una grabación y la detiene (simula el flujo real)
+    4 manda texto a gemini para procesamiento
+    5 limpia todo al final (mata el daemon de prueba)
 
-Ejemplo de uso:
+ejemplo de uso
     $ python scripts/verify_daemon.py
 
-    Si todo sale bien vas a ver algo así:
+    si todo sale bien vas a ver algo así
 
         Starting Daemon...
         Sending PING...
@@ -38,24 +38,24 @@ Ejemplo de uso:
         Testing Gemini processing...
         SUCCESS: All tests passed!
 
-⚠️  IMPORTANTE:
-    Este script levanta su PROPIO daemon para las pruebas. Si tenés
-    el servicio systemd corriendo (v2m.service), van a pelear por
-    el mismo socket y vas a tener errores raros. Asegurate de parar
-    el servicio antes de correr esto:
+⚠️ importante
+    este script levanta su propio daemon para las pruebas si tenés
+    el servicio systemd corriendo (v2m.service) van a pelear por
+    el mismo socket y vas a tener errores raros asegurate de parar
+    el servicio antes de correr esto
 
         $ sudo systemctl stop v2m.service
         $ python scripts/verify_daemon.py
         $ sudo systemctl start v2m.service
 
-Dependencias:
-    Los módulos del propio V2M (v2m.daemon, v2m.client). Si ves errores
-    de import, probablemente estés corriendo desde el directorio incorrecto.
+dependencias
+    los módulos del propio v2m (v2m.daemon v2m.client) si ves errores
+    de import probablemente estés corriendo desde el directorio incorrecto
 
-Author:
-    Voice2Machine Team
+author
+    voice2machine team
 
-Since:
+since
     v1.0.0
 """
 
@@ -67,35 +67,35 @@ from typing import Tuple
 
 # Path to python executable
 PYTHON = sys.executable
-"""str: Ruta al ejecutable de Python actual."""
+"""str: ruta al ejecutable de python actual"""
 
 DAEMON_SCRIPT = "src/v2m/daemon.py"
-"""str: Ruta al script del daemon."""
+"""str: ruta al script del daemon"""
 
 CLIENT_SCRIPT = "src/v2m/client.py"
-"""str: Ruta al script del cliente."""
+"""str: ruta al script del cliente"""
 
 
 def run_client(*args: str) -> Tuple[str, str, int]:
     """
-    Manda un comando al daemon y te devuelve qué pasó.
+    manda un comando al daemon y te devuelve qué pasó
 
-    Esta función es como el intermediario entre las pruebas y el daemon.
-    Ejecuta el cliente V2M con el comando que le pases y te devuelve
-    toda la info relevante: qué respondió, si hubo errores, y el código
-    de salida.
+    esta función es como el intermediario entre las pruebas y el daemon
+    ejecuta el cliente v2m con el comando que le pases y te devuelve
+    toda la info relevante qué respondió si hubo errores y el código
+    de salida
 
-    Args:
-        *args: El comando y sus argumentos. Por ejemplo: "PING", o
-            "PROCESS_TEXT", "hola mundo".
+    args:
+        *args: el comando y sus argumentos por ejemplo "PING" o
+            "PROCESS_TEXT" "hola mundo"
 
-    Returns:
-        Una tupla con tres cosas:
-            - La respuesta del daemon (lo que imprimió a stdout).
-            - Los errores si hubo alguno (stderr).
-            - El código de retorno (0 = éxito, otro número = algo falló).
+    returns:
+        una tupla con tres cosas
+            - la respuesta del daemon (lo que imprimió a stdout)
+            - los errores si hubo alguno (stderr)
+            - el código de retorno (0 = éxito otro número = algo falló)
 
-    Example:
+    example
         >>> stdout, stderr, code = run_client("PING")
         >>> if code == 0 and stdout == "PONG":
         ...     print("El daemon está vivo y responde!")
@@ -111,26 +111,26 @@ def run_client(*args: str) -> Tuple[str, str, int]:
 
 def main() -> None:
     """
-    Corre todas las pruebas del daemon de principio a fin.
+    corre todas las pruebas del daemon de principio a fin
 
-    Esta es la función que orquesta todo el show. La secuencia es:
+    esta es la función que orquesta todo el show la secuencia es
 
-        1. Levanta un daemon fresco en segundo plano.
-        2. Espera 10 segundos (sí, es mucho, pero el daemon necesita
-           cargar Whisper y eso tarda).
-        3. Manda un PING y verifica que reciba PONG.
-        4. Simula una grabación: START → espera 3 segundos → STOP.
-        5. Manda texto a Gemini para ver si el procesamiento funciona.
-        6. Mata el daemon al final para dejar todo limpio.
+        1 levanta un daemon fresco en segundo plano
+        2 espera 10 segundos (sí es mucho pero el daemon necesita
+           cargar whisper y eso tarda)
+        3 manda un ping y verifica que reciba pong
+        4 simula una grabación START → espera 3 segundos → STOP
+        5 manda texto a gemini para ver si el procesamiento funciona
+        6 mata el daemon al final para dejar todo limpio
 
-    Si algo falla, el script termina con exit(1) y te muestra qué pasó.
-    Si todo sale bien, vas a ver "SUCCESS" en varios puntos.
+    si algo falla el script termina con exit(1) y te muestra qué pasó
+    si todo sale bien vas a ver "SUCCESS" en varios puntos
 
-    Note:
-        Los 10 segundos de espera inicial pueden parecer eternos, pero
-        créeme que son necesarios. Cargar el modelo Whisper en GPU toma
-        su tiempo, y si mandás comandos antes de que termine, vas a
-        tener errores de conexión rechazada.
+    note
+        los 10 segundos de espera inicial pueden parecer eternos pero
+        créeme que son necesarios cargar el modelo whisper en gpu toma
+        su tiempo y si mandás comandos antes de que termine vas a
+        tener errores de conexión rechazada
     """
     print("Starting Daemon...")
     daemon_process = subprocess.Popen(

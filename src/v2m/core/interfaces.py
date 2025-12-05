@@ -1,22 +1,22 @@
 """
-Interfaces abstractas para los adaptadores del sistema.
+interfaces abstractas para los adaptadores del sistema
 
-Este módulo define las interfaces (puertos) que deben implementar los
-adaptadores de infraestructura para interactuar con el sistema operativo.
-Siguiendo el principio de inversión de dependencias, la capa de aplicación
-depende de estas abstracciones y no de implementaciones concretas.
+este módulo define las interfaces (puertos) que deben implementar los
+adaptadores de infraestructura para interactuar con el sistema operativo
+siguiendo el principio de inversión de dependencias la capa de aplicación
+depende de estas abstracciones y no de implementaciones concretas
 
-Interfaces definidas:
-    - ``ClipboardInterface``: Operaciones del portapapeles del sistema.
-    - ``NotificationInterface``: Envío de notificaciones al escritorio.
+interfaces definidas
+    - ``ClipboardInterface`` operaciones del portapapeles del sistema
+    - ``NotificationInterface`` envío de notificaciones al escritorio
 
-Patrón utilizado:
-    Estas interfaces forman parte del patrón Ports and Adapters (Hexagonal).
-    Los "puertos" están aquí, y los "adaptadores" están en
-    ``infrastructure/linux_adapters.py``.
+patrón utilizado
+    estas interfaces forman parte del patrón ports and adapters (hexagonal)
+    los puertos están aquí y los adaptadores están en
+    ``infrastructure/linux_adapters.py``
 
-Example:
-    Inyección de dependencias en un handler::
+example
+    inyección de dependencias en un handler::
 
         class MyHandler:
             def __init__(self, clipboard: ClipboardInterface):
@@ -29,16 +29,17 @@ Example:
 from abc import ABC, abstractmethod
 
 class ClipboardInterface(ABC):
-    """Interfaz abstracta para operaciones del portapapeles del sistema.
+    """
+    interfaz abstracta para operaciones del portapapeles del sistema
 
-    Define el contrato que deben cumplir los adaptadores de portapapeles
-    para diferentes sistemas operativos o entornos gráficos (X11, Wayland).
+    define el contrato que deben cumplir los adaptadores de portapapeles
+    para diferentes sistemas operativos o entornos gráficos (x11 wayland)
 
-    Esta interfaz permite desacoplar la lógica de negocio de la implementación
-    específica del portapapeles, facilitando pruebas unitarias y portabilidad.
+    esta interfaz permite desacoplar la lógica de negocio de la implementación
+    específica del portapapeles facilitando pruebas unitarias y portabilidad
 
-    Example:
-        Implementación mock para pruebas::
+    example
+        implementación mock para pruebas::
 
             class MockClipboard(ClipboardInterface):
                 def __init__(self):
@@ -52,54 +53,57 @@ class ClipboardInterface(ABC):
     """
     @abstractmethod
     def copy(self, text: str) -> None:
-        """Copia el texto proporcionado al portapapeles del sistema.
+        """
+        copia el texto proporcionado al portapapeles del sistema
 
-        El texto se almacena en el portapapeles y estará disponible para
+        el texto se almacena en el portapapeles y estará disponible para
         pegar en cualquier aplicación hasta que sea reemplazado por otro
-        contenido.
+        contenido
 
-        Args:
-            text: El texto a copiar al portapapeles. Debe ser una cadena
-                válida. Las cadenas vacías pueden ser ignoradas por algunas
-                implementaciones.
+        args:
+            text: el texto a copiar al portapapeles debe ser una cadena
+                válida las cadenas vacías pueden ser ignoradas por algunas
+                implementaciones
 
-        Note:
-            La implementación debe manejar correctamente caracteres Unicode
-            y saltos de línea.
+        note:
+            la implementación debe manejar correctamente caracteres unicode
+            y saltos de línea
         """
         pass
 
     @abstractmethod
     def paste(self) -> str:
-        """Obtiene el contenido actual del portapapeles del sistema.
+        """
+        obtiene el contenido actual del portapapeles del sistema
 
-        Lee y retorna el texto actualmente almacenado en el portapapeles.
-        Si el portapapeles contiene datos no textuales (imágenes, archivos),
-        el comportamiento depende de la implementación.
+        lee y retorna el texto actualmente almacenado en el portapapeles
+        si el portapapeles contiene datos no textuales (imágenes archivos)
+        el comportamiento depende de la implementación
 
-        Returns:
-            El texto contenido en el portapapeles. Retorna una cadena vacía
-            si el portapapeles está vacío o contiene datos no textuales.
+        returns:
+            el texto contenido en el portapapeles retorna una cadena vacía
+            si el portapapeles está vacío o contiene datos no textuales
 
-        Raises:
-            Puede lanzar excepciones específicas de la implementación si
-            hay problemas de acceso al portapapeles del sistema.
+        raises:
+            puede lanzar excepciones específicas de la implementación si
+            hay problemas de acceso al portapapeles del sistema
         """
         pass
 
 class NotificationInterface(ABC):
-    """Interfaz abstracta para el sistema de notificaciones del escritorio.
+    """
+    interfaz abstracta para el sistema de notificaciones del escritorio
 
-    Define el contrato para enviar notificaciones visuales al usuario.
-    Las implementaciones pueden utilizar diferentes backends según el
-    entorno (notify-send en Linux, toast en Windows, etc.).
+    define el contrato para enviar notificaciones visuales al usuario
+    las implementaciones pueden utilizar diferentes backends según el
+    entorno (notify-send en linux toast en windows etc)
 
-    Las notificaciones son utilizadas para informar al usuario sobre el
-    estado de las operaciones (grabación iniciada, transcripción completada,
-    errores, etc.).
+    las notificaciones son utilizadas para informar al usuario sobre el
+    estado de las operaciones (grabación iniciada transcripción completada
+    errores etc)
 
-    Example:
-        Implementación mock para pruebas::
+    example
+        implementación mock para pruebas::
 
             class MockNotification(NotificationInterface):
                 def __init__(self):
@@ -110,22 +114,23 @@ class NotificationInterface(ABC):
     """
     @abstractmethod
     def notify(self, title: str, message: str) -> None:
-        """Envía una notificación visual al escritorio del usuario.
+        """
+        envía una notificación visual al escritorio del usuario
 
-        Muestra un mensaje emergente utilizando el sistema de notificaciones
-        del entorno de escritorio. La notificación aparece brevemente y
-        luego desaparece automáticamente.
+        muestra un mensaje emergente utilizando el sistema de notificaciones
+        del entorno de escritorio la notificación aparece brevemente y
+        luego desaparece automáticamente
 
-        Args:
-            title: El título de la notificación. Debe ser breve y descriptivo.
-                Ejemplos: "🎤 Grabando", "✅ Copiado", "❌ Error".
-            message: El cuerpo del mensaje de la notificación. Puede incluir
-                más detalles sobre la operación. Se recomienda limitar a
-                80-100 caracteres para mejor legibilidad.
+        args:
+            title: el título de la notificación debe ser breve y descriptivo
+                ejemplos "grabando" "copiado" "error"
+            message: el cuerpo del mensaje de la notificación puede incluir
+                más detalles sobre la operación se recomienda limitar a
+                80-100 caracteres para mejor legibilidad
 
-        Note:
-            Las implementaciones deben manejar silenciosamente los errores
-            (ej. si notify-send no está instalado) para no interrumpir
-            el flujo principal de la aplicación.
+        note:
+            las implementaciones deben manejar silenciosamente los errores
+            (ej si notify-send no está instalado) para no interrumpir
+            el flujo principal de la aplicación
         """
         pass

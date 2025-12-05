@@ -9,23 +9,26 @@ from v2m.core.logging import logger
 
 class LinuxClipboardAdapter(ClipboardInterface):
     """
-    adaptador de portapapeles para linux que usa directamente xclip o wl-clipboard.
+    adaptador de portapapeles para linux que usa directamente xclip o wl-clipboard
 
     no depende de pyperclip para evitar problemas con variables de entorno
-    en procesos daemon. detecta automaticamente x11 vs wayland.
+    en procesos daemon detecta automáticamente x11 vs wayland
     """
 
     def __init__(self):
+        """
+        inicializa el adaptador de portapapeles y detecta el entorno gráfico
+        """
         self._backend: Optional[str] = None
         self._env: dict = {}
         self._detect_environment()
 
     def _find_xauthority(self) -> Optional[str]:
         """
-        busca el archivo .xauthority en ubicaciones estandar.
+        busca el archivo .xauthority en ubicaciones estándar
 
         returns:
-            Optional[str]: la ruta al archivo .xauthority si se encuentra, o none.
+            la ruta al archivo .xauthority si se encuentra o none
         """
         # 1. Si ya está en el entorno, usarlo
         if os.environ.get("XAUTHORITY"):
@@ -50,8 +53,8 @@ class LinuxClipboardAdapter(ClipboardInterface):
 
     def _detect_environment(self) -> None:
         """
-        detecta variables de entorno buscando sesiones graficas.
-        estrategia: env vars > loginctl > sockets en /tmp/.x11-unix.
+        detecta variables de entorno buscando sesiones gráficas
+        estrategia env vars > loginctl > sockets en /tmp/.x11-unix
         """
         # 1. Heredar del entorno actual (Prioridad máxima)
         if os.environ.get("WAYLAND_DISPLAY"):
@@ -128,10 +131,10 @@ class LinuxClipboardAdapter(ClipboardInterface):
 
     def _get_clipboard_commands(self) -> Tuple[list, list]:
         """
-        retorna los comandos para copiar y pegar segun el backend detectado.
+        retorna los comandos para copiar y pegar según el backend detectado
 
         returns:
-            Tuple[list, list]: tupla con (comando_copy, comando_paste).
+            tupla con (comando_copy comando_paste)
         """
         if self._backend == "wayland":
             return (
@@ -146,10 +149,10 @@ class LinuxClipboardAdapter(ClipboardInterface):
 
     def copy(self, text: str) -> None:
         """
-        copia el texto al portapapeles.
+        copia el texto al portapapeles
 
         args:
-            text (str): el texto a copiar.
+            text: el texto a copiar
         """
         if not text: return
         copy_cmd, _ = self._get_clipboard_commands()
@@ -185,10 +188,10 @@ class LinuxClipboardAdapter(ClipboardInterface):
 
     def paste(self) -> str:
         """
-        obtiene texto del portapapeles del sistema.
+        obtiene texto del portapapeles del sistema
 
         returns:
-            str: contenido del portapapeles o cadena vacia si falla.
+            contenido del portapapeles o cadena vacía si falla
         """
         _, paste_cmd = self._get_clipboard_commands()
 
@@ -222,15 +225,15 @@ class LinuxClipboardAdapter(ClipboardInterface):
 
 class LinuxNotificationAdapter(NotificationInterface):
     """
-    adaptador de notificaciones para linux usando notify-send.
+    adaptador de notificaciones para linux usando notify-send
     """
     def notify(self, title: str, message: str) -> None:
         """
-        envia una notificacion al escritorio.
+        envía una notificación al escritorio
 
         args:
-            title (str): titulo de la notificacion.
-            message (str): mensaje de la notificacion.
+            title: título de la notificación
+            message: mensaje de la notificación
         """
         try:
             # usando notify-send ya que es estándar en la mayoría de los de de linux

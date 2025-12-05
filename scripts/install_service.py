@@ -1,46 +1,46 @@
 #!/usr/bin/env python3
 """
-Instalar V2M como servicio del sistema
+instalar v2m como servicio del sistema
 
-¿Qué hace este script?
-    Configura V2M para que arranque automáticamente cuando inicies
-    sesión en tu computadora. Ya no tendrás que iniciarlo manualmente.
+¿qué hace este script?
+    configura v2m para que arranque automáticamente cuando inicies
+    sesión en tu computadora ya no tendrás que iniciarlo manualmente
 
-¿Cómo lo uso?
+¿cómo lo uso?
     $ python scripts/install_service.py
 
-    Eso es todo. El script hace el resto.
+    eso es todo el script hace el resto
 
-¿Qué pasa después de instalarlo?
-    - V2M arranca solo cuando inicias sesión
-    - Puedes controlarlo con systemctl:
+¿qué pasa después de instalarlo?
+    - v2m arranca solo cuando inicias sesión
+    - puedes controlarlo con systemctl
 
       $ systemctl --user status v2m.service   # Ver si está corriendo
       $ systemctl --user restart v2m.service  # Reiniciarlo
       $ systemctl --user stop v2m.service     # Detenerlo
       $ systemctl --user disable v2m.service  # Desactivar arranque automático
 
-¿Dónde se guarda la configuración?
+¿dónde se guarda la configuración?
     ~/.config/systemd/user/v2m.service
 
-¿Por qué "usuario" y no "sistema"?
-    Porque V2M necesita acceso a tu display (para el portapapeles)
-    y a tu sesión. Los servicios de sistema no tienen eso.
+¿por qué "usuario" y no "sistema"?
+    porque v2m necesita acceso a tu display (para el portapapeles)
+    y a tu sesión los servicios de sistema no tienen eso
 
-Requisitos previos:
-    1. Entorno virtual creado en ./venv
-    2. Archivo .env con tu GEMINI_API_KEY
-    3. No tener dos entornos virtuales (.venv y venv)
+requisitos previos
+    1 entorno virtual creado en ./venv
+    2 archivo .env con tu gemini_api_key
+    3 no tener dos entornos virtuales (.venv y venv)
 
-¿Algo salió mal?
-    - Si ves errores de CUDA: ./scripts/repair_libs.sh
-    - Si hay .venv duplicado: python scripts/cleanup.py --fix-venv
-    - Para ver logs: journalctl --user -u v2m.service -f
+¿algo salió mal?
+    - si ves errores de cuda ./scripts/repair_libs.sh
+    - si hay .venv duplicado python scripts/cleanup.py --fix-venv
+    - para ver logs journalctl --user -u v2m.service -f
 
-Para desarrolladores:
-    Este script genera dinámicamente el archivo .service detectando
-    las rutas de CUDA automáticamente. También configura DISPLAY y
-    XAUTHORITY para que el daemon pueda acceder al portapapeles X11.
+para desarrolladores
+    este script genera dinámicamente el archivo .service detectando
+    las rutas de cuda automáticamente también configura display y
+    xauthority para que el daemon pueda acceder al portapapeles x11
 """
 
 import os
@@ -52,34 +52,34 @@ import subprocess
 SERVICE_NAME = "v2m.service"
 
 USER_HOME = Path.home()
-"""Path: Directorio home del usuario actual."""
+"""path: directorio home del usuario actual"""
 
 SYSTEMD_USER_DIR = USER_HOME / ".config/systemd/user"
-"""Path: Directorio para servicios systemd de usuario."""
+"""path: directorio para servicios systemd de usuario"""
 
 SOURCE_SERVICE_FILE = Path("v2m.service")
-"""Path: Archivo de servicio fuente (si existe)."""
+"""path: archivo de servicio fuente (si existe)"""
 
 
 def get_cuda_paths(venv_python: Path) -> str:
     """
-    Busca dónde están las librerías CUDA/cuDNN para que el servicio las encuentre.
+    busca dónde están las librerías cuda/cudnn para que el servicio las encuentre
 
-    Cuando el daemon corre bajo systemd, no tiene acceso al PATH normal,
+    cuando el daemon corre bajo systemd no tiene acceso al path normal
     así que necesitamos decirle explícitamente dónde encontrar las libs
-    de NVIDIA. Esta función las busca en dos lugares:
+    de nvidia esta función las busca en dos lugares
 
-        1. torch.cuda.lib (para PyTorch 2.9.1+)
-        2. Las carpetas nvidia/* dentro del venv
+        1 torch.cuda.lib (para pytorch 2.9.1+)
+        2 las carpetas nvidia/* dentro del venv
 
-    Args:
-        venv_python: La ruta al Python del venv (ej: /home/user/v2m/venv/bin/python)
+    args:
+        venv_python: la ruta al python del venv (ej /home/user/v2m/venv/bin/python)
 
-    Returns:
-        Una cadena con las rutas separadas por ":" lista para usar en
-        LD_LIBRARY_PATH. Si no encuentra nada, devuelve cadena vacía.
+    returns:
+        una cadena con las rutas separadas por ":" lista para usar en
+        ld_library_path si no encuentra nada devuelve cadena vacía
 
-    Example:
+    example
         >>> paths = get_cuda_paths(Path("/home/user/v2m/venv/bin/python"))
         >>> # Devuelve algo como: "/home/user/v2m/venv/.../nvidia/cublas/lib:..."
     """
@@ -122,24 +122,24 @@ def get_cuda_paths(venv_python: Path) -> str:
 
 def install_service() -> None:
     """
-    Hace toda la magia para que V2M corra como servicio systemd.
+    hace toda la magia para que v2m corra como servicio systemd
 
-    Esta función hace un montón de cosas por vos:
+    esta función hace un montón de cosas por vos
 
-        1. Crea la carpeta ~/.config/systemd/user/ si no existe
-        2. Verifica que no tengas dos venvs (común después de reinstalar)
-        3. Busca las librerías CUDA automáticamente
-        4. Genera el archivo v2m.service con toda la config
-        5. Le dice a systemd que recargue y habilite el servicio
-        6. Reinicia el daemon para aplicar cambios
+        1 crea la carpeta ~/.config/systemd/user/ si no existe
+        2 verifica que no tengas dos venvs (común después de reinstalar)
+        3 busca las librerías cuda automáticamente
+        4 genera el archivo v2m.service con toda la config
+        5 le dice a systemd que recargue y habilite el servicio
+        6 reinicia el daemon para aplicar cambios
 
-    Si algo sale mal (venvs duplicados, systemd falla), el script
-    explota con un mensaje claro de qué pasó y cómo arreglarlo.
+    si algo sale mal (venvs duplicados systemd falla) el script
+    explota con un mensaje claro de qué pasó y cómo arreglarlo
 
-    Nota sobre DISPLAY y XAUTHORITY:
-        El servicio necesita acceso al display de X11 para usar xclip
-        (copiar al portapapeles). Detectamos esas variables del ambiente
-        actual y las hardcodeamos en el servicio.
+    nota sobre display y xauthority
+        el servicio necesita acceso al display de x11 para usar xclip
+        (copiar al portapapeles) detectamos esas variables del ambiente
+        actual y las hardcodeamos en el servicio
     """
     print(f"🔧 Instalando {SERVICE_NAME}...")
 

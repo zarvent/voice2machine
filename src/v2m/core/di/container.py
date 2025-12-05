@@ -1,25 +1,25 @@
 """
-Contenedor de inyección de dependencias (DI) para voice2machine.
+contenedor de inyección de dependencias (di) para voice2machine
 
-Este módulo implementa el patrón de Inyección de Dependencias que "cablea"
-toda la aplicación. Es el único lugar donde las implementaciones concretas
-son conocidas y donde se decide qué implementación usar para cada interfaz.
+este módulo implementa el patrón de inyección de dependencias que cablea
+toda la aplicación es el único lugar donde las implementaciones concretas
+son conocidas y donde se decide qué implementación usar para cada interfaz
 
-Responsabilidades del contenedor:
-    1. **Instanciar servicios de infraestructura**: Crea las implementaciones
-       concretas como singletons (WhisperService, GeminiService, etc.).
-    2. **Instanciar handlers de aplicación**: Crea los command handlers
-       inyectándoles las dependencias que necesitan.
-    3. **Configurar el CommandBus**: Registra todos los handlers para que
-       el bus sepa a quién despachar cada tipo de comando.
+responsabilidades del contenedor
+    1 **instanciar servicios de infraestructura** crea las implementaciones
+       concretas como singletons (whisperservice geminiservice etc)
+    2 **instanciar handlers de aplicación** crea los command handlers
+       inyectándoles las dependencias que necesitan
+    3 **configurar el commandbus** registra todos los handlers para que
+       el bus sepa a quién despachar cada tipo de comando
 
-Beneficios:
-    - **Desacoplamiento**: Los handlers dependen de interfaces, no implementaciones.
-    - **Testabilidad**: Fácil sustituir servicios reales por mocks.
-    - **Configurabilidad**: Cambiar implementaciones (ej. Gemini -> OpenAI)
-      solo requiere modificar este archivo.
+beneficios
+    - **desacoplamiento** los handlers dependen de interfaces no implementaciones
+    - **testabilidad** fácil sustituir servicios reales por mocks
+    - **configurabilidad** cambiar implementaciones (ej gemini -> openai)
+      solo requiere modificar este archivo
 
-Diagrama de dependencias:
+diagrama de dependencias
     ::
 
         Container
@@ -33,8 +33,8 @@ Diagrama de dependencias:
         ├── ProcessTextHandler (usa LLM, Notification, Clipboard)
         └── CommandBus (registra todos los handlers)
 
-Example:
-    Acceso al contenedor desde otros módulos::
+example
+    acceso al contenedor desde otros módulos::
 
         from v2m.core.di.container import container
 
@@ -57,57 +57,59 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 class Container:
-    """Contenedor de DI que gestiona el ciclo de vida y dependencias de objetos.
+    """
+    contenedor de di que gestiona el ciclo de vida y dependencias de objetos
 
-    El contenedor es instanciado una única vez al inicio de la aplicación
+    el contenedor es instanciado una única vez al inicio de la aplicación
     y proporciona acceso a los servicios configurados durante toda la
-    ejecución del programa.
+    ejecución del programa
 
-    Attributes:
-        vad_service: Servicio de detección de actividad de voz (Silero VAD).
-        transcription_service: Servicio de transcripción (faster-whisper).
-        llm_service: Servicio de LLM para refinamiento de texto (Gemini).
-        notification_service: Adaptador de notificaciones del sistema.
-        clipboard_service: Adaptador del portapapeles del sistema.
-        start_recording_handler: Handler para el comando StartRecording.
-        stop_recording_handler: Handler para el comando StopRecording.
-        process_text_handler: Handler para el comando ProcessText.
-        command_bus: Bus de comandos configurado con todos los handlers.
+    attributes:
+        vad_service: servicio de detección de actividad de voz (silero vad)
+        transcription_service: servicio de transcripción (faster-whisper)
+        llm_service: servicio de llm para refinamiento de texto (gemini)
+        notification_service: adaptador de notificaciones del sistema
+        clipboard_service: adaptador del portapapeles del sistema
+        start_recording_handler: handler para el comando startrecording
+        stop_recording_handler: handler para el comando stoprecording
+        process_text_handler: handler para el comando processtext
+        command_bus: bus de comandos configurado con todos los handlers
 
-    Example:
-        Uso típico (ya pre-instanciado como singleton global)::
+    example
+        uso típico (ya pre-instanciado como singleton global)::
 
             from v2m.core.di.container import container
 
-            # Obtener el bus de comandos
+            # obtener el bus de comandos
             bus = container.get_command_bus()
 
-            # Acceso directo a servicios (menos común)
+            # acceso directo a servicios (menos común)
             transcription = container.transcription_service
     """
     def __init__(self) -> None:
-        """Inicializa y configura todas las dependencias de la aplicación.
+        """
+        inicializa y configura todas las dependencias de la aplicación
 
-        El proceso de configuración sigue estos pasos:
+        el proceso de configuración sigue estos pasos
 
-        1. **Servicios de infraestructura** (como singletons):
-           Se crean las implementaciones concretas de los servicios.
-           Aquí se decide qué implementación usar para cada interfaz.
-           Por ejemplo, para cambiar de Gemini a OpenAI, solo se modificaría
-           esta línea.
+        1 **servicios de infraestructura** (como singletons)
+           se crean las implementaciones concretas de los servicios
+           aquí se decide qué implementación usar para cada interfaz
+           por ejemplo para cambiar de gemini a openai solo se modificaría
+           esta línea
 
-        2. **Handlers de aplicación**:
-           Se crean los manejadores de comandos inyectándoles las
-           dependencias que necesitan para funcionar.
+        2 **handlers de aplicación**
+           se crean los manejadores de comandos inyectándoles las
+           dependencias que necesitan para funcionar
 
-        3. **CommandBus**:
-           Se configura el bus registrando todos los handlers para que
-           sepa a cuál despachar cada tipo de comando.
+        3 **commandbus**
+           se configura el bus registrando todos los handlers para que
+           sepa a cuál despachar cada tipo de comando
 
-        Note:
-            El modelo Whisper se precarga en un hilo de fondo para evitar
-            latencia en la primera transcripción. Si falla la precarga,
-            se cargará de forma lazy en el primer uso.
+        note
+            el modelo whisper se precarga en un hilo de fondo para evitar
+            latencia en la primera transcripción si falla la precarga
+            se cargará de forma lazy en el primer uso
         """
         # --- 1 instanciar servicios (como singletons) ---
         # aquí se decide qué implementación concreta usar para cada interfaz
@@ -115,7 +117,7 @@ class Container:
         self.vad_service = VADService()
         self.transcription_service: TranscriptionService = WhisperTranscriptionService(vad_service=self.vad_service)
 
-        # ThreadPoolExecutor para warmup - libera el GIL mejor que threading.Thread
+        # threadpoolexecutor para warmup - libera el gil mejor que threading.thread
         # porque permite que el event loop siga procesando durante la carga
         self._warmup_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="warmup")
         self._warmup_future = self._warmup_executor.submit(self._preload_models)
@@ -152,18 +154,19 @@ class Container:
         self.command_bus.register(self.process_text_handler)
 
     def get_command_bus(self) -> CommandBus:
-        """Proporciona acceso al CommandBus configurado.
+        """
+        proporciona acceso al commandbus configurado
 
-        Este es el punto de acceso principal para despachar comandos.
-        El bus ya tiene todos los handlers registrados y está listo para usar.
+        este es el punto de acceso principal para despachar comandos
+        el bus ya tiene todos los handlers registrados y está listo para usar
 
-        Returns:
-            La instancia única del CommandBus con todos los handlers
-            registrados. Usar esta instancia para despachar comandos
-            desde cualquier parte de la aplicación.
+        returns:
+            la instancia única del commandbus con todos los handlers
+            registrados usar esta instancia para despachar comandos
+            desde cualquier parte de la aplicación
 
-        Example:
-            Despachar un comando::
+        example
+            despachar un comando::
 
                 bus = container.get_command_bus()
                 await bus.dispatch(StartRecordingCommand())
@@ -171,13 +174,14 @@ class Container:
         return self.command_bus
 
     def _preload_models(self) -> None:
-        """Precarga modelos de ML en background para reducir latencia del primer uso.
+        """
+        precarga modelos de ml en background para reducir latencia del primer uso
 
-        Ejecuta en ThreadPoolExecutor para no bloquear el event loop.
-        La carga de Whisper involucra:
-        - Descarga/verificación del modelo (~1-2GB)
-        - Allocación de VRAM en GPU
-        - Compilación de kernels CUDA (primera vez)
+        ejecuta en threadpoolexecutor para no bloquear el event loop
+        la carga de whisper involucra
+        - descarga/verificación del modelo (~1-2gb)
+        - allocación de vram en gpu
+        - compilación de kernels cuda (primera vez)
         """
         try:
             # Precargar Whisper (el más pesado)
@@ -194,13 +198,14 @@ class Container:
             logger.warning(f"⚠️ No se pudo precargar VAD: {e}")
 
     async def wait_for_warmup(self, timeout: float = 30.0) -> bool:
-        """Espera a que los modelos terminen de cargar (async-safe).
+        """
+        espera a que los modelos terminen de cargar (async-safe)
 
-        Args:
-            timeout: Tiempo máximo de espera en segundos.
+        args:
+            timeout: tiempo máximo de espera en segundos
 
-        Returns:
-            True si la carga fue exitosa, False si hubo timeout.
+        returns:
+            true si la carga fue exitosa false si hubo timeout
         """
         loop = asyncio.get_event_loop()
         try:
