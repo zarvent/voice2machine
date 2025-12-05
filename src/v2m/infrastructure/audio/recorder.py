@@ -127,7 +127,8 @@ class AudioRecorder:
 
         # Zero-copy slice - retorna vista del buffer, no copia
         # IMPORTANTE: el caller debe procesar antes de la próxima grabación
-        audio = self._buffer[:recorded_samples]
+        # FIX: Retornamos una copia para evitar corrupción de datos si se reinicia la grabación
+        audio = self._buffer[:recorded_samples].copy()
 
         if save_path:
             # convertir float32 a int16 para wav (esto sí hace copia)
