@@ -264,45 +264,61 @@ class VADService:
             return self._process_torch(audio, sample_rate)
 
     def _process_onnx(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
-        """Procesa audio usando ONNX backend (más eficiente)."""
+        """Procesa audio usando ONNX backend (optimizado para latencia)."""
         self._reset_onnx_states()
 
+        # Pre-calcular constantes (evita acceso a config en cada iteración)
         threshold = config.whisper.vad_parameters.threshold
         min_speech_samples = int(config.whisper.vad_parameters.min_speech_duration_ms * sample_rate / 1000)
         min_silence_samples = int(config.whisper.vad_parameters.min_silence_duration_ms * sample_rate / 1000)
 
-        # Procesar en chunks de 512 samples
-        speech_timestamps = []
-        is_speech = False
-        speech_start = 0
-        silence_samples = 0
+        audio_len = len(audio)
+        n_chunks = (audio_len + _VAD_WINDOW_SIZE - 1) // _VAD_WINDOW_SIZE
 
-        for i in range(0, len(audio), _VAD_WINDOW_SIZE):
-            chunk = audio[i:i + _VAD_WINDOW_SIZE]
+        # Pre-allocar array de probabilidades para evitar append
+        probs = np.empty(n_chunks, dtype=np.float32)
+
+        # Procesar chunks - el loop es necesario por el estado LSTM
+        for i in range(n_chunks):
+            start = i * _VAD_WINDOW_SIZE
+            end = min(start + _VAD_WINDOW_SIZE, audio_len)
+            chunk = audio[start:end]
+
             if len(chunk) < _VAD_WINDOW_SIZE:
                 chunk = np.pad(chunk, (0, _VAD_WINDOW_SIZE - len(chunk)))
 
-            prob = self._vad_onnx(chunk, sample_rate)
+            probs[i] = self._vad_onnx(chunk, sample_rate)
 
-            if prob >= threshold:
+        # Detectar timestamps usando operaciones vectorizadas
+        is_speech_mask = probs >= threshold
+        speech_timestamps = []
+        is_speech = False
+        speech_start = 0
+        silence_chunks = 0
+        min_silence_chunks = min_silence_samples // _VAD_WINDOW_SIZE
+        min_speech_chunks = min_speech_samples // _VAD_WINDOW_SIZE
+
+        for i, is_chunk_speech in enumerate(is_speech_mask):
+            sample_pos = i * _VAD_WINDOW_SIZE
+            if is_chunk_speech:
                 if not is_speech:
-                    speech_start = i
+                    speech_start = sample_pos
                     is_speech = True
-                silence_samples = 0
-            else:
-                if is_speech:
-                    silence_samples += _VAD_WINDOW_SIZE
-                    if silence_samples >= min_silence_samples:
-                        speech_end = i - silence_samples + _VAD_WINDOW_SIZE
-                        if speech_end - speech_start >= min_speech_samples:
-                            speech_timestamps.append({'start': speech_start, 'end': speech_end})
-                        is_speech = False
-                        silence_samples = 0
+                silence_chunks = 0
+            elif is_speech:
+                silence_chunks += 1
+                if silence_chunks >= min_silence_chunks:
+                    speech_end = sample_pos - (silence_chunks - 1) * _VAD_WINDOW_SIZE
+                    speech_len_chunks = (speech_end - speech_start) // _VAD_WINDOW_SIZE
+                    if speech_len_chunks >= min_speech_chunks:
+                        speech_timestamps.append({'start': speech_start, 'end': speech_end})
+                    is_speech = False
+                    silence_chunks = 0
 
         # Cerrar último segmento si quedó abierto
         if is_speech:
-            speech_end = len(audio)
-            if speech_end - speech_start >= min_speech_samples:
+            speech_end = audio_len
+            if (speech_end - speech_start) >= min_speech_samples:
                 speech_timestamps.append({'start': speech_start, 'end': speech_end})
 
         if not speech_timestamps:
@@ -313,7 +329,7 @@ class VADService:
         speech_chunks = [audio[ts['start']:ts['end']] for ts in speech_timestamps]
         result = np.concatenate(speech_chunks)
 
-        original_duration = len(audio) / sample_rate
+        original_duration = audio_len / sample_rate
         new_duration = len(result) / sample_rate
         logger.info(f"VAD (ONNX): audio truncado de {original_duration:.2f}s a {new_duration:.2f}s")
 

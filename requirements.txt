@@ -39,6 +39,7 @@ wheel==0.45.1
 toml
 python-json-logger
 pydantic-settings
+psutil>=5.9.0  # Gestión de procesos para garbage collection de zombies
 sounddevice
 silero-vad
 pytest

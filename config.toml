@@ -10,19 +10,19 @@ language = "auto"
 device = "cuda"
 compute_type = "float16"
 device_index = 0
-num_workers = 4  # Recuperar concurrencia CPU para pre-procesamiento de tensores
+num_workers = 2  # 2 workers suficientes para single stream
 
-beam_size = 4  # Subido de 3→4: mejor ROI precisión vs latencia para bilingüe
-best_of = 4  # Ajustado para coincidir con beam_size
+beam_size = 1  # Greedy decode: ~60% más rápido que beam=4
+best_of = 1  # Sin sampling múltiple
 temperature = 0.0
-vad_filter = true  # Recomendado activarlo para producción
+vad_filter = false  # DEBUGGING: Deshabilitado temporalmente para diagnosticar
 
 [whisper.vad_parameters]
 # VAD ajustado para NO cortar frases y detectar voces suaves
 threshold = 0.3  # Bajado de 0.5→0.3: más sensible a voces suaves/lejanas
 min_speech_duration_ms = 300  # Subido de 250→300: evitar falsos positivos de ruidos breves
 min_silence_duration_ms = 500  # Subido de 100→500: CRÍTICO - no cortar final de frases
-backend = "torch"  # Forzamos PyTorch por estabilidad (ONNX estaba fallando en detección)
+backend = "onnx"  # ONNX es 3-5x más rápido en CPU que PyTorch
 
 [gemini]
 model = "models/gemini-1.5-flash-latest"

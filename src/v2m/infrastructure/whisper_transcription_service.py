@@ -8,7 +8,6 @@ de la logica de bajo nivel para:
 -   realizar la transcripcion del audio grabado directamente desde la memoria.
 """
 
-import gc
 import torch
 from typing import Optional
 from faster_whisper import WhisperModel
@@ -125,7 +124,8 @@ class WhisperTranscriptionService(TranscriptionService):
             raise RecordingError("no se grabó audio o el buffer está vacío")
 
         # --- aplicar vad (smart truncation) ---
-        if self.vad_service:
+        # IMPORTANTE: Respetar config.whisper.vad_filter para habilitar/deshabilitar Silero VAD
+        if self.vad_service and config.whisper.vad_filter:
             try:
                 audio_data = self.vad_service.process(audio_data)
                 if audio_data.size == 0:
@@ -133,6 +133,8 @@ class WhisperTranscriptionService(TranscriptionService):
                     return ""
             except Exception as e:
                 logger.error(f"fallo en VAD usando audio original {e}")
+        elif not config.whisper.vad_filter:
+            logger.debug("VAD deshabilitado por configuración (vad_filter=false)")
 
         # --- transcripción con WHISPER ---
         logger.info("transcribiendo audio...")
@@ -144,14 +146,9 @@ class WhisperTranscriptionService(TranscriptionService):
             if lang == "auto":
                 lang = None  # none activa la detección automática en faster-whisper
 
-            # 2 prompt inicial optimizado (Español Latinoamericano + Inglés Técnico)
-            # Este prompt fuerza puntuación correcta, evita alucinaciones y calibra el estilo.
-            # Incluye términos técnicos de programación para mejor reconocimiento de spanglish.
-            bilingual_prompt = (
-                "La siguiente es una transcripción precisa en español latinoamericano e inglés técnico. "
-                "Por favor, mantén la puntuación correcta, nombres propios y términos de programación. "
-                "Ok, let's start coding."
-            )
+            # 2 prompt inicial compacto (spanglish técnico)
+            # Reducido a ~15 tokens vs ~40 tokens original para menor latencia
+            bilingual_prompt = "Español y código técnico. Puntuación correcta."
 
             # faster-whisper acepta numpy array directamente
             # NOTA: VAD interno DESHABILITADO - ya aplicamos Silero VAD arriba
@@ -164,7 +161,7 @@ class WhisperTranscriptionService(TranscriptionService):
                 beam_size=whisper_config.beam_size,
                 best_of=whisper_config.best_of,
                 temperature=whisper_config.temperature,
-                patience=1.5,  # Mejora precisión: explora más opciones antes de decidir
+                # patience removido: añade latencia sin beneficio para dictado
                 vad_filter=False,  # Silero VAD ya procesó el audio
             )
 
@@ -179,16 +176,8 @@ class WhisperTranscriptionService(TranscriptionService):
             logger.error(f"Error durante transcripción: {e}")
             raise e
         finally:
-            # --- LIMPIEZA DE RECURSOS (OPTIMIZADA) ---
-            # Limpieza lazy: solo gc.collect() si hay presión de memoria
-            # empty_cache() es barato (~1ms), gc.collect() es caro (~10-50ms)
+            # empty_cache() es barato (~1ms), suficiente para liberar VRAM
+            # gc.collect() removido: Python GC automático es suficiente,
+            # el thread daemon añadía ~10-50ms de overhead innecesario
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-
-            # Solo forzar GC si el heap creció mucho (>100MB desde última limpieza)
-            # Esto evita gc.collect() en cada transcripción corta
-            import sys
-            if hasattr(sys, 'getsizeof'):
-                # Programar limpieza diferida para no bloquear el retorno
-                import threading
-                threading.Thread(target=gc.collect, daemon=True).start()

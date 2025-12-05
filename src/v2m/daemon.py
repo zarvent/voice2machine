@@ -35,6 +35,8 @@ import asyncio
 import os
 import signal
 import sys
+import atexit
+import psutil
 from pathlib import Path
 from typing import Callable, Dict
 
@@ -79,12 +81,19 @@ class Daemon:
         """
         self.running = False
         self.socket_path = Path(SOCKET_PATH)
+        self.pid_file = Path("/tmp/v2m_daemon.pid")
         self.command_bus = container.get_command_bus()
+
+        # LIMPIEZA DE PROCESOS ZOMBIE (CRÍTICO)
+        self._cleanup_orphaned_processes()
 
         # limpiar flag de grabación si existe (recuperación de crash)
         if config.paths.recording_flag.exists():
             logger.warning("Limpiando flag de grabación huérfano")
             config.paths.recording_flag.unlink()
+
+        # Registrar cleanup automático al terminar proceso
+        atexit.register(self._cleanup_resources)
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """Maneja las conexiones entrantes de clientes IPC.
@@ -180,13 +189,113 @@ class Daemon:
                 self.socket_path.unlink()
 
         server = await asyncio.start_unix_server(self.handle_client, str(self.socket_path))
-        logger.info(f"Daemon listening on {self.socket_path}")
+
+        # Escribir PID file para poder rastrear el proceso
+        self.pid_file.write_text(str(os.getpid()))
+        logger.info(f"Daemon listening on {self.socket_path} (PID: {os.getpid()})")
 
         self.running = True
 
         # mantener el servidor en funcionamiento
         async with server:
             await server.serve_forever()
+
+    def _cleanup_orphaned_processes(self) -> None:
+        """LIMPIEZA AGRESIVA de TODOS los procesos v2m huérfanos.
+
+        Esta función es CRÍTICA para UX: un proceso consumiendo GPU sin
+        feedback claro se interpreta como malware o minería de criptomonedas.
+
+        Política: ZERO TOLERANCE para procesos zombie.
+        - Mata TODOS los procesos v2m excepto el actual
+        - Libera VRAM inmediatamente
+        - Limpia TODOS los archivos residuales
+        """
+        current_pid = os.getpid()
+        killed_count = 0
+
+        try:
+            # FASE 1: Matar TODOS los procesos v2m (excepto el actual)
+            for proc in psutil.process_iter(['pid', 'cmdline']):
+                try:
+                    cmdline = ' '.join(proc.info['cmdline'] or [])
+                    # Buscar procesos v2m pero excluir el actual y herramientas del IDE
+                    if ('v2m' in cmdline and
+                        proc.pid != current_pid and
+                        'language_server' not in cmdline and
+                        'jedi' not in cmdline and
+                        'health_check' not in cmdline):
+
+                        logger.warning(f"🧹 Eliminando proceso v2m huérfano PID {proc.pid}")
+                        proc.kill()
+                        try:
+                            proc.wait(timeout=3)
+                        except psutil.TimeoutExpired:
+                            pass
+                        killed_count += 1
+                        logger.info(f"✅ Proceso {proc.pid} eliminado")
+
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    pass
+
+            if killed_count > 0:
+                logger.info(f"🧹 Total: {killed_count} proceso(s) zombie eliminado(s)")
+
+                # FASE 2: Liberar VRAM inmediatamente después de matar procesos
+                try:
+                    import torch
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                        # Forzar sincronización para liberar VRAM ahora
+                        torch.cuda.synchronize()
+                except Exception:
+                    pass
+
+            # FASE 3: Limpiar TODOS los archivos residuales
+            residual_files = [
+                self.pid_file,
+                self.socket_path,
+                Path("/tmp/v2m_recording.pid"),
+            ]
+            for f in residual_files:
+                if f.exists():
+                    try:
+                        f.unlink()
+                        logger.debug(f"🧹 Archivo residual eliminado: {f}")
+                    except Exception:
+                        pass
+
+        except Exception as e:
+            logger.warning(f"Error durante limpieza agresiva: {e}")
+
+    def _cleanup_resources(self) -> None:
+        """Limpia recursos al terminar (llamado por atexit).
+
+        Libera VRAM, elimina socket y PID file para prevenir procesos zombie.
+        """
+        try:
+            logger.info("🧹 Limpiando recursos del daemon...")
+
+            # Liberar VRAM de GPU si hay modelos cargados
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    logger.info("✅ VRAM liberada")
+            except Exception as e:
+                logger.debug(f"No se pudo liberar VRAM: {e}")
+
+            # Eliminar socket
+            if self.socket_path.exists():
+                self.socket_path.unlink()
+                logger.info("✅ Socket eliminado")
+
+            # Eliminar PID file
+            if self.pid_file.exists():
+                self.pid_file.unlink()
+                logger.info("✅ PID file eliminado")
+        except Exception as e:
+            logger.error(f"Error durante cleanup: {e}")
 
     def stop(self) -> None:
         """Detiene el daemon y libera recursos.
@@ -199,8 +308,7 @@ class Daemon:
             SystemExit: Siempre termina con código 0 (exit exitoso).
         """
         logger.info("Stopping daemon...")
-        if self.socket_path.exists():
-            self.socket_path.unlink()
+        self._cleanup_resources()
         sys.exit(0)
 
     def run(self) -> None:
