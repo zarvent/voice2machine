@@ -43,7 +43,13 @@ class AudioRecorder:
         # Buffer pre-allocado para evitar reallocaciones durante grabación
         # Esto elimina el overhead de np.concatenate (era O(n²), ahora O(1))
         self.max_samples = max_duration_sec * sample_rate
-        self._buffer: np.ndarray = np.zeros(self.max_samples, dtype=np.float32)
+
+        # FIX: Support multi-channel buffer
+        if self.channels > 1:
+            self._buffer: np.ndarray = np.zeros((self.max_samples, self.channels), dtype=np.float32)
+        else:
+            self._buffer: np.ndarray = np.zeros(self.max_samples, dtype=np.float32)
+
         self._write_pos = 0
 
     def start(self):
@@ -73,7 +79,16 @@ class AudioRecorder:
                 if samples_to_write > 0:
                     # Zero-copy write al buffer pre-allocado (flatten inline)
                     end_pos = self._write_pos + samples_to_write
-                    self._buffer[self._write_pos:end_pos] = indata[:samples_to_write, 0]
+
+                    if self.channels > 1:
+                        self._buffer[self._write_pos:end_pos, :] = indata[:samples_to_write, :]
+                    else:
+                        # indata is (frames, 1) or (frames, channels), we want 1D for mono buffer
+                        # if indata has more columns but we want mono, we take channel 0.
+                        # if indata is (N, 1), we flatten it or slice.
+                        # indata[:samples_to_write, 0] gives 1D slice.
+                        self._buffer[self._write_pos:end_pos] = indata[:samples_to_write, 0]
+
                     self._write_pos = end_pos
 
         try:
@@ -123,12 +138,17 @@ class AudioRecorder:
         logger.info(f"grabación de audio detenida ({recorded_samples} samples)")
 
         if recorded_samples == 0:
+            if self.channels > 1:
+                 return np.array([], dtype=np.float32).reshape(0, self.channels)
             return np.array([], dtype=np.float32)
 
         # Zero-copy slice - retorna vista del buffer, no copia
         # IMPORTANTE: el caller debe procesar antes de la próxima grabación
         # FIX: Retornamos una copia para evitar corrupción de datos si se reinicia la grabación
-        audio = self._buffer[:recorded_samples].copy()
+        if self.channels > 1:
+            audio = self._buffer[:recorded_samples, :].copy()
+        else:
+            audio = self._buffer[:recorded_samples].copy()
 
         if save_path:
             # convertir float32 a int16 para wav (esto sí hace copia)
@@ -137,6 +157,11 @@ class AudioRecorder:
                 wf.setnchannels(self.channels)
                 wf.setsampwidth(2)  # 16 bit
                 wf.setframerate(self.sample_rate)
+                # If channels > 1, audio is 2D (samples, channels).
+                # wave.writeframes expects interleaved bytes.
+                # tobytes() on C-contiguous 2D array gives row-major bytes:
+                # row0_col0, row0_col1, row1_col0, row1_col1...
+                # This is exactly what interleaved PCM expects (L, R, L, R...).
                 wf.writeframes(audio_int16.tobytes())
 
         return audio
