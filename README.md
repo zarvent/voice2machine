@@ -61,3 +61,9 @@ B --> C[📋 reemplazar]
 ```
 
 > si no ves los diagramas, necesitas una extensión de mermaid
+
+---
+
+## licencia
+
+este proyecto está licenciado bajo la **GNU General Public License v3.0** - ver el archivo [LICENSE](LICENSE) para más detalles.
