@@ -1,4 +1,11 @@
 #!/bin/bash
+
+# This file is part of voice2machine.
+#
+# voice2machine is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 # Script de limpieza para eliminar procesos zombie de v2m
 # Uso: ./scripts/cleanup_v2m.sh [--force]
 

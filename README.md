@@ -1,5 +1,7 @@
 # 🗣️ voice2machine
 
+![GPLv3](https://img.shields.io/badge/license-GPLv3-blue.svg)
+
 *dictado por voz para cualquier campo de texto de tu sistema operativo*
 
 ---
@@ -61,3 +63,13 @@ B --> C[📋 reemplazar]
 ```
 
 > si no ves los diagramas, necesitas una extensión de mermaid
+
+---
+
+## licencia
+
+este proyecto está licenciado bajo la **GNU General Public License v3.0**.
+ver el archivo [LICENSE](LICENSE) para más detalles.
+
+voice2machine es software libre: puedes redistribuirlo y/o modificarlo
+bajo los términos de la licencia.
