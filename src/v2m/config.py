@@ -237,6 +237,34 @@ class GeminiConfig(BaseModel):
     def __getitem__(self, item):
         return getattr(self, item)
 
+
+class NotificationsConfig(BaseModel):
+    """
+    configuración para el sistema de notificaciones del escritorio
+
+    define parámetros para controlar el comportamiento de las notificaciones
+    visuales incluyendo tiempo de expiración y cierre programático
+
+    attributes:
+        expire_time_ms: tiempo en milisegundos antes de auto-cerrar la
+            notificación por defecto 3000 (3 segundos)
+        auto_dismiss: si true fuerza el cierre programático via dbus
+            necesario para unity/gnome que ignoran expire-time
+            por defecto True
+
+    example:
+        configuración en config.toml::
+
+            [notifications]
+            expire_time_ms = 5000
+            auto_dismiss = true
+    """
+    expire_time_ms: int = Field(default=3000, ge=500, le=30000)
+    auto_dismiss: bool = Field(default=True)
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
 class Settings(BaseSettings):
     """
     clase principal de configuración que agrupa todas las secciones
@@ -266,6 +294,7 @@ class Settings(BaseSettings):
     paths: PathsConfig = Field(default_factory=PathsConfig)
     whisper: WhisperConfig = Field(default_factory=WhisperConfig)
     gemini: GeminiConfig = Field(default_factory=GeminiConfig)
+    notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)
 
     model_config = SettingsConfigDict(
         env_file=".env",

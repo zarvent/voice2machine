@@ -34,3 +34,7 @@ retry_attempts = 3
 retry_min_wait = 2
 retry_max_wait = 10
 api_key = "${GEMINI_API_KEY}" # Loaded from environment variable
+
+[notifications]
+expire_time_ms = 3000  # tiempo en ms antes de auto-cerrar (3s default)
+auto_dismiss = true    # forzar cierre programático via DBUS (para Unity/GNOME)

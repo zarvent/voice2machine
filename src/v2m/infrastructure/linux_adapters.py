@@ -240,24 +240,35 @@ class LinuxClipboardAdapter(ClipboardInterface):
 
 class LinuxNotificationAdapter(NotificationInterface):
     """
-    adaptador de notificaciones para linux usando notify-send
+    adaptador de notificaciones para linux
+
+    wrapper de compatibilidad que delega al servicio de notificaciones
+    production-ready mantener esta clase para backwards compatibility
+    con código existente que importa desde linux_adapters
+
+    note:
+        para nuevos usos preferir importar directamente::
+
+            from v2m.infrastructure.notification_service import LinuxNotificationService
+
+    deprecated:
+        esta clase será removida en v3.0 usar LinuxNotificationService
     """
+
+    def __init__(self) -> None:
+        """
+        inicializa el adapter delegando al servicio de notificaciones
+        """
+        # lazy import para evitar circular imports
+        from v2m.infrastructure.notification_service import LinuxNotificationService
+        self._service = LinuxNotificationService()
+
     def notify(self, title: str, message: str) -> None:
         """
-        envía una notificación al escritorio
+        envía una notificación al escritorio con auto-dismiss
 
         args:
             title: título de la notificación
             message: mensaje de la notificación
         """
-        try:
-            # usando notify-send ya que es estándar en la mayoría de los de de linux
-            subprocess.run(
-                ["notify-send", title, message],
-                check=False,
-                stderr=subprocess.DEVNULL
-            )
-        except FileNotFoundError:
-            logger.warning("notify-send not found, notification skipped")
-        except Exception as e:
-            logger.error(f"Failed to send notification: {e}")
+        self._service.notify(title, message)
