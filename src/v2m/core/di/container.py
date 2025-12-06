@@ -61,7 +61,8 @@ from v2m.core.cqrs.command_bus import CommandBus
 from v2m.application.command_handlers import StartRecordingHandler, StopRecordingHandler, ProcessTextHandler
 from v2m.infrastructure.whisper_transcription_service import WhisperTranscriptionService
 from v2m.infrastructure.gemini_llm_service import GeminiLLMService
-from v2m.infrastructure.linux_adapters import LinuxNotificationAdapter, LinuxClipboardAdapter
+from v2m.infrastructure.linux_adapters import LinuxClipboardAdapter
+from v2m.infrastructure.notification_service import LinuxNotificationService
 from v2m.application.transcription_service import TranscriptionService
 from v2m.application.llm_service import LLMService
 from v2m.core.interfaces import NotificationInterface, ClipboardInterface
@@ -140,7 +141,7 @@ class Container:
         self.llm_service: LLMService = GeminiLLMService()
 
         # adaptadores de sistema
-        self.notification_service: NotificationInterface = LinuxNotificationAdapter()
+        self.notification_service: NotificationInterface = LinuxNotificationService()
         self.clipboard_service: ClipboardInterface = LinuxClipboardAdapter()
 
         # --- 2 instanciar manejadores de comandos ---
