@@ -13,82 +13,39 @@ _VAD_WINDOW_SIZE = 512  # Silero VAD window size para 16kHz
 
 class VADService:
     """
-    servicio para la detección de actividad de voz (vad) utilizando silero vad
+    servicio para la deteccion de actividad de voz (vad) utilizando silero vad.
 
-    soporta dos backends
-    - onnx runtime (recomendado) ~100mb footprint más rápido en cpu
-    - pytorch (fallback) ~500mb footprint necesario si onnx no está disponible
+    soporta dos backends:
+    - ONNX Runtime (recomendado): ~100MB footprint, más rápido en CPU
+    - PyTorch (fallback): ~500MB footprint, necesario si ONNX no está disponible
 
-    permite truncar los silencios del audio antes de enviarlo a whisper
-    mejorando la eficiencia y reduciendo el tiempo de inferencia
+    permite truncar los silencios del audio antes de enviarlo a whisper,
+    mejorando la eficiencia y reduciendo el tiempo de inferencia.
     """
     def __init__(self, prefer_onnx: bool = True):
         """
-        inicializa el servicio vad
+        inicializa el servicio vad.
 
         args:
-            prefer_onnx: si true intenta usar onnx runtime primero (menor footprint)
+            prefer_onnx: si true, intenta usar onnx runtime primero (menor footprint).
         """
         self.model = None
         self.utils = None
         self.get_speech_timestamps: Optional[Callable] = None
         self.disabled = False
-
-        # Determinar preferencia desde config
-        backend_config = config.whisper.vad_parameters.backend
-        self._prefer_onnx = (backend_config == "onnx")
-        if prefer_onnx is False: # Override manual si se pasa en init
-             self._prefer_onnx = False
-
+        self._prefer_onnx = prefer_onnx
         self._backend: Optional[str] = None  # 'onnx' o 'torch'
         self._onnx_session = None
         self._state: Optional[np.ndarray] = None  # Estado LSTM para ONNX
 
-    def _normalize_audio(self, audio: np.ndarray) -> np.ndarray:
-        """
-        normaliza el audio (peak normalization) para mejorar la detección del vad
-        si el volumen es muy bajo lo amplifica hasta un nivel seguro (0.9)
-
-        maneja casos edge de audio corrupto (nan/inf) retornando audio sin modificar
-        """
-        # VALIDACIÓN ROBUSTA: Detectar audio corrupto antes de procesar
-        # np.isfinite() retorna False para NaN e Inf
-        if not np.all(np.isfinite(audio)):
-            logger.warning("VAD: Audio contiene NaN o Inf, omitiendo normalización")
-            # Reemplazar NaN/Inf con ceros para evitar propagación de corrupción
-            audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
-            if audio.size == 0 or np.max(np.abs(audio)) == 0:
-                return audio  # Audio era todo NaN/Inf, retornar silencio
-
-        max_val = np.max(np.abs(audio))
-
-        # Silencio absoluto o valores demasiado pequeños para normalizar
-        # 1e-10 es un threshold seguro para evitar overflow en división
-        if max_val < 1e-10:
-            return audio
-
-        # Solo normalizar si el audio es bajo (< 0.9) para evitar distorsión en audio ya fuerte
-        # Estrategia: Peak Normalization a 0.9 si el max es bajo.
-        target = 0.9
-        if max_val < target:
-            gain = target / max_val
-            # Limitar ganancia máxima para no amplificar solo ruido de fondo excesivamente
-            # e.g., max 10x (20dB)
-            gain = min(gain, 10.0)
-
-            logger.debug(f"VAD Normalization: gain={gain:.2f}x (original max={max_val:.3f})")
-            return np.clip(audio * gain, -1.0, 1.0)
-
-        return audio
-
     def load_model(self, timeout_sec: float = 10.0):
         """
-        carga el modelo silero vad de forma perezosa con timeout
+        carga el modelo silero vad de forma perezosa con timeout.
 
-        intenta cargar onnx primero (menor footprint) fallback a pytorch
+        intenta cargar onnx primero (menor footprint), fallback a pytorch.
 
         args:
-            timeout_sec: tiempo máximo de espera en segundos
+            timeout_sec (float): tiempo maximo de espera en segundos.
         """
         if self.disabled:
             return
@@ -107,9 +64,7 @@ class VADService:
         self._load_torch_model(timeout_sec)
 
     def _load_onnx_model(self):
-        """
-        carga el modelo silero vad usando onnx runtime (~100mb footprint)
-        """
+        """Carga el modelo Silero VAD usando ONNX Runtime (~100MB footprint)."""
         import onnxruntime as ort
 
         # Descargar modelo ONNX si no existe
@@ -133,9 +88,7 @@ class VADService:
         logger.info("✅ Silero VAD cargado (ONNX Runtime - footprint reducido)")
 
     def _get_onnx_model_path(self) -> Path:
-        """
-        obtiene la ruta al modelo onnx descargándolo si es necesario
-        """
+        """Obtiene la ruta al modelo ONNX, descargándolo si es necesario."""
         # Buscar en cache local de torch hub (subcarpeta src/silero_vad/data)
         local_cache = Path.home() / ".cache" / "torch" / "hub" / "snakers4_silero-vad_master"
         local_onnx = local_cache / "src" / "silero_vad" / "data" / "silero_vad.onnx"
@@ -173,16 +126,12 @@ class VADService:
             raise FileNotFoundError(f"No se encontró modelo ONNX de Silero VAD: {e}")
 
     def _reset_onnx_states(self):
-        """
-        resetea los estados lstm para una nueva secuencia de audio
-        """
+        """Resetea los estados LSTM para una nueva secuencia de audio."""
         # Silero VAD ONNX: state shape [2, batch, 128]
         self._state = np.zeros((2, 1, 128), dtype=np.float32)
 
     def _load_torch_model(self, timeout_sec: float):
-        """
-        carga el modelo usando pytorch (fallback ~500mb footprint)
-        """
+        """Carga el modelo usando PyTorch (fallback, ~500MB footprint)."""
         logger.info("cargando modelo silero vad (PyTorch)...")
 
         exc_holder: list[Exception] = []
@@ -219,10 +168,10 @@ class VADService:
 
     def _vad_onnx(self, audio_chunk: np.ndarray, sr: int = 16000) -> float:
         """
-        ejecuta inferencia vad con onnx runtime
+        Ejecuta inferencia VAD con ONNX Runtime.
 
         args:
-            audio_chunk: chunk de audio (512 samples para 16khz)
+            audio_chunk: chunk de audio (512 samples para 16kHz)
             sr: sample rate
 
         returns:
@@ -252,22 +201,19 @@ class VADService:
 
     def process(self, audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
         """
-        procesa el audio y elimina los segmentos de silencio
+        procesa el audio y elimina los segmentos de silencio.
 
         args:
-            audio: array de numpy con el audio (float32)
-            sample_rate: frecuencia de muestreo (debe ser 8000 o 16000 para silero)
+            audio (np.ndarray): array de numpy con el audio (float32).
+            sample_rate (int): frecuencia de muestreo (debe ser 8000 o 16000 para silero).
 
         returns:
-            un nuevo array de numpy que contiene solo los segmentos de voz concatenados
-            si no se detecta voz devuelve un array vacío
+            np.ndarray: un nuevo array de numpy que contiene solo los segmentos de voz concatenados.
+            si no se detecta voz devuelve un array vacio.
         """
         # si el audio está vacío, retornar de inmediato
         if audio.size == 0:
             return np.array([], dtype=np.float32)
-
-        # Normalizar audio antes de VAD para mejorar detección en volúmenes bajos
-        audio = self._normalize_audio(audio)
 
         try:
             self.load_model()
@@ -285,63 +231,45 @@ class VADService:
             return self._process_torch(audio, sample_rate)
 
     def _process_onnx(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
-        """
-        procesa audio usando onnx backend (optimizado para latencia)
-        """
+        """Procesa audio usando ONNX backend (más eficiente)."""
         self._reset_onnx_states()
 
-        # Pre-calcular constantes (evita acceso a config en cada iteración)
         threshold = config.whisper.vad_parameters.threshold
         min_speech_samples = int(config.whisper.vad_parameters.min_speech_duration_ms * sample_rate / 1000)
         min_silence_samples = int(config.whisper.vad_parameters.min_silence_duration_ms * sample_rate / 1000)
 
-        audio_len = len(audio)
-        n_chunks = (audio_len + _VAD_WINDOW_SIZE - 1) // _VAD_WINDOW_SIZE
-
-        # Pre-allocar array de probabilidades para evitar append
-        probs = np.empty(n_chunks, dtype=np.float32)
-
-        # Procesar chunks - el loop es necesario por el estado LSTM
-        for i in range(n_chunks):
-            start = i * _VAD_WINDOW_SIZE
-            end = min(start + _VAD_WINDOW_SIZE, audio_len)
-            chunk = audio[start:end]
-
-            if len(chunk) < _VAD_WINDOW_SIZE:
-                chunk = np.pad(chunk, (0, _VAD_WINDOW_SIZE - len(chunk)))
-
-            probs[i] = self._vad_onnx(chunk, sample_rate)
-
-        # Detectar timestamps usando operaciones vectorizadas
-        is_speech_mask = probs >= threshold
+        # Procesar en chunks de 512 samples
         speech_timestamps = []
         is_speech = False
         speech_start = 0
-        silence_chunks = 0
-        min_silence_chunks = min_silence_samples // _VAD_WINDOW_SIZE
-        min_speech_chunks = min_speech_samples // _VAD_WINDOW_SIZE
+        silence_samples = 0
 
-        for i, is_chunk_speech in enumerate(is_speech_mask):
-            sample_pos = i * _VAD_WINDOW_SIZE
-            if is_chunk_speech:
+        for i in range(0, len(audio), _VAD_WINDOW_SIZE):
+            chunk = audio[i:i + _VAD_WINDOW_SIZE]
+            if len(chunk) < _VAD_WINDOW_SIZE:
+                chunk = np.pad(chunk, (0, _VAD_WINDOW_SIZE - len(chunk)))
+
+            prob = self._vad_onnx(chunk, sample_rate)
+
+            if prob >= threshold:
                 if not is_speech:
-                    speech_start = sample_pos
+                    speech_start = i
                     is_speech = True
-                silence_chunks = 0
-            elif is_speech:
-                silence_chunks += 1
-                if silence_chunks >= min_silence_chunks:
-                    speech_end = sample_pos - (silence_chunks - 1) * _VAD_WINDOW_SIZE
-                    speech_len_chunks = (speech_end - speech_start) // _VAD_WINDOW_SIZE
-                    if speech_len_chunks >= min_speech_chunks:
-                        speech_timestamps.append({'start': speech_start, 'end': speech_end})
-                    is_speech = False
-                    silence_chunks = 0
+                silence_samples = 0
+            else:
+                if is_speech:
+                    silence_samples += _VAD_WINDOW_SIZE
+                    if silence_samples >= min_silence_samples:
+                        speech_end = i - silence_samples + _VAD_WINDOW_SIZE
+                        if speech_end - speech_start >= min_speech_samples:
+                            speech_timestamps.append({'start': speech_start, 'end': speech_end})
+                        is_speech = False
+                        silence_samples = 0
 
         # Cerrar último segmento si quedó abierto
         if is_speech:
-            speech_end = audio_len
-            if (speech_end - speech_start) >= min_speech_samples:
+            speech_end = len(audio)
+            if speech_end - speech_start >= min_speech_samples:
                 speech_timestamps.append({'start': speech_start, 'end': speech_end})
 
         if not speech_timestamps:
@@ -352,16 +280,14 @@ class VADService:
         speech_chunks = [audio[ts['start']:ts['end']] for ts in speech_timestamps]
         result = np.concatenate(speech_chunks)
 
-        original_duration = audio_len / sample_rate
+        original_duration = len(audio) / sample_rate
         new_duration = len(result) / sample_rate
         logger.info(f"VAD (ONNX): audio truncado de {original_duration:.2f}s a {new_duration:.2f}s")
 
         return result
 
     def _process_torch(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
-        """
-        procesa audio usando pytorch backend (fallback)
-        """
+        """Procesa audio usando PyTorch backend (fallback)."""
         if self.model is None or self.get_speech_timestamps is None:
             return audio
 

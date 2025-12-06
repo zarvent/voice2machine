@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-benchmark de latencia end-to-end para voice2machine
+Benchmark de latencia End-to-End para voice2machine.
 
-mide
-1 cold start tiempo de carga del daemon y modelos
-2 inferencia whisper tiempo de transcripción (gpu/cpu)
-3 vad tiempo de procesamiento de silencios (onnx vs pytorch)
-4 gemini latencia de red al llm
-5 e2e latencia total desde stop_recording hasta clipboard
+Mide:
+1. Cold Start: Tiempo de carga del daemon y modelos
+2. Inferencia Whisper: Tiempo de transcripción (GPU/CPU)
+3. VAD: Tiempo de procesamiento de silencios (ONNX vs PyTorch)
+4. Gemini: Latencia de red al LLM
+5. E2E: Latencia total desde STOP_RECORDING hasta clipboard
 
-uso
+Uso:
     python scripts/benchmark_latency.py [--iterations N] [--audio-file PATH]
 """
 
@@ -29,39 +29,28 @@ import numpy as np
 
 @dataclass
 class BenchmarkResult:
-    """
-    resultado de un benchmark individual
-
-    attributes:
-        name: nombre del benchmark
-        times_ms: lista de tiempos medidos en milisegundos
-    """
+    """Resultado de un benchmark individual."""
     name: str
     times_ms: List[float] = field(default_factory=list)
 
     @property
     def mean(self) -> float:
-        """calcula la media de los tiempos"""
         return statistics.mean(self.times_ms) if self.times_ms else 0
 
     @property
     def std(self) -> float:
-        """calcula la desviación estándar de los tiempos"""
         return statistics.stdev(self.times_ms) if len(self.times_ms) > 1 else 0
 
     @property
     def min(self) -> float:
-        """obtiene el tiempo mínimo"""
         return min(self.times_ms) if self.times_ms else 0
 
     @property
     def max(self) -> float:
-        """obtiene el tiempo máximo"""
         return max(self.times_ms) if self.times_ms else 0
 
     @property
     def p95(self) -> float:
-        """calcula el percentil 95 de los tiempos"""
         if not self.times_ms:
             return 0
         sorted_times = sorted(self.times_ms)
@@ -70,16 +59,7 @@ class BenchmarkResult:
 
 
 def generate_test_audio(duration_sec: float = 3.0, sample_rate: int = 16000) -> np.ndarray:
-    """
-    genera audio de prueba sintético (ruido blanco + silencios)
-
-    args:
-        duration_sec: duración en segundos
-        sample_rate: frecuencia de muestreo
-
-    returns:
-        array numpy con el audio generado
-    """
+    """Genera audio de prueba sintético (ruido blanco + silencios)."""
     total_samples = int(duration_sec * sample_rate)
 
     # Crear audio con patrón: silencio - ruido - silencio - ruido - silencio
@@ -107,15 +87,7 @@ def generate_test_audio(duration_sec: float = 3.0, sample_rate: int = 16000) -> 
 
 
 def benchmark_vad(iterations: int = 10) -> BenchmarkResult:
-    """
-    benchmark del servicio vad
-
-    args:
-        iterations: número de iteraciones
-
-    returns:
-        objeto benchmarkresult con los resultados
-    """
+    """Benchmark del servicio VAD."""
     from v2m.infrastructure.vad_service import VADService
 
     result = BenchmarkResult(name="VAD Processing")
@@ -146,15 +118,7 @@ def benchmark_vad(iterations: int = 10) -> BenchmarkResult:
 
 
 def benchmark_whisper(iterations: int = 5) -> BenchmarkResult:
-    """
-    benchmark de transcripción whisper
-
-    args:
-        iterations: número de iteraciones
-
-    returns:
-        objeto benchmarkresult con los resultados
-    """
+    """Benchmark de transcripción Whisper."""
     from v2m.infrastructure.whisper_transcription_service import WhisperTranscriptionService
     from v2m.infrastructure.vad_service import VADService
 
@@ -198,15 +162,7 @@ def benchmark_whisper(iterations: int = 5) -> BenchmarkResult:
 
 
 def benchmark_audio_buffer(iterations: int = 20) -> BenchmarkResult:
-    """
-    benchmark del buffer de audio (concatenación)
-
-    args:
-        iterations: número de iteraciones
-
-    returns:
-        objeto benchmarkresult con los resultados
-    """
+    """Benchmark del buffer de audio (concatenación)."""
     from v2m.infrastructure.audio.recorder import AudioRecorder
 
     result = BenchmarkResult(name="Audio Buffer (stop)")
@@ -243,12 +199,7 @@ def benchmark_audio_buffer(iterations: int = 20) -> BenchmarkResult:
 
 
 def benchmark_cold_start() -> BenchmarkResult:
-    """
-    mide el tiempo de cold start (importación del container)
-
-    returns:
-        objeto benchmarkresult con el resultado
-    """
+    """Mide el tiempo de cold start (importación del container)."""
     result = BenchmarkResult(name="Cold Start (container)")
 
     # Solo una medición porque es destructiva
@@ -269,12 +220,7 @@ def benchmark_cold_start() -> BenchmarkResult:
 
 
 def print_results(results: List[BenchmarkResult]):
-    """
-    imprime resultados en formato tabla
-
-    args:
-        results: lista de objetos benchmarkresult
-    """
+    """Imprime resultados en formato tabla."""
     print("\n" + "=" * 70)
     print("📊 RESULTADOS DEL BENCHMARK")
     print("=" * 70)
@@ -303,9 +249,6 @@ def print_results(results: List[BenchmarkResult]):
 
 
 def main():
-    """
-    función principal para ejecutar los benchmarks
-    """
     parser = argparse.ArgumentParser(description="Benchmark de latencia v2m")
     parser.add_argument("--iterations", "-n", type=int, default=10,
                         help="Número de iteraciones por benchmark")
