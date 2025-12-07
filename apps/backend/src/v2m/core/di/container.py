@@ -69,6 +69,7 @@ from v2m.core.interfaces import NotificationInterface, ClipboardInterface
 
 from v2m.infrastructure.vad_service import VADService
 from v2m.core.logging import logger
+from v2m.config import config
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -130,7 +131,9 @@ class Container:
         # --- 1 instanciar servicios (como singletons) ---
         # aquí se decide qué implementación concreta usar para cada interfaz
         # si quisiéramos cambiar de GEMINI a OPENAI solo cambiaríamos esta línea
-        self.vad_service = VADService()
+        # FIX: Respetar configuración de backend VAD (ONNX vs PyTorch)
+        prefer_onnx = (config.whisper.vad_parameters.backend == "onnx")
+        self.vad_service = VADService(prefer_onnx=prefer_onnx)
         self.transcription_service: TranscriptionService = WhisperTranscriptionService(vad_service=self.vad_service)
 
         # threadpoolexecutor para warmup - libera el gil mejor que threading.thread
