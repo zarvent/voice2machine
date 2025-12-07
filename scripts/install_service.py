@@ -161,8 +161,12 @@ def install_service() -> None:
     # 1. Directorio de destino
     SYSTEMD_USER_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 2. Rutas absolutas
-    current_dir = Path.cwd().resolve()
+    # 2. Rutas absolutas - Detectar estructura monorepo
+    repo_root = Path.cwd().resolve()
+    if (repo_root / "apps" / "backend").exists():
+        current_dir = repo_root / "apps" / "backend"
+    else:
+        current_dir = repo_root  # Fallback para estructura legacy
     venv_python = current_dir / "venv/bin/python"
 
     # 2.1 Validar entornos virtuales duplicados

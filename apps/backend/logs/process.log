@@ -1,0 +1,87 @@
+[2025-11-15 17:24:18] Texto original (52 caracteres)
+[2025-11-15 17:24:27] Procesamiento exitoso (2451 caracteres)
+[2025-11-15 17:24:54] Texto original (39 caracteres)
+[2025-11-15 17:25:02] Procesamiento exitoso (1871 caracteres)
+[2025-11-15 17:29:54] Texto original (445 caracteres)
+[2025-11-15 17:30:04] Procesamiento exitoso (2420 caracteres)
+[2025-11-15 18:03:27] Texto original (117 caracteres)
+[2025-11-15 18:03:50] Procesamiento exitoso (5976 caracteres)
+[2025-11-15 18:11:21] Texto original (185 caracteres)
+[2025-11-15 18:11:49] Procesamiento exitoso (7947 caracteres)
+[2025-11-15 18:30:31] Texto original (262 caracteres)
+[2025-11-15 18:30:54] Procesamiento exitoso (6823 caracteres)
+[2025-11-15 23:47:55] Texto original (862 caracteres)
+[2025-11-15 23:48:30] Procesamiento exitoso (8657 caracteres)
+[2025-11-15 23:56:47] Texto original (862 caracteres)
+[2025-11-15 23:57:06] Texto original (862 caracteres)
+[2025-11-15 23:57:11] STDERR python: 2025-11-15 23:56:47,497 - INFO - Inicializado Perplexity | modelo=sonar-reasoning | temperatura=0.3
+2025-11-15 23:56:47,497 - INFO - Procesando 862 caracteres con Perplexity
+2025-11-15 23:57:11,081 - INFO - Resultado: 7809 caracteres
+[2025-11-15 23:57:11] Procesamiento exitoso (7809 caracteres)
+[2025-11-15 23:57:31] STDERR python: 2025-11-15 23:57:06,421 - INFO - Inicializado Perplexity | modelo=sonar-reasoning | temperatura=0.3
+2025-11-15 23:57:06,421 - INFO - Procesando 862 caracteres con Perplexity
+2025-11-15 23:57:31,803 - INFO - Resultado: 8147 caracteres
+[2025-11-15 23:57:31] Procesamiento exitoso (8147 caracteres)
+[2025-11-16 00:03:55] Texto original (862 caracteres)
+[2025-11-16 00:04:20] STDERR python: 2025-11-16 00:03:55,788 - INFO - Inicializado Perplexity | modelo=sonar-reasoning | temperatura=0.3
+2025-11-16 00:03:55,789 - INFO - Procesando 862 caracteres con Perplexity
+2025-11-16 00:04:20,791 - INFO - Resultado: 8232 caracteres
+[2025-11-16 00:04:20] Procesamiento exitoso (8232 caracteres)
+[2025-11-16 00:35:55] Texto original (862 caracteres)
+[2025-11-16 00:36:06] STDERR python: 2025-11-16 00:35:55,896 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:35:55,954 - INFO - Inicializado Gemini | modelo=models/gemini-2.5-flash | temperatura=0.3
+2025-11-16 00:35:55,955 - INFO - Procesando 862 caracteres con Gemini
+2025-11-16 00:35:55,958 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:36:06,325 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:36:06,327 - INFO - Resultado: 876 caracteres
+[2025-11-16 00:36:06] Procesamiento exitoso (876 caracteres)
+[2025-11-16 00:43:19] Texto original (1633 caracteres)
+[2025-11-16 00:43:53] STDERR python: 2025-11-16 00:43:19,866 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:43:19,915 - INFO - Inicializado Gemini | modelo=models/gemini-2.5-flash | temperatura=0.3
+2025-11-16 00:43:19,915 - INFO - Procesando 1632 caracteres con Gemini
+2025-11-16 00:43:19,918 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:43:30,568 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:43:32,569 - INFO - Procesando 1632 caracteres con Gemini
+2025-11-16 00:43:32,569 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:43:42,044 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:43:44,045 - INFO - Procesando 1632 caracteres con Gemini
+2025-11-16 00:43:44,045 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:43:53,411 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:43:53,412 - ERROR - Error procesando texto: RetryError[<Future at 0x7147159d6c00 state=finished raised AttributeError>]
+Traceback (most recent call last):
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 480, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/llm_processor.py", line 209, in refine
+    result = response.text.strip()
+             ^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'strip'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/zarvent/whisper-dictation/llm_processor.py", line 224, in main
+    refined_text = processor.refine(input_text)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 338, in wrapped_f
+    return copy(f, *args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 477, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 378, in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 421, in exc_check
+    raise retry_exc from fut.exception()
+tenacity.RetryError: RetryError[<Future at 0x7147159d6c00 state=finished raised AttributeError>]
+[2025-11-16 00:43:53] ERROR: El script de Python falló con código 1
+[2025-11-16 00:43:53] Salida de error: 
+[2025-11-16 00:48:40] Texto original (381 caracteres)
+[2025-11-16 00:48:49] STDERR python: 2025-11-16 00:48:41,225 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:48:41,276 - INFO - Inicializado Gemini | modelo=models/gemini-2.5-flash | temperatura=0.3
+2025-11-16 00:48:41,276 - INFO - Procesando 380 caracteres con Gemini
+2025-11-16 00:48:41,279 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:48:49,544 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:48:49,545 - INFO - Resultado: 392 caracteres
+[2025-11-16 00:48:49] Procesamiento exitoso (392 caracteres)

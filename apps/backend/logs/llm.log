@@ -1,0 +1,336 @@
+2025-11-15 17:24:18,974 - INFO - Inicializado Perplexity con modelo sonar-pro
+2025-11-15 17:24:18,974 - INFO - Procesando 52 caracteres con Perplexity
+2025-11-15 17:24:27,549 - INFO - Resultado: 2240 caracteres
+2025-11-15 17:24:54,091 - INFO - Inicializado Perplexity con modelo sonar-pro
+2025-11-15 17:24:54,092 - INFO - Procesando 39 caracteres con Perplexity
+2025-11-15 17:25:02,743 - INFO - Resultado: 1660 caracteres
+2025-11-15 17:29:54,602 - INFO - Inicializado Perplexity con modelo sonar-pro
+2025-11-15 17:29:54,602 - INFO - Procesando 445 caracteres con Perplexity
+2025-11-15 17:30:04,238 - INFO - Resultado: 2208 caracteres
+2025-11-15 18:03:27,343 - INFO - Inicializado Perplexity con modelo sonar-reasoning
+2025-11-15 18:03:27,343 - INFO - Procesando 117 caracteres con Perplexity
+2025-11-15 18:03:50,112 - INFO - Resultado: 5758 caracteres
+2025-11-15 18:11:21,732 - INFO - Inicializado Perplexity con modelo sonar-reasoning
+2025-11-15 18:11:21,732 - INFO - Procesando 185 caracteres con Perplexity
+2025-11-15 18:11:49,547 - INFO - Resultado: 7729 caracteres
+2025-11-15 18:30:31,971 - INFO - Inicializado Perplexity con modelo sonar-reasoning
+2025-11-15 18:30:31,971 - INFO - Procesando 262 caracteres con Perplexity
+2025-11-15 18:30:54,066 - INFO - Resultado: 6605 caracteres
+2025-11-15 23:47:55,247 - INFO - Inicializado Perplexity | modelo=sonar-reasoning | temperatura=0.3
+2025-11-15 23:47:55,248 - INFO - Procesando 862 caracteres con Perplexity
+2025-11-15 23:48:30,079 - INFO - Resultado: 8423 caracteres
+2025-11-15 23:56:47,497 - INFO - Inicializado Perplexity | modelo=sonar-reasoning | temperatura=0.3
+2025-11-15 23:56:47,497 - INFO - Procesando 862 caracteres con Perplexity
+2025-11-15 23:57:06,421 - INFO - Inicializado Perplexity | modelo=sonar-reasoning | temperatura=0.3
+2025-11-15 23:57:06,421 - INFO - Procesando 862 caracteres con Perplexity
+2025-11-15 23:57:11,081 - INFO - Resultado: 7809 caracteres
+2025-11-15 23:57:31,803 - INFO - Resultado: 8147 caracteres
+2025-11-16 00:03:55,788 - INFO - Inicializado Perplexity | modelo=sonar-reasoning | temperatura=0.3
+2025-11-16 00:03:55,789 - INFO - Procesando 862 caracteres con Perplexity
+2025-11-16 00:04:20,791 - INFO - Resultado: 8232 caracteres
+2025-11-16 00:29:53,379 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:29:53,435 - INFO - Inicializado Gemini | modelo=gemini-2.0-flash-exp | temperatura=0.3
+2025-11-16 00:29:53,435 - INFO - Procesando 58 caracteres con Gemini
+2025-11-16 00:29:53,439 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:29:54,577 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent "HTTP/1.1 429 Too Many Requests"
+2025-11-16 00:29:56,579 - INFO - Procesando 58 caracteres con Gemini
+2025-11-16 00:29:56,579 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:29:56,884 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent "HTTP/1.1 429 Too Many Requests"
+2025-11-16 00:29:58,885 - INFO - Procesando 58 caracteres con Gemini
+2025-11-16 00:29:58,885 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:29:59,187 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent "HTTP/1.1 429 Too Many Requests"
+2025-11-16 00:29:59,188 - ERROR - Error procesando texto: RetryError[<Future at 0x71e2a2f6a180 state=finished raised ClientError>]
+Traceback (most recent call last):
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 480, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/llm_processor.py", line 203, in refine
+    response = self.client.models.generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/models.py", line 5076, in generate_content
+    response = self._generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/models.py", line 3858, in _generate_content
+    response = self._api_client.request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/_api_client.py", line 1330, in request
+    response = self._request(http_request, http_options, stream=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/_api_client.py", line 1166, in _request
+    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 477, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 378, in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 420, in exc_check
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 187, in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 480, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/_api_client.py", line 1143, in _request_once
+    errors.APIError.raise_for_response(response)
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/errors.py", line 106, in raise_for_response
+    cls.raise_error(response.status_code, response_json, response)
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/errors.py", line 131, in raise_error
+    raise ClientError(status_code, response_json, response)
+google.genai.errors.ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/usage?tab=rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-exp\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-exp\nPlease retry in 911.179185ms.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash-exp', 'location': 'global'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash-exp', 'location': 'global'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '0s'}]}}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/zarvent/whisper-dictation/llm_processor.py", line 224, in main
+    refined_text = processor.refine(input_text)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 338, in wrapped_f
+    return copy(f, *args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 477, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 378, in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 421, in exc_check
+    raise retry_exc from fut.exception()
+tenacity.RetryError: RetryError[<Future at 0x71e2a2f6a180 state=finished raised ClientError>]
+2025-11-16 00:30:40,401 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:30:40,455 - INFO - Inicializado Gemini | modelo=gemini-1.5-flash | temperatura=0.3
+2025-11-16 00:30:40,456 - INFO - Procesando 58 caracteres con Gemini
+2025-11-16 00:30:40,459 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:30:41,640 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent "HTTP/1.1 404 Not Found"
+2025-11-16 00:30:43,641 - INFO - Procesando 58 caracteres con Gemini
+2025-11-16 00:30:43,642 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:30:43,989 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent "HTTP/1.1 404 Not Found"
+2025-11-16 00:30:45,989 - INFO - Procesando 58 caracteres con Gemini
+2025-11-16 00:30:45,990 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:30:46,344 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent "HTTP/1.1 404 Not Found"
+2025-11-16 00:30:46,345 - ERROR - Error procesando texto: RetryError[<Future at 0x7f576e4714c0 state=finished raised ClientError>]
+Traceback (most recent call last):
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 480, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/llm_processor.py", line 203, in refine
+    response = self.client.models.generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/models.py", line 5076, in generate_content
+    response = self._generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/models.py", line 3858, in _generate_content
+    response = self._api_client.request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/_api_client.py", line 1330, in request
+    response = self._request(http_request, http_options, stream=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/_api_client.py", line 1166, in _request
+    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 477, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 378, in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 420, in exc_check
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 187, in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 480, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/_api_client.py", line 1143, in _request_once
+    errors.APIError.raise_for_response(response)
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/errors.py", line 106, in raise_for_response
+    cls.raise_error(response.status_code, response_json, response)
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/errors.py", line 131, in raise_error
+    raise ClientError(status_code, response_json, response)
+google.genai.errors.ClientError: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.', 'status': 'NOT_FOUND'}}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/zarvent/whisper-dictation/llm_processor.py", line 224, in main
+    refined_text = processor.refine(input_text)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 338, in wrapped_f
+    return copy(f, *args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 477, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 378, in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 421, in exc_check
+    raise retry_exc from fut.exception()
+tenacity.RetryError: RetryError[<Future at 0x7f576e4714c0 state=finished raised ClientError>]
+2025-11-16 00:31:04,447 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:31:04,505 - INFO - Inicializado Gemini | modelo=models/gemini-1.5-flash | temperatura=0.3
+2025-11-16 00:31:04,506 - INFO - Procesando 58 caracteres con Gemini
+2025-11-16 00:31:04,510 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:31:05,700 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent "HTTP/1.1 404 Not Found"
+2025-11-16 00:31:07,701 - INFO - Procesando 58 caracteres con Gemini
+2025-11-16 00:31:07,701 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:31:08,054 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent "HTTP/1.1 404 Not Found"
+2025-11-16 00:31:10,054 - INFO - Procesando 58 caracteres con Gemini
+2025-11-16 00:31:10,055 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:31:10,306 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent "HTTP/1.1 404 Not Found"
+2025-11-16 00:31:10,306 - ERROR - Error procesando texto: RetryError[<Future at 0x720d5b57d400 state=finished raised ClientError>]
+Traceback (most recent call last):
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 480, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/llm_processor.py", line 203, in refine
+    response = self.client.models.generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/models.py", line 5076, in generate_content
+    response = self._generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/models.py", line 3858, in _generate_content
+    response = self._api_client.request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/_api_client.py", line 1330, in request
+    response = self._request(http_request, http_options, stream=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/_api_client.py", line 1166, in _request
+    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 477, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 378, in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 420, in exc_check
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 187, in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 480, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/_api_client.py", line 1143, in _request_once
+    errors.APIError.raise_for_response(response)
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/errors.py", line 106, in raise_for_response
+    cls.raise_error(response.status_code, response_json, response)
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/google/genai/errors.py", line 131, in raise_error
+    raise ClientError(status_code, response_json, response)
+google.genai.errors.ClientError: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.', 'status': 'NOT_FOUND'}}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/zarvent/whisper-dictation/llm_processor.py", line 224, in main
+    refined_text = processor.refine(input_text)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 338, in wrapped_f
+    return copy(f, *args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 477, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 378, in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 421, in exc_check
+    raise retry_exc from fut.exception()
+tenacity.RetryError: RetryError[<Future at 0x720d5b57d400 state=finished raised ClientError>]
+2025-11-16 00:31:55,784 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:31:55,842 - INFO - Inicializado Gemini | modelo=models/gemini-2.5-flash | temperatura=0.3
+2025-11-16 00:31:55,843 - INFO - Procesando 79 caracteres con Gemini
+2025-11-16 00:31:55,847 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:32:02,620 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:32:02,622 - INFO - Resultado: 79 caracteres
+2025-11-16 00:32:22,827 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:32:22,880 - INFO - Inicializado Gemini | modelo=models/gemini-2.5-flash | temperatura=0.3
+2025-11-16 00:32:22,880 - INFO - Procesando 55 caracteres con Gemini
+2025-11-16 00:32:22,884 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:32:27,210 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:32:27,212 - INFO - Resultado: 55 caracteres
+2025-11-16 00:35:11,687 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:35:11,743 - INFO - Inicializado Gemini | modelo=models/gemini-2.5-flash | temperatura=0.3
+2025-11-16 00:35:11,743 - INFO - Procesando 72 caracteres con Gemini
+2025-11-16 00:35:11,747 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:35:17,822 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:35:17,824 - INFO - Resultado: 73 caracteres
+2025-11-16 00:35:55,896 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:35:55,954 - INFO - Inicializado Gemini | modelo=models/gemini-2.5-flash | temperatura=0.3
+2025-11-16 00:35:55,955 - INFO - Procesando 862 caracteres con Gemini
+2025-11-16 00:35:55,958 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:36:06,325 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:36:06,327 - INFO - Resultado: 876 caracteres
+2025-11-16 00:36:56,823 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:36:56,878 - INFO - Inicializado Gemini | modelo=models/gemini-2.5-flash | temperatura=0.3
+2025-11-16 00:36:56,879 - INFO - Procesando 130 caracteres con Gemini
+2025-11-16 00:36:56,882 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:37:03,081 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:37:03,082 - INFO - Resultado: 130 caracteres
+2025-11-16 00:43:19,866 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:43:19,915 - INFO - Inicializado Gemini | modelo=models/gemini-2.5-flash | temperatura=0.3
+2025-11-16 00:43:19,915 - INFO - Procesando 1632 caracteres con Gemini
+2025-11-16 00:43:19,918 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:43:30,568 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:43:32,569 - INFO - Procesando 1632 caracteres con Gemini
+2025-11-16 00:43:32,569 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:43:42,044 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:43:44,045 - INFO - Procesando 1632 caracteres con Gemini
+2025-11-16 00:43:44,045 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:43:53,411 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:43:53,412 - ERROR - Error procesando texto: RetryError[<Future at 0x7147159d6c00 state=finished raised AttributeError>]
+Traceback (most recent call last):
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 480, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/llm_processor.py", line 209, in refine
+    result = response.text.strip()
+             ^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'strip'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/zarvent/whisper-dictation/llm_processor.py", line 224, in main
+    refined_text = processor.refine(input_text)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 338, in wrapped_f
+    return copy(f, *args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 477, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 378, in iter
+    result = action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/zarvent/whisper-dictation/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 421, in exc_check
+    raise retry_exc from fut.exception()
+tenacity.RetryError: RetryError[<Future at 0x7147159d6c00 state=finished raised AttributeError>]
+2025-11-16 00:48:41,225 - WARNING - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2025-11-16 00:48:41,276 - INFO - Inicializado Gemini | modelo=models/gemini-2.5-flash | temperatura=0.3
+2025-11-16 00:48:41,276 - INFO - Procesando 380 caracteres con Gemini
+2025-11-16 00:48:41,279 - INFO - AFC is enabled with max remote calls: 10.
+2025-11-16 00:48:49,544 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-11-16 00:48:49,545 - INFO - Resultado: 392 caracteres

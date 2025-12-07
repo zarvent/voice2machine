@@ -61,7 +61,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Rutas del proyecto
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+PROJECT_ROOT = Path(__file__).parent.parent.resolve() / "apps" / "backend"
 VENV_DIR = PROJECT_ROOT / "venv"
 LOGS_DIR = PROJECT_ROOT / "logs"
 """Path: Directorio de archivos de log."""

@@ -65,7 +65,7 @@ from datetime import datetime, timedelta
 import subprocess
 
 # Configuración - Puedes ajustar estos valores si lo necesitas
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+PROJECT_ROOT = Path(__file__).parent.parent.resolve() / "apps" / "backend"
 VENV_PRIMARY = PROJECT_ROOT / "venv"
 VENV_DUPLICATE = PROJECT_ROOT / ".venv"
 LOGS_DIR = PROJECT_ROOT / "logs"
