@@ -61,6 +61,7 @@ from v2m.core.cqrs.command_bus import CommandBus
 from v2m.application.command_handlers import StartRecordingHandler, StopRecordingHandler, ProcessTextHandler
 from v2m.infrastructure.whisper_transcription_service import WhisperTranscriptionService
 from v2m.infrastructure.gemini_llm_service import GeminiLLMService
+from v2m.infrastructure.local_llm_service import LocalLLMService
 from v2m.infrastructure.linux_adapters import LinuxClipboardAdapter
 from v2m.infrastructure.notification_service import LinuxNotificationService
 from v2m.application.transcription_service import TranscriptionService
@@ -68,6 +69,7 @@ from v2m.application.llm_service import LLMService
 from v2m.core.interfaces import NotificationInterface, ClipboardInterface
 
 from v2m.infrastructure.vad_service import VADService
+from v2m.config import config
 from v2m.core.logging import logger
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -138,7 +140,13 @@ class Container:
         self._warmup_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="warmup")
         self._warmup_future = self._warmup_executor.submit(self._preload_models)
 
-        self.llm_service: LLMService = GeminiLLMService()
+        # --- selección de backend LLM según configuración ---
+        if config.llm.backend == "local":
+            self.llm_service: LLMService = LocalLLMService()
+            logger.info("LLM backend: local (llama.cpp)")
+        else:
+            self.llm_service: LLMService = GeminiLLMService()
+            logger.info("LLM backend: gemini (cloud)")
 
         # adaptadores de sistema
         self.notification_service: NotificationInterface = LinuxNotificationService()

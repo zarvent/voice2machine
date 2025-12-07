@@ -8,3 +8,6 @@ __pycache__/
 .env.*
 logs/*.log
 daemon_startup.log
+
+# modelos GGUF locales (muy pesados para git)
+*.gguf

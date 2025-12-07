@@ -90,23 +90,33 @@ start_daemon() {
     export PYTHONPATH="${PROJECT_DIR}/src"
 
     # --- Configurar LD_LIBRARY_PATH para CUDA/cuDNN ---
-    # Buscar librerías nvidia en el venv
+    # Buscar librerías nvidia en el venv (necesario para whisper y llama-cpp-python)
     VENV_LIB="${PROJECT_DIR}/venv/lib/python3.12/site-packages/nvidia"
     CUDA_PATHS=""
 
     if [ -d "${VENV_LIB}" ]; then
-        # Agregar rutas de cudnn y cublas si existen
-        if [ -d "${VENV_LIB}/cudnn/lib" ]; then
-            CUDA_PATHS="${VENV_LIB}/cudnn/lib"
-        fi
+        # Paquetes nvidia que contienen libs necesarias para CUDA
+        NVIDIA_PACKAGES=(
+            "cuda_runtime"
+            "cudnn"
+            "cublas"
+            "cufft"
+            "curand"
+            "cusolver"
+            "cusparse"
+            "nvjitlink"
+        )
 
-        if [ -d "${VENV_LIB}/cublas/lib" ]; then
-            if [ -n "${CUDA_PATHS}" ]; then
-                CUDA_PATHS="${CUDA_PATHS}:${VENV_LIB}/cublas/lib"
-            else
-                CUDA_PATHS="${VENV_LIB}/cublas/lib"
+        for pkg in "${NVIDIA_PACKAGES[@]}"; do
+            lib_path="${VENV_LIB}/${pkg}/lib"
+            if [ -d "$lib_path" ]; then
+                if [ -z "${CUDA_PATHS}" ]; then
+                    CUDA_PATHS="$lib_path"
+                else
+                    CUDA_PATHS="${CUDA_PATHS}:${lib_path}"
+                fi
             fi
-        fi
+        done
     fi
 
     # Agregar al LD_LIBRARY_PATH existente

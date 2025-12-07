@@ -50,7 +50,7 @@ notas
 """
 
 from pathlib import Path
-from typing import Optional, Tuple, Type
+from typing import Literal, Optional, Tuple, Type
 from pydantic import BaseModel, Field
 from pydantic_settings import (
     BaseSettings,
@@ -265,6 +265,71 @@ class NotificationsConfig(BaseModel):
     def __getitem__(self, item):
         return getattr(self, item)
 
+
+class LocalLLMConfig(BaseModel):
+    """
+    configuración para el modelo de lenguaje local usando llama.cpp
+
+    permite ejecutar modelos GGUF (como Qwen, Llama, Phi, Mistral) localmente
+    en GPU sin depender de APIs externas
+
+    attributes:
+        model_path: ruta relativa al archivo GGUF del modelo desde BASE_DIR
+            por defecto usa Qwen2.5-3B-Instruct Q4_K_M
+        n_gpu_layers: número de capas a cargar en GPU usar -1 para todas
+            las capas (full GPU offload) por defecto -1
+        n_ctx: tamaño del context window en tokens por defecto 2048
+        temperature: temperatura para generación (0.0-2.0) valores bajos
+            = respuestas más determinísticas por defecto 0.3
+        max_tokens: máximo de tokens a generar en la respuesta por defecto 512
+
+    example:
+        configuración en config.toml::
+
+            [llm.local]
+            model_path = "models/qwen2.5-3b-instruct-q4_k_m.gguf"
+            n_gpu_layers = -1
+            temperature = 0.3
+    """
+    model_path: Path = Field(default=Path("models/qwen2.5-3b-instruct-q4_k_m.gguf"))
+    n_gpu_layers: int = Field(default=-1)
+    n_ctx: int = Field(default=2048, ge=512, le=32768)
+    temperature: float = Field(default=0.3, ge=0.0, le=2.0)
+    max_tokens: int = Field(default=512, ge=1, le=4096)
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+
+class LLMConfig(BaseModel):
+    """
+    configuración del servicio LLM con selector de backend
+
+    permite elegir entre un modelo local (llama.cpp) o la API de Gemini
+    el backend se selecciona mediante la opción ``backend``
+
+    attributes:
+        backend: selector del backend a usar
+            - "local": modelo GGUF local con llama.cpp (offline)
+            - "gemini": API de Google Gemini (cloud)
+            por defecto "local"
+        local: configuración específica para el backend local
+
+    example:
+        configuración en config.toml::
+
+            [llm]
+            backend = "local"
+
+            [llm.local]
+            model_path = "models/qwen2.5-3b-instruct-q4_k_m.gguf"
+    """
+    backend: Literal["local", "gemini"] = Field(default="local")
+    local: LocalLLMConfig = Field(default_factory=LocalLLMConfig)
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
 class Settings(BaseSettings):
     """
     clase principal de configuración que agrupa todas las secciones
@@ -295,6 +360,7 @@ class Settings(BaseSettings):
     whisper: WhisperConfig = Field(default_factory=WhisperConfig)
     gemini: GeminiConfig = Field(default_factory=GeminiConfig)
     notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)
+    llm: LLMConfig = Field(default_factory=LLMConfig)
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -38,3 +38,13 @@ api_key = "${GEMINI_API_KEY}" # Loaded from environment variable
 [notifications]
 expire_time_ms = 3000  # tiempo en ms antes de auto-cerrar (3s default)
 auto_dismiss = true    # forzar cierre programático via DBUS (para Unity/GNOME)
+
+[llm]
+backend = "local"  # "local" para modelo local (Qwen + llama.cpp), "gemini" para API cloud
+
+[llm.local]
+model_path = "models/qwen2.5-3b-instruct-q4_k_m.gguf"
+n_gpu_layers = -1   # -1 = todas las capas en GPU (full offload)
+n_ctx = 2048        # context window en tokens
+temperature = 0.3   # 0.0-2.0, más bajo = más determinístico
+max_tokens = 512    # máximo de tokens a generar
