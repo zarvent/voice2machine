@@ -15,56 +15,56 @@
 # You should have received a copy of the GNU General Public License
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 #
-# v2m-gemini.sh - Script de procesamiento de texto con Gemini
+# v2m-gemini.sh - SCRIPT DE PROCESAMIENTO DE TEXTO CON GEMINI
 #
-# DESCRIPCIÓN:
-#   Este script envía texto directamente al procesador de V2M para
-#   ser procesado por Gemini AI. Útil para pruebas rápidas o
-#   integración con otros scripts.
+# DESCRIPCIÓN
+#   este script envía texto directamente al procesador de v2m para
+#   ser procesado por gemini ai útil para pruebas rápidas o
+#   integración con otros scripts
 #
-# USO:
+# USO
 #   ./scripts/v2m-gemini.sh "<texto a procesar>"
 #
-# PARÁMETROS:
-#   $1 - Texto a procesar con Gemini (requerido)
+# PARÁMETROS
+#   $1 - texto a procesar con gemini (requerido)
 #
-# EJEMPLOS:
-#   # Procesar un texto simple
+# EJEMPLOS
+#   # procesar un texto simple
 #   ./scripts/v2m-gemini.sh "corrige este texto con errores"
 #
-#   # Procesar desde una variable
+#   # procesar desde una variable
 #   texto="mi texto"
 #   ./scripts/v2m-gemini.sh "$texto"
 #
-# DEPENDENCIAS:
-#   - Entorno virtual de Python configurado en ./venv
-#   - Variable GEMINI_API_KEY configurada en .env
+# DEPENDENCIAS
+#   - entorno virtual de python configurado en ./venv
+#   - variable gemini_api_key configurada en .env
 #
-# NOTAS:
-#   - El resultado se envía al portapapeles automáticamente
-#   - Requiere conexión a internet para la API de Gemini
+# NOTAS
+#   - el resultado se envía al portapapeles automáticamente
+#   - requiere conexión a internet para la api de gemini
 #
-# AUTOR:
-#   Voice2Machine Team
+# AUTOR
+#   voice2machine team
 #
-# DESDE:
+# DESDE
 #   v1.0.0
 #
 
-# --- Configuración ---
+# --- CONFIGURACIÓN ---
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 
-# --- Rutas Derivadas ---
+# --- RUTAS DERIVADAS ---
 VENV_PATH="${PROJECT_DIR}/venv"
 MAIN_SCRIPT="${PROJECT_DIR}/src/v2m/main.py"
 
-# --- Función Principal ---
+# --- FUNCIÓN PRINCIPAL ---
 run_orchestrator() {
     local text_to_process=$1
 
     if [ ! -f "${VENV_PATH}/bin/activate" ]; then
-        echo "❌ Error: Entorno virtual no encontrado en ${VENV_PATH}" >&2
+        echo "❌ error: entorno virtual no encontrado en ${VENV_PATH}" >&2
         exit 1
     fi
 
@@ -72,10 +72,10 @@ run_orchestrator() {
     echo "${text_to_process}" | python3 "${MAIN_SCRIPT}" "process"
 }
 
-# --- Lógica Principal ---
+# --- LÓGICA PRINCIPAL ---
 if [ -n "$1" ]; then
     run_orchestrator "$1"
 else
-    echo "Usage: $0 \"<text to process>\"" >&2
+    echo "usage: $0 \"<text to process>\"" >&2
     exit 1
 fi

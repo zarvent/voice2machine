@@ -75,17 +75,17 @@ class GeminiLLMService(LLMService):
             logger.warning("system prompt no encontrado usando default")
             self.system_instruction = "eres un editor de texto experto"
 
-    # Retry solo para errores transitorios de red/rate-limit
-    # Tiempos reducidos para baja latencia: 0.5s, 1s, 2s (máx 3.5s total)
+    # retry solo para errores transitorios de red/rate-limit
+    # tiempos reducidos para baja latencia: 0.5s, 1s, 2s (máx 3.5s total)
     @retry(
         stop=stop_after_attempt(config.gemini.retry_attempts),
         wait=wait_exponential(
-            multiplier=0.5,  # Reducido de 1
-            min=0.5,         # Reducido de 2
-            max=2,           # Reducido de 10
+            multiplier=0.5,  # reducido de 1
+            min=0.5,         # reducido de 2
+            max=2,           # reducido de 10
         ),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError, ConnectionError)),
-        reraise=True,  # Re-lanzar si se agotan los intentos
+        reraise=True,  # re-lanzar si se agotan los intentos
     )
     async def process_text(self, text: str) -> str:
         """

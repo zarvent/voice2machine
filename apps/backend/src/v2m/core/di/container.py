@@ -14,13 +14,13 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-contenedor de inyección de dependencias (di) para voice2machine
+CONTENEDOR DE INYECCIÓN DE DEPENDENCIAS (DI) PARA VOICE2MACHINE
 
 este módulo implementa el patrón de inyección de dependencias que cablea
 toda la aplicación es el único lugar donde las implementaciones concretas
 son conocidas y donde se decide qué implementación usar para cada interfaz
 
-responsabilidades del contenedor
+RESPONSABILIDADES DEL CONTENEDOR
     1 **instanciar servicios de infraestructura** crea las implementaciones
        concretas como singletons (whisperservice geminiservice etc)
     2 **instanciar handlers de aplicación** crea los command handlers
@@ -28,13 +28,13 @@ responsabilidades del contenedor
     3 **configurar el commandbus** registra todos los handlers para que
        el bus sepa a quién despachar cada tipo de comando
 
-beneficios
+BENEFICIOS
     - **desacoplamiento** los handlers dependen de interfaces no implementaciones
     - **testabilidad** fácil sustituir servicios reales por mocks
     - **configurabilidad** cambiar implementaciones (ej gemini -> openai)
       solo requiere modificar este archivo
 
-diagrama de dependencias
+DIAGRAMA DE DEPENDENCIAS
     ::
 
         Container
@@ -48,7 +48,7 @@ diagrama de dependencias
         ├── ProcessTextHandler (usa LLM, Notification, Clipboard)
         └── CommandBus (registra todos los handlers)
 
-example
+EXAMPLE
     acceso al contenedor desde otros módulos::
 
         from v2m.core.di.container import container
@@ -86,13 +86,13 @@ llm_registry.register("gemini", GeminiLLMService)
 
 class Container:
     """
-    contenedor de di que gestiona el ciclo de vida y dependencias de objetos
+    CONTENEDOR DE DI QUE GESTIONA EL CICLO DE VIDA Y DEPENDENCIAS DE OBJETOS
 
     el contenedor es instanciado una única vez al inicio de la aplicación
     y proporciona acceso a los servicios configurados durante toda la
     ejecución del programa
 
-    attributes:
+    ATTRIBUTES
         vad_service: servicio de detección de actividad de voz (silero vad)
         transcription_service: servicio de transcripción (faster-whisper)
         llm_service: servicio de llm para refinamiento de texto (gemini)
@@ -103,7 +103,7 @@ class Container:
         process_text_handler: handler para el comando processtext
         command_bus: bus de comandos configurado con todos los handlers
 
-    example
+    EXAMPLE
         uso típico (ya pre-instanciado como singleton global)::
 
             from v2m.core.di.container import container
@@ -116,7 +116,7 @@ class Container:
     """
     def __init__(self) -> None:
         """
-        inicializa y configura todas las dependencias de la aplicación
+        INICIALIZA Y CONFIGURA TODAS LAS DEPENDENCIAS DE LA APLICACIÓN
 
         el proceso de configuración sigue estos pasos
 
@@ -134,7 +134,7 @@ class Container:
            se configura el bus registrando todos los handlers para que
            sepa a cuál despachar cada tipo de comando
 
-        note
+        NOTE
             el modelo whisper se precarga en un hilo de fondo para evitar
             latencia en la primera transcripción si falla la precarga
             se cargará de forma lazy en el primer uso
@@ -201,17 +201,17 @@ class Container:
 
     def get_command_bus(self) -> CommandBus:
         """
-        proporciona acceso al commandbus configurado
+        PROPORCIONA ACCESO AL COMMANDBUS CONFIGURADO
 
         este es el punto de acceso principal para despachar comandos
         el bus ya tiene todos los handlers registrados y está listo para usar
 
-        returns:
+        RETURNS
             la instancia única del commandbus con todos los handlers
             registrados usar esta instancia para despachar comandos
             desde cualquier parte de la aplicación
 
-        example
+        EXAMPLE
             despachar un comando::
 
                 bus = container.get_command_bus()
@@ -221,7 +221,7 @@ class Container:
 
     def _preload_models(self) -> None:
         """
-        precarga modelos de ml en background para reducir latencia del primer uso
+        PRECARGA MODELOS DE ML EN BACKGROUND PARA REDUCIR LATENCIA DEL PRIMER USO
 
         ejecuta en threadpoolexecutor para no bloquear el event loop
         la carga de whisper involucra
@@ -230,27 +230,27 @@ class Container:
         - compilación de kernels cuda (primera vez)
         """
         try:
-            # Precargar Whisper (el más pesado)
+            # precargar whisper (el más pesado)
             _ = self.transcription_service.model
-            logger.info("✅ Whisper precargado correctamente")
+            logger.info("✅ whisper precargado correctamente")
         except Exception as e:
-            logger.warning(f"⚠️ No se pudo precargar Whisper: {e}")
+            logger.warning(f"⚠️ no se pudo precargar whisper: {e}")
 
         try:
-            # Precargar Silero VAD (más ligero)
+            # precargar silero vad (más ligero)
             self.vad_service.load_model(timeout_sec=15.0)
-            logger.info("✅ Silero VAD precargado correctamente")
+            logger.info("✅ silero vad precargado correctamente")
         except Exception as e:
-            logger.warning(f"⚠️ No se pudo precargar VAD: {e}")
+            logger.warning(f"⚠️ no se pudo precargar vad: {e}")
 
     async def wait_for_warmup(self, timeout: float = 30.0) -> bool:
         """
-        espera a que los modelos terminen de cargar (async-safe)
+        ESPERA A QUE LOS MODELOS TERMINEN DE CARGAR (ASYNC-SAFE)
 
-        args:
+        ARGS
             timeout: tiempo máximo de espera en segundos
 
-        returns:
+        RETURNS
             true si la carga fue exitosa false si hubo timeout
         """
         loop = asyncio.get_event_loop()
@@ -261,7 +261,7 @@ class Container:
             )
             return True
         except asyncio.TimeoutError:
-            logger.warning(f"Warmup timeout después de {timeout}s")
+            logger.warning(f"warmup timeout después de {timeout}s")
             return False
 
 # --- instancia global del contenedor ---

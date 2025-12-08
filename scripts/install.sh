@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
-# install.sh - Voice2Machine automated setup script
+# install.sh - SCRIPT DE INSTALACIÓN AUTOMATIZADA DE VOICE2MACHINE
 # =============================================================================
-# Automates:
-#   1. OS detection (Linux only for now)
-#   2. System dependencies via apt
-#   3. Python venv creation
-#   4. pip install from requirements.txt
-#   5. .env configuration for GEMINI_API_KEY
-#   6. GPU verification
+# AUTOMATIZA
+#   1. detección del so (solo linux por ahora)
+#   2. dependencias del sistema via apt
+#   3. creación del entorno virtual de python
+#   4. instalación de pip desde requirements.txt
+#   5. configuración de .env para gemini_api_key
+#   6. verificación de gpu
 # =============================================================================
 
 set -euo pipefail
@@ -26,26 +26,26 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # -----------------------------------------------------------------------------
-# 1. OS detection
+# 1. DETECCIÓN DEL SO
 # -----------------------------------------------------------------------------
 check_os() {
-    log_info "checking operating system..."
+    log_info "verificando sistema operativo..."
 
     if [[ "$OSTYPE" != "linux-gnu"* ]]; then
-        log_error "this script only supports Linux for now."
-        log_warn "detected: $OSTYPE"
-        log_warn "for macOS/Windows, see docs/en/installation.md for manual setup."
+        log_error "este script solo soporta linux por ahora"
+        log_warn "detectado: $OSTYPE"
+        log_warn "para macos/windows ver docs/en/installation.md para instalación manual"
         exit 1
     fi
 
-    log_success "linux detected"
+    log_success "linux detectado"
 }
 
 # -----------------------------------------------------------------------------
-# 2. system dependencies
+# 2. DEPENDENCIAS DEL SISTEMA
 # -----------------------------------------------------------------------------
 install_system_deps() {
-    log_info "installing system dependencies..."
+    log_info "instalando dependencias del sistema..."
 
     local deps=(ffmpeg xclip pulseaudio-utils python3-venv build-essential python3-dev)
     local missing=()
@@ -57,87 +57,87 @@ install_system_deps() {
     done
 
     if [[ ${#missing[@]} -eq 0 ]]; then
-        log_success "all system dependencies installed"
+        log_success "todas las dependencias del sistema instaladas"
         return
     fi
 
-    log_info "installing: ${missing[*]}"
+    log_info "instalando: ${missing[*]}"
     sudo apt-get update -qq
     sudo apt-get install -y "${missing[@]}"
 
-    log_success "system dependencies installed"
+    log_success "dependencias del sistema instaladas"
 }
 
 # -----------------------------------------------------------------------------
-# 3. python virtual environment
+# 3. ENTORNO VIRTUAL DE PYTHON
 # -----------------------------------------------------------------------------
 setup_venv() {
-    log_info "setting up python virtual environment..."
+    log_info "configurando entorno virtual de python..."
 
     if [[ -d "venv" ]]; then
-        log_warn "venv already exists, skipping creation"
+        log_warn "el venv ya existe saltando creación"
     else
         python3 -m venv venv
-        log_success "venv created"
+        log_success "venv creado"
     fi
 
     # shellcheck disable=SC1091
     source venv/bin/activate
-    log_success "venv activated"
+    log_success "venv activado"
 }
 
 # -----------------------------------------------------------------------------
-# 4. python dependencies
+# 4. DEPENDENCIAS DE PYTHON
 # -----------------------------------------------------------------------------
 install_python_deps() {
-    log_info "installing python dependencies..."
+    log_info "instalando dependencias de python..."
 
     pip install --upgrade pip -q
     pip install -r requirements.txt -q
 
-    log_success "python dependencies installed"
+    log_success "dependencias de python instaladas"
 }
 
 # -----------------------------------------------------------------------------
-# 5. configure .env
+# 5. CONFIGURAR .ENV
 # -----------------------------------------------------------------------------
 configure_env() {
-    log_info "configuring environment variables..."
+    log_info "configurando variables de entorno..."
 
     if [[ -f ".env" ]]; then
-        log_warn ".env already exists, skipping"
+        log_warn ".env ya existe saltando"
         return
     fi
 
     echo ""
     echo -e "${YELLOW}===========================================${NC}"
-    echo -e "${YELLOW}  Google Gemini API Key Setup${NC}"
+    echo -e "${YELLOW}  configuración de api key de google gemini${NC}"
     echo -e "${YELLOW}===========================================${NC}"
     echo ""
-    echo "get your free API key at: https://aistudio.google.com/"
+    echo "obtén tu api key gratuita en: https://aistudio.google.com/"
     echo ""
-    read -rp "enter your GEMINI_API_KEY (or press Enter to skip): " api_key
+    read -rp "ingresa tu GEMINI_API_KEY (o presiona enter para saltar): " api_key
 
     if [[ -z "$api_key" ]]; then
-        log_warn "skipped API key setup - you can add it later to .env"
+        log_warn "saltando configuración de api key - puedes agregarla después en .env"
         cp .env.example .env 2>/dev/null || echo "GEMINI_API_KEY=" > .env
     else
         echo "GEMINI_API_KEY=$api_key" > .env
-        log_success ".env configured"
+        log_success ".env configurado"
     fi
 }
 
 # -----------------------------------------------------------------------------
-# 6. verify GPU
+# 6. VERIFICAR GPU
 # -----------------------------------------------------------------------------
 verify_gpu() {
-    log_info "verifying GPU acceleration..."
+    log_info "verificando aceleración por gpu..."
 
     if python scripts/check_cuda.py 2>/dev/null; then
-        log_success "GPU acceleration available"
+        log_success "aceleración por gpu disponible"
     else
-        log_warn "GPU not detected - whisper will run on CPU (slower)"
-        log_warn "for NVIDIA GPU support, install CUDA drivers"
+        log_warn "gpu no detectada - whisper correrá en cpu (más lento)"
+        log_warn "para soporte de nvidia gpu instala drivers cuda"
     fi
 }
 
@@ -147,7 +147,7 @@ verify_gpu() {
 main() {
     echo ""
     echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}  Voice2Machine Installer${NC}"
+    echo -e "${BLUE}  instalador de voice2machine${NC}"
     echo -e "${BLUE}========================================${NC}"
     echo ""
 
@@ -160,13 +160,13 @@ main() {
 
     echo ""
     echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  Installation Complete!${NC}"
+    echo -e "${GREEN}  instalación completa${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo ""
-    echo "next steps:"
-    echo "  1. activate venv:  source venv/bin/activate"
-    echo "  2. run daemon:     python scripts/v2m-daemon.sh"
-    echo "  3. bind shortcuts: see docs/instalacion.md"
+    echo "siguientes pasos:"
+    echo "  1. activar venv:  source venv/bin/activate"
+    echo "  2. ejecutar daemon:     python scripts/v2m-daemon.sh"
+    echo "  3. asignar atajos: ver docs/instalacion.md"
     echo ""
 }
 

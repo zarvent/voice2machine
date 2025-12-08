@@ -14,15 +14,15 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-servicio LLM local usando llama-cpp-python
+servicio llm local usando llama-cpp-python
 
-DISEÑO CLAVE:
-- usa create_chat_completion() que lee la plantilla del GGUF automáticamente
-- funciona con Qwen, Llama, Phi, Mistral sin cambiar código
-- context manager async para hot-swap de VRAM
+diseño clave
+- usa create_chat_completion() que lee la plantilla del gguf automáticamente
+- funciona con qwen llama phi mistral sin cambiar código
+- context manager async para hot-swap de vram
 
-este módulo implementa la interfaz LLMService usando llama.cpp como backend
-permitiendo inferencia local en GPU sin depender de APIs externas
+este módulo implementa la interfaz llmservice usando llama.cpp como backend
+permitiendo inferencia local en gpu sin depender de apis externas
 """
 
 from __future__ import annotations

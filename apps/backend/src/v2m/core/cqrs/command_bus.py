@@ -14,26 +14,26 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-implementación del bus de comandos para el patrón cqrs
+IMPLEMENTACIÓN DEL BUS DE COMANDOS PARA EL PATRÓN CQRS
 
 el ``CommandBus`` es el orquestador central del sistema de comandos su
 responsabilidad es recibir objetos ``Command`` y despacharlos al
 ``CommandHandler`` apropiado que ha sido registrado previamente
 
-beneficios del patrón
+BENEFICIOS DEL PATRÓN
     - **desacoplamiento** el emisor del comando no conoce al receptor
     - **extensibilidad** nuevos comandos se agregan sin modificar código existente
     - **testabilidad** los handlers pueden probarse de forma aislada
     - **trazabilidad** fácil agregar logging/métricas en un punto central
 
-arquitectura
+ARQUITECTURA
     ::
 
         Cliente -> CommandBus -> Handler -> Servicios
                       |
                       +-- Registro de handlers (Dict[Type[Command], Handler])
 
-example
+EXAMPLE
     configuración y uso básico::
 
         from v2m.core.cqrs.command_bus import CommandBus
@@ -50,17 +50,17 @@ from .command_handler import CommandHandler
 
 class CommandBus:
     """
-    despacha comandos a sus respectivos handlers registrados
+    DESPACHA COMANDOS A SUS RESPECTIVOS HANDLERS REGISTRADOS
 
     actúa como un mediador (patrón mediator) que mantiene un mapeo entre
     tipos de comando y las instancias de handlers que pueden procesarlos
 
-    attributes:
+    ATTRIBUTES
         handlers: diccionario que mapea tipos de ``Command`` a instancias
             de ``CommandHandler`` cada tipo de comando tiene exactamente
             un handler asociado
 
-    example
+    EXAMPLE
         flujo completo de configuración::
 
             bus = CommandBus()
@@ -75,7 +75,7 @@ class CommandBus:
 
     def __init__(self) -> None:
         """
-        inicializa el bus de comandos con un registro vacío de handlers
+        INICIALIZA EL BUS DE COMANDOS CON UN REGISTRO VACÍO DE HANDLERS
 
         el diccionario de handlers se pobla mediante llamadas sucesivas
         al método ``register()`` durante la fase de inicialización de
@@ -85,23 +85,23 @@ class CommandBus:
 
     def register(self, handler: CommandHandler) -> None:
         """
-        registra un handler de comandos en el bus
+        REGISTRA UN HANDLER DE COMANDOS EN EL BUS
 
         asocia el tipo de comando (obtenido de ``handler.listen_to()``) con
         la instancia del handler este método se llama durante la fase de
         configuración de la aplicación
 
-        args:
+        ARGS
             handler: instancia del handler a registrar debe implementar
                 ``CommandHandler`` y retornar el tipo de comando que
                 maneja en su método ``listen_to()``
 
-        raises:
+        RAISES
             ValueError: si ya existe un handler registrado para el mismo
                 tipo de comando cada comando debe tener exactamente un
                 handler
 
-        example
+        EXAMPLE
             registro típico en el contenedor::
 
                 bus = CommandBus()
@@ -115,26 +115,26 @@ class CommandBus:
 
     async def dispatch(self, command: Command) -> Any:
         """
-        despacha un comando a su handler correspondiente
+        DESPACHA UN COMANDO A SU HANDLER CORRESPONDIENTE
 
         este es el método principal utilizado en tiempo de ejecución busca
         el handler apropiado basado en el tipo del comando y delega la
         ejecución al método ``handle()`` del handler
 
-        args:
+        ARGS
             command: instancia del comando a despachar el tipo del comando
                 determina qué handler será invocado
 
-        returns:
+        RETURNS
             el resultado de la ejecución del método ``handle()`` del handler
             el tipo de retorno depende de la implementación del handler
             específico (generalmente ``None`` para comandos)
 
-        raises:
+        RAISES
             ValueError: si no hay ningún handler registrado para el tipo
                 de comando proporcionado
 
-        example
+        EXAMPLE
             despachar comandos en el daemon::
 
                 if message == IPCCommand.START_RECORDING:

@@ -15,54 +15,54 @@
 # You should have received a copy of the GNU General Public License
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 #
-# v2m-daemon.sh - Script de gestión del daemon Voice2Machine
+# v2m-daemon.sh - script de gestión del daemon voice2machine
 #
-# DESCRIPCIÓN:
-#   Este script proporciona una interfaz de línea de comandos para
-#   gestionar el daemon de V2M que corre en segundo plano. Permite
-#   iniciar, detener, reiniciar y verificar el estado del daemon.
+# descripción
+#   este script proporciona una interfaz de línea de comandos para
+#   gestionar el daemon de v2m que corre en segundo plano permite
+#   iniciar detener reiniciar y verificar el estado del daemon
 #
-# USO:
+# uso
 #   ./scripts/v2m-daemon.sh [start|stop|restart|status|logs]
 #
-# COMANDOS:
-#   start    - Inicia el daemon en segundo plano
-#   stop     - Detiene el daemon de forma segura
-#   restart  - Reinicia el daemon (stop + start)
-#   status   - Muestra el estado actual y prueba conectividad
-#   logs     - Muestra los logs del daemon
+# comandos
+#   start    - inicia el daemon en segundo plano
+#   stop     - detiene el daemon de forma segura
+#   restart  - reinicia el daemon (stop + start)
+#   status   - muestra el estado actual y prueba conectividad
+#   logs     - muestra los logs del daemon
 #
-# ARCHIVOS:
-#   /tmp/v2m_daemon.log  - Archivo de logs del daemon
-#   /tmp/v2m_daemon.pid  - Archivo con el PID del proceso
+# archivos
+#   /tmp/v2m_daemon.log  - archivo de logs del daemon
+#   /tmp/v2m_daemon.pid  - archivo con el pid del proceso
 #
-# VARIABLES DE ENTORNO:
-#   LD_LIBRARY_PATH - Se configura automáticamente para CUDA/cuDNN
-#   PYTHONPATH      - Se configura para incluir src/
+# variables de entorno
+#   ld_library_path - se configura automáticamente para cuda/cudnn
+#   pythonpath      - se configura para incluir src/
 #
-# DEPENDENCIAS:
-#   - Python 3.12+ con entorno virtual en ./venv
-#   - Librerías NVIDIA en el venv (opcional, para GPU)
+# dependencias
+#   - python 3.12+ con entorno virtual en ./venv
+#   - librerías nvidia en el venv (opcional para gpu)
 #
-# EJEMPLOS:
-#   # Iniciar el daemon
+# ejemplos
+#   # iniciar el daemon
 #   ./scripts/v2m-daemon.sh start
 #
-#   # Ver estado y probar conectividad
+#   # ver estado y probar conectividad
 #   ./scripts/v2m-daemon.sh status
 #
-#   # Ver logs en tiempo real
+#   # ver logs en tiempo real
 #   ./scripts/v2m-daemon.sh logs
 #
-# NOTAS:
-#   - El daemon usa un socket Unix para comunicación IPC
-#   - Los logs se rotan automáticamente con cleanup.py
-#   - Si CUDA no está disponible, usa CPU automáticamente
+# notas
+#   - el daemon usa un socket unix para comunicación ipc
+#   - los logs se rotan automáticamente con cleanup.py
+#   - si cuda no está disponible usa cpu automáticamente
 #
-# AUTOR:
-#   Voice2Machine Team
+# autor
+#   voice2machine team
 #
-# DESDE:
+# desde
 #   v1.0.0
 #
 
@@ -84,18 +84,18 @@ start_daemon() {
         fi
     fi
 
-    echo "🚀 Iniciando daemon de v2m..."
+    echo "🚀 iniciando daemon de v2m..."
 
     cd "${PROJECT_DIR}"
     export PYTHONPATH="${PROJECT_DIR}/src"
 
-    # --- Configurar LD_LIBRARY_PATH para CUDA/cuDNN ---
-    # Buscar librerías nvidia en el venv (necesario para whisper y llama-cpp-python)
+    # --- configurar ld_library_path para cuda/cudnn ---
+    # buscar librerías nvidia en el venv (necesario para whisper y llama-cpp-python)
     VENV_LIB="${PROJECT_DIR}/venv/lib/python3.12/site-packages/nvidia"
     CUDA_PATHS=""
 
     if [ -d "${VENV_LIB}" ]; then
-        # Paquetes nvidia que contienen libs necesarias para CUDA
+        # paquetes nvidia que contienen libs necesarias para cuda
         NVIDIA_PACKAGES=(
             "cuda_runtime"
             "cudnn"
@@ -119,12 +119,12 @@ start_daemon() {
         done
     fi
 
-    # Agregar al LD_LIBRARY_PATH existente
+    # agregar al ld_library_path existente
     if [ -n "${CUDA_PATHS}" ]; then
         export LD_LIBRARY_PATH="${CUDA_PATHS}:${LD_LIBRARY_PATH:-}"
-        echo "🔧 LD_LIBRARY_PATH configurado con librerías NVIDIA del venv"
+        echo "🔧 ld_library_path configurado con librerías nvidia del venv"
     else
-        echo "⚠️  No se encontraron librerías NVIDIA en el venv. CUDA podría fallar."
+        echo "⚠️  no se encontraron librerías nvidia en el venv cuda podría fallar"
     fi
 
     "${VENV_PYTHON}" -m v2m.main --daemon > "${LOG_FILE}" 2>&1 &
@@ -132,14 +132,14 @@ start_daemon() {
     DAEMON_PID=$!
     echo "${DAEMON_PID}" > "${PID_FILE}"
 
-    # Esperar un momento para verificar que arrancó correctamente
+    # esperar un momento para verificar que arrancó correctamente
     sleep 2
 
     if ps -p "${DAEMON_PID}" > /dev/null 2>&1; then
-        echo "✅ Daemon iniciado correctamente (PID: ${DAEMON_PID})"
-        echo "📋 Logs en: ${LOG_FILE}"
+        echo "✅ daemon iniciado correctamente (pid: ${DAEMON_PID})"
+        echo "📋 logs en: ${LOG_FILE}"
     else
-        echo "❌ El daemon falló al iniciar. Ver logs:"
+        echo "❌ el daemon falló al iniciar ver logs:"
         tail -20 "${LOG_FILE}"
         rm -f "${PID_FILE}"
         return 1

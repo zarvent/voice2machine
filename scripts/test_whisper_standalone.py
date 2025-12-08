@@ -88,36 +88,36 @@ def test_transcription() -> None:
         el audio de silencio no producirá texto pero permite
         verificar que todo el pipeline funcione correctamente
     """
-    print("1. Verificando entorno...")
-    print(f"LD_LIBRARY_PATH: {os.environ.get('LD_LIBRARY_PATH', 'Not Set')}")
+    print("1. verificando entorno...")
+    print(f"LD_LIBRARY_PATH: {os.environ.get('LD_LIBRARY_PATH', 'no establecido')}")
 
-    print("2. Generando audio dummy (1 segundo de silencio)...")
-    # Generar 1 segundo de silencio a 16kHz
+    print("2. generando audio dummy (1 segundo de silencio)...")
+    # generar 1 segundo de silencio a 16khz
     audio = np.zeros(16000, dtype=np.float32)
 
-    print("3. Cargando modelo (device=cuda)...")
+    print("3. cargando modelo (device=cuda)...")
     try:
         model = WhisperModel("tiny", device="cuda", compute_type="float16")
-        print("✅ Modelo cargado en CUDA")
+        print("✅ modelo cargado en cuda")
     except Exception as e:
-        print(f"❌ Falló carga en CUDA: {e}")
-        print("Intentando CPU...")
+        print(f"❌ falló carga en cuda: {e}")
+        print("intentando cpu...")
         try:
             model = WhisperModel("tiny", device="cpu", compute_type="int8")
-            print("⚠️ Modelo cargado en CPU (Fallback)")
+            print("⚠️ modelo cargado en cpu (fallback)")
         except Exception as e2:
-            print(f"❌ Falló carga en CPU también: {e2}")
+            print(f"❌ falló carga en cpu también: {e2}")
             return
 
-    print("4. Transcribiendo...")
+    print("4. transcribiendo...")
     try:
         segments, info = model.transcribe(audio, beam_size=5)
-        print(f"Detected language: {info.language}")
+        print(f"idioma detectado: {info.language}")
         for segment in segments:
             print(f"[{segment.start:.2f}s -> {segment.end:.2f}s] {segment.text}")
-        print("✅ Transcripción completada")
+        print("✅ transcripción completada")
     except Exception as e:
-        print(f"❌ Error durante transcripción: {e}")
+        print(f"❌ error durante transcripción: {e}")
 
 if __name__ == "__main__":
     test_transcription()

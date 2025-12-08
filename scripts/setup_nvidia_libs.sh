@@ -6,8 +6,8 @@
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# configura LD_LIBRARY_PATH para las librerías NVIDIA del venv
-# necesario para que llama-cpp-python encuentre CUDA libs
+# configura ld_library_path para las librerías nvidia del venv
+# necesario para que llama-cpp-python encuentre cuda libs
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_PATH="${SCRIPT_DIR}/../apps/backend/venv"

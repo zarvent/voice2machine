@@ -15,36 +15,36 @@
 # You should have received a copy of the GNU General Public License
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 """
-Prueba del portapapeles - ¿Ctrl+V funciona desde V2M?
+prueba del portapapeles - ¿ctrl+v funciona desde v2m?
 
-¿Por qué es importante?
-    V2M copia automáticamente las transcripciones al portapapeles.
-    Si esto no funciona, aunque transcribas bien, no podrás pegar.
+¿por qué es importante?
+    v2m copia automáticamente las transcripciones al portapapeles
+    si esto no funciona aunque transcribas bien no podrás pegar
 
-¿Cómo lo uso?
+¿cómo lo uso?
     $ python scripts/test_clipboard.py
 
-¿Qué debería ver?
-    🧪 Probando LinuxClipboardAdapter...
-    📋 Copiando: Hola mundo desde el daemon de v2m! 🚀
-    📋 Leyendo del clipboard...
-    ✅ SUCCESS: Hola mundo desde el daemon de v2m! 🚀
+¿qué debería ver?
+    🧪 probando linuxclipboardadapter...
+    📋 copiando: hola mundo desde el daemon de v2m! 🚀
+    📋 leyendo del clipboard...
+    ✅ éxito: hola mundo desde el daemon de v2m! 🚀
 
-¿Qué pasa si falla?
-    1. Verifica que tengas xclip instalado:
+¿qué pasa si falla?
+    1 verifica que tengas xclip instalado
        $ sudo apt install xclip
 
-    2. Verifica que estés en una sesión con display:
+    2 verifica que estés en una sesión con display
        $ echo $DISPLAY
-       (Debería mostrar algo como :0 o :1)
+       (debería mostrar algo como :0 o :1)
 
-    3. Si estás por SSH, necesitas X forwarding:
+    3 si estás por ssh necesitas x forwarding
        $ ssh -X usuario@servidor
 
-Para desarrolladores:
-    Este script usa el LinuxClipboardAdapter del módulo infrastructure.
-    Ese adaptador internamente usa xclip para las operaciones de
-    clipboard. Si xclip no está disponible, intenta con xsel.
+para desarrolladores
+    este script usa el linuxclipboardadapter del módulo infrastructure
+    ese adaptador internamente usa xclip para las operaciones de
+    clipboard si xclip no está disponible intenta con xsel
 """
 
 import sys

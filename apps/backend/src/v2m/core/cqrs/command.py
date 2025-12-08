@@ -14,26 +14,26 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-clase base abstracta para comandos del patrón cqrs
+CLASE BASE ABSTRACTA PARA COMANDOS DEL PATRÓN CQRS
 
 este módulo define la clase base ``Command`` de la cual heredan todos los
 comandos específicos de la aplicación en el patrón cqrs (command query
 responsibility segregation) un comando representa la intención de modificar
 el estado del sistema
 
-características de los comandos
+CARACTERÍSTICAS DE LOS COMANDOS
     - representan acciones no consultas
     - son objetos de datos inmutables (idealmente)
     - no contienen lógica de negocio solo datos
     - son procesados por exactamente un ``CommandHandler``
 
-flujo de un comando
+FLUJO DE UN COMANDO
     1 se crea una instancia del comando con los datos necesarios
     2 se envía al ``CommandBus`` mediante ``dispatch()``
     3 el bus localiza el handler registrado para ese tipo de comando
     4 el handler ejecuta la lógica de negocio correspondiente
 
-example
+EXAMPLE
     definir un comando personalizado::
 
         from v2m.core.cqrs.command import Command
@@ -48,7 +48,7 @@ from abc import ABC
 
 class Command(ABC):
     """
-    clase base abstracta para todos los comandos de la aplicación
+    CLASE BASE ABSTRACTA PARA TODOS LOS COMANDOS DE LA APLICACIÓN
 
     todos los comandos específicos (ej ``StartRecordingCommand``
     ``StopRecordingCommand``) deben heredar de esta clase esto garantiza
@@ -59,7 +59,7 @@ class Command(ABC):
     es proporcionar un tipo base común para el sistema de tipos y el
     despacho polimórfico
 
-    example
+    EXAMPLE
         comando sin datos adicionales::
 
             class PingCommand(Command):

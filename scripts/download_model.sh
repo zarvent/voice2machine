@@ -6,7 +6,7 @@
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# descarga Qwen2.5-3B-Instruct GGUF Q4_K_M para uso local
+# DESCARGA QWEN2.5-3B-INSTRUCT GGUF Q4_K_M PARA USO LOCAL
 
 set -e
 
@@ -23,7 +23,7 @@ if [ -f "$MODEL_DIR/$MODEL_FILE" ]; then
     exit 0
 fi
 
-echo "📥 descargando Qwen2.5-3B-Instruct Q4_K_M (~1.93GB)..."
+echo "📥 descargando qwen2.5-3b-instruct q4_k_m (~1.93gb)..."
 echo "   desde: $MODEL_URL"
 echo ""
 
