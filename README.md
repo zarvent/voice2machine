@@ -24,10 +24,10 @@ la premisa es simple: hablar es más rápido que escribir. este proyecto te deja
 
 dos atajos de teclado globales:
 
-| atajo | función |
+| script | función |
 |-------|---------|
-| `scripts/whisper-toggle.sh` | graba → transcribe → copia al portapapeles |
-| `scripts/process-clipboard.sh` | toma texto del portapapeles → lo refina con LLM → lo reemplaza |
+| `v2m-toggle.sh` | graba → transcribe → copia al portapapeles |
+| `v2m-llm.sh` | toma texto del portapapeles → lo refina con LLM → lo reemplaza |
 
 ---
 
@@ -38,6 +38,7 @@ toda la info técnica está en `/docs`:
 - [instalación](docs/instalacion.md)
 - [arquitectura](docs/arquitectura.md)
 - [configuración](docs/configuracion.md)
+- [atajos de teclado](docs/atajos_teclado.md) ⌨️
 - [troubleshooting](docs/troubleshooting.md)
 
 ---
