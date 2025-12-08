@@ -85,6 +85,12 @@ async def send_command(command: str) -> str:
         # Protocolo de framing: 4 bytes longitud (Big Endian) + Payload
         message_bytes = command.encode("utf-8")
         length = len(message_bytes)
+        
+        # Validate outgoing message size
+        if length > MAX_MESSAGE_SIZE:
+            print(f"Error: Message too large ({length} bytes, max: {MAX_MESSAGE_SIZE})", file=sys.stderr)
+            sys.exit(1)
+        
         writer.write(length.to_bytes(4, byteorder="big"))
         writer.write(message_bytes)
         await writer.drain()
