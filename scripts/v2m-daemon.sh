@@ -17,34 +17,34 @@
 #
 # v2m-daemon.sh - script para gestionar el servicio voice2machine
 #
-# descripción
+# DESCRIPCIÓN
 #   este script te permite controlar el servicio de v2m que se ejecuta
 #   en segundo plano puedes iniciarlo detenerlo reiniciarlo y
 #   verificar si todo está funcionando bien
 #
-# uso
+# USO
 #   ./scripts/v2m-daemon.sh [start|stop|restart|status|logs]
 #
-# comandos
+# COMANDOS
 #   start    - inicia el servicio en segundo plano
 #   stop     - detiene el servicio de forma segura
 #   restart  - reinicia el servicio primero lo detiene y luego lo inicia
 #   status   - te muestra el estado actual y prueba la conexión
 #   logs     - te muestra los registros del servicio
 #
-# archivos
+# ARCHIVOS
 #   /tmp/v2m_daemon.log  - archivo donde se guardan los registros
 #   /tmp/v2m_daemon.pid  - archivo que guarda el identificador del proceso
 #
-# variables de entorno
+# VARIABLES DE ENTORNO
 #   LD_LIBRARY_PATH - se configura sola para que funcione con cuda
 #   PYTHONPATH      - se configura para incluir el código fuente
 #
-# dependencias
+# DEPENDENCIAS
 #   - python 3.12+ con entorno virtual en ./venv
 #   - librerías de nvidia en el entorno virtual opcional para gpu
 #
-# ejemplos
+# EJEMPLOS
 #   # iniciar el servicio
 #   ./scripts/v2m-daemon.sh start
 #
@@ -54,15 +54,15 @@
 #   # ver qué está pasando en tiempo real
 #   ./scripts/v2m-daemon.sh logs
 #
-# notas
+# NOTAS
 #   - el servicio usa un socket unix para comunicarse
 #   - los registros se limpian solos automáticamente
 #   - si no tienes tarjeta gráfica nvidia usará el procesador automáticamente
 #
-# autor
+# AUTOR
 #   equipo voice2machine
 #
-# desde
+# DESDE
 #   v1.0.0
 #
 
@@ -227,7 +227,7 @@ show_logs() {
     fi
 }
 
-# --- principal ---
+# --- PRINCIPAL ---
 case "${1:-}" in
     start)
         start_daemon
@@ -249,7 +249,7 @@ case "${1:-}" in
     *)
         echo "uso: $0 {start|stop|restart|status|logs}"
         echo ""
-        echo "comandos:"
+        echo "COMANDOS:"
         echo "  start    - inicia el servicio"
         echo "  stop     - detiene el servicio"
         echo "  restart  - reinicia el servicio"

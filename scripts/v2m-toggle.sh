@@ -17,15 +17,15 @@
 #
 # v2m-toggle.sh - script para activar o desactivar la grabación
 #
-# descripción
+# DESCRIPCIÓN
 #   este es el script principal para controlar la grabación por voz
 #   sirve para iniciar y detener la grabación y está pensado para
 #   usarse con un atajo de teclado
 #
-# uso
+# USO
 #   ./scripts/v2m-toggle.sh
 #
-# cómo funciona
+# CÓMO FUNCIONA
 #   primera vez que lo ejecutas
 #     1 verifica si el servicio está corriendo y lo inicia si es necesario
 #     2 comienza a grabar el audio
@@ -38,7 +38,7 @@
 #     4 copia el texto al portapapeles
 #     5 elimina el archivo temporal
 #
-# configuración en gnome
+# CONFIGURACIÓN EN GNOME
 #   # crear un atajo personalizado
 #   KEYBINDING_PATH="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/whisper0/"
 #   gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings \
@@ -50,37 +50,37 @@
 #   gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:$KEYBINDING_PATH \
 #     binding '<Control><Shift>space'
 #
-# dependencias
+# DEPENDENCIAS
 #   - v2m-daemon.sh para controlar el servicio
 #   - notify-send para mostrar notificaciones en el escritorio
 #   - entorno virtual de python en ./venv
 #
-# archivos
+# ARCHIVOS
 #   /tmp/v2m_recording.pid - indica que se está grabando
 #
-# notas
+# NOTAS
 #   - el servicio arranca solo si no está activo
 #   - verás notificaciones sobre lo que está pasando
 #
-# autor
+# AUTOR
 #   equipo voice2machine
 #
-# desde
+# DESDE
 #   v1.0.0
 #
 
-# --- configuración ---
+# --- CONFIGURACIÓN ---
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 NOTIFY_EXPIRE_TIME=3000
 
-# --- rutas derivadas ---
+# --- RUTAS DERIVADAS ---
 VENV_PATH="${PROJECT_DIR}/venv"
 MAIN_SCRIPT="${PROJECT_DIR}/src/v2m/main.py"
 RECORDING_FLAG="/tmp/v2m_recording.pid"
 DAEMON_SCRIPT="${SCRIPT_DIR}/v2m-daemon.sh"
 
-# --- función principal ---
+# --- FUNCIÓN PRINCIPAL ---
 ensure_daemon() {
     "${DAEMON_SCRIPT}" status > /dev/null 2>&1
     if [ $? -ne 0 ]; then
@@ -113,7 +113,7 @@ run_client() {
     python3 "${MAIN_SCRIPT}" "${command}"
 }
 
-# --- lógica de conmutación ---
+# --- LÓGICA DE CONMUTACIÓN ---
 ensure_daemon
 
 if [ -f "${RECORDING_FLAG}" ]; then

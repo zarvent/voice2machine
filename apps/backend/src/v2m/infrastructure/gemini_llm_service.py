@@ -14,7 +14,7 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-módulo que implementa el servicio de llm utilizando la api de google gemini
+MÓDULO QUE IMPLEMENTA EL SERVICIO DE LLM UTILIZANDO LA API DE GOOGLE GEMINI
 
 esta es una implementación concreta de la interfaz `llmservice` es responsable
 de toda la lógica de comunicación con el servicio de google gemini incluyendo
@@ -34,21 +34,21 @@ import httpx
 
 class GeminiLLMService(LLMService):
     """
-    implementación del `llmservice` que se conecta con google gemini
+    IMPLEMENTACIÓN DEL `LLMSERVICE` QUE SE CONECTA CON GOOGLE GEMINI
 
     gestiona la configuración del cliente de la api la formulación de las
     peticiones y la lógica de reintentos para asegurar una comunicación robusta
     """
     def __init__(self) -> None:
         """
-        inicializa el servicio de google gemini
+        INICIALIZA EL SERVICIO DE GOOGLE GEMINI
 
         este constructor realiza las siguientes acciones
         1 obtiene la configuración y la api key desde `config.py` (pydantic settings)
         2 configura e instancia el cliente de la api de google
         3 almacena los parámetros del modelo y la configuración de reintentos
 
-        raises:
+        RAISES:
             LLMError: si la `GEMINI_API_KEY` no se encuentra en la configuración
         """
         # --- carga de configuración y secretos ---
@@ -89,18 +89,18 @@ class GeminiLLMService(LLMService):
     )
     async def process_text(self, text: str) -> str:
         """
-        procesa un texto utilizando el modelo de google gemini
+        PROCESA UN TEXTO UTILIZANDO EL MODELO DE GOOGLE GEMINI
 
         implementa una estrategia de reintentos con `tenacity` para manejar
         errores transitorios de red o de la api de forma resiliente
 
-        args:
+        ARGS:
             text: el texto a procesar
 
-        returns:
+        RETURNS:
             el texto refinado por el llm
 
-        raises:
+        RAISES:
             LLMError: si la comunicación con la api falla después de todos los reintentos
         """
         try:

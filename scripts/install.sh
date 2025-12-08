@@ -2,7 +2,7 @@
 # =============================================================================
 # install.sh - script de instalación automatizada de voice2machine
 # =============================================================================
-# qué hace este script
+# QUÉ HACE ESTE SCRIPT
 #   1 detecta tu sistema operativo solo linux por ahora
 #   2 instala las dependencias del sistema
 #   3 crea el entorno virtual de python
@@ -26,7 +26,7 @@ log_warn() { echo -e "${YELLOW}[aviso]${NC} $1"; }
 log_error() { echo -e "${RED}[error]${NC} $1"; }
 
 # -----------------------------------------------------------------------------
-# 1 detección del sistema operativo
+# 1 DETECCIÓN DEL SISTEMA OPERATIVO
 # -----------------------------------------------------------------------------
 check_os() {
     log_info "verificando el sistema operativo..."
@@ -42,7 +42,7 @@ check_os() {
 }
 
 # -----------------------------------------------------------------------------
-# 2 dependencias del sistema
+# 2 DEPENDENCIAS DEL SISTEMA
 # -----------------------------------------------------------------------------
 install_system_deps() {
     log_info "instalando dependencias del sistema..."
@@ -69,7 +69,7 @@ install_system_deps() {
 }
 
 # -----------------------------------------------------------------------------
-# 3 entorno virtual de python
+# 3 ENTORNO VIRTUAL DE PYTHON
 # -----------------------------------------------------------------------------
 setup_venv() {
     log_info "configurando el entorno virtual de python..."
@@ -87,7 +87,7 @@ setup_venv() {
 }
 
 # -----------------------------------------------------------------------------
-# 4 dependencias de python
+# 4 DEPENDENCIAS DE PYTHON
 # -----------------------------------------------------------------------------
 install_python_deps() {
     log_info "instalando dependencias de python..."
@@ -99,7 +99,7 @@ install_python_deps() {
 }
 
 # -----------------------------------------------------------------------------
-# 5 configurar variables de entorno
+# 5 CONFIGURAR VARIABLES DE ENTORNO
 # -----------------------------------------------------------------------------
 configure_env() {
     log_info "configurando variables de entorno..."
@@ -111,7 +111,7 @@ configure_env() {
 
     echo ""
     echo -e "${YELLOW}===========================================${NC}"
-    echo -e "${YELLOW}  configuración de la api de google gemini${NC}"
+    echo -e "${YELLOW}  CONFIGURACIÓN DE LA API DE GOOGLE GEMINI${NC}"
     echo -e "${YELLOW}===========================================${NC}"
     echo ""
     echo "consigue tu clave de api gratis en: https://aistudio.google.com/"
@@ -128,7 +128,7 @@ configure_env() {
 }
 
 # -----------------------------------------------------------------------------
-# 6 verificar tarjeta gráfica
+# 6 VERIFICAR TARJETA GRÁFICA
 # -----------------------------------------------------------------------------
 verify_gpu() {
     log_info "verificando si hay aceleración por gpu..."
@@ -142,12 +142,12 @@ verify_gpu() {
 }
 
 # -----------------------------------------------------------------------------
-# principal
+# PRINCIPAL
 # -----------------------------------------------------------------------------
 main() {
     echo ""
     echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}  instalador de voice2machine${NC}"
+    echo -e "${BLUE}  INSTALADOR DE VOICE2MACHINE${NC}"
     echo -e "${BLUE}========================================${NC}"
     echo ""
 
@@ -160,10 +160,10 @@ main() {
 
     echo ""
     echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  instalación completada${NC}"
+    echo -e "${GREEN}  INSTALACIÓN COMPLETADA${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo ""
-    echo "próximos pasos:"
+    echo "PRÓXIMOS PASOS:"
     echo "  1 activa el entorno virtual:  source venv/bin/activate"
     echo "  2 ejecuta el servicio:        python scripts/v2m-daemon.sh"
     echo "  3 configura los atajos:       mira docs/instalacion.md"

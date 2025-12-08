@@ -14,7 +14,7 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-módulo que implementa el servicio de transcripción utilizando `faster-whisper`
+MÓDULO QUE IMPLEMENTA EL SERVICIO DE TRANSCRIPCIÓN UTILIZANDO `FASTER-WHISPER`
 
 esta es la implementación concreta de la interfaz `transcriptionservice` se encarga
 de la lógica de bajo nivel para
@@ -36,15 +36,15 @@ from v2m.infrastructure.vad_service import VADService
 
 class WhisperTranscriptionService(TranscriptionService):
     """
-    implementación del `transcriptionservice` que usa `faster-whisper` y `audiorecorder`
+    IMPLEMENTACIÓN DEL `TRANSCRIPTIONSERVICE` QUE USA `FASTER-WHISPER` Y `AUDIORECORDER`
     """
     def __init__(self, vad_service: Optional[VADService] = None) -> None:
         """
-        inicializa el servicio de transcripción
+        INICIALIZA EL SERVICIO DE TRANSCRIPCIÓN
 
         no carga el modelo de whisper en este punto para acelerar el inicio de la aplicación
 
-        args:
+        ARGS:
             vad_service: servicio opcional para truncado de silencios
         """
         self._model: Optional[WhisperModel] = None
@@ -54,13 +54,13 @@ class WhisperTranscriptionService(TranscriptionService):
     @property
     def model(self) -> WhisperModel:
         """
-        carga el modelo de `faster-whisper` de forma perezosa lazy loading
+        CARGA EL MODELO DE `FASTER-WHISPER` DE FORMA PEREZOSA LAZY LOADING
 
         el modelo solo se carga en memoria la primera vez que se accede a esta
         propiedad esto evita un consumo de recursos innecesario si solo se
         inicia la grabación sin completarla
 
-        returns:
+        RETURNS:
             la instancia del modelo de whisper cargado
         """
         if self._model is None:
@@ -98,11 +98,11 @@ class WhisperTranscriptionService(TranscriptionService):
 
     def start_recording(self) -> None:
         """
-        inicia la grabación de audio
+        INICIA LA GRABACIÓN DE AUDIO
 
         utiliza `audiorecorder` para capturar audio en un hilo separado
 
-        raises:
+        RAISES:
             RecordingError: si ya hay una grabación en proceso o falla el inicio
         """
         try:
@@ -114,7 +114,7 @@ class WhisperTranscriptionService(TranscriptionService):
 
     def stop_and_transcribe(self) -> str:
         """
-        detiene la grabación y transcribe el audio
+        DETIENE LA GRABACIÓN Y TRANSCRIBE EL AUDIO
 
         realiza los siguientes pasos
         1  detiene el `audiorecorder` y obtiene los datos de audio en memoria numpy array
@@ -123,10 +123,10 @@ class WhisperTranscriptionService(TranscriptionService):
         4  utiliza el modelo de whisper para transcribir el audio directamente desde memoria
         5  limpia recursos gc cuda cache para minimizar uso de memoria
 
-        returns:
+        RETURNS:
             el texto transcrito
 
-        raises:
+        RAISES:
             RecordingError: si no hay una grabación activa o si el audio es inválido
         """
         try:

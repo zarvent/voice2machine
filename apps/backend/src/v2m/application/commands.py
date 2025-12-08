@@ -14,7 +14,7 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-módulo que define los comandos específicos de la aplicación
+MÓDULO QUE DEFINE LOS COMANDOS ESPECÍFICOS DE LA APLICACIÓN
 
 cada clase en este módulo representa una intención de acción que el sistema
 puede realizar estos objetos son despachados por el `commandbus` y no
@@ -25,7 +25,7 @@ from v2m.core.cqrs.command import Command
 
 class StartRecordingCommand(Command):
     """
-    comando para iniciar la grabación de audio
+    COMANDO PARA INICIAR LA GRABACIÓN DE AUDIO
 
     este comando no requiere datos adicionales al ser despachado instruye
     al sistema para que comience a capturar audio del micrófono
@@ -34,7 +34,7 @@ class StartRecordingCommand(Command):
 
 class StopRecordingCommand(Command):
     """
-    comando para detener la grabación y solicitar la transcripción
+    COMANDO PARA DETENER LA GRABACIÓN Y SOLICITAR LA TRANSCRIPCIÓN
 
     este comando tampoco requiere datos su función es finalizar la grabación
     actual y disparar el proceso de transcripción del audio capturado
@@ -43,15 +43,15 @@ class StopRecordingCommand(Command):
 
 class ProcessTextCommand(Command):
     """
-    comando para procesar y refinar un bloque de texto usando un llm
+    COMANDO PARA PROCESAR Y REFINAR UN BLOQUE DE TEXTO USANDO UN LLM
 
     este comando encapsula el texto que necesita ser procesado
     """
     def __init__(self, text: str) -> None:
         """
-        inicializa el comando con el texto a procesar
+        INICIALIZA EL COMANDO CON EL TEXTO A PROCESAR
 
-        args:
+        ARGS:
             text: el texto que será enviado al servicio de llm para su refinamiento
         """
         self.text = text

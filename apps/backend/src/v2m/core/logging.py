@@ -14,25 +14,25 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-configuración de logging estructurado en formato json para voice2machine
+CONFIGURACIÓN DE LOGGING ESTRUCTURADO EN FORMATO JSON PARA VOICE2MACHINE
 
 este módulo configura un sistema de logging estructurado que emite
 registros en formato json facilitando el análisis automatizado búsqueda
 y agregación de logs en sistemas de monitoreo
 
-características
+CARACTERÍSTICAS
     - formato json para cada entrada de log
     - incluye timestamp nivel nombre del logger y mensaje
     - salida a stdout para compatibilidad con systemd journald
     - instancia global pre-configurada para uso en toda la aplicación
 
-formato de salida
+FORMATO DE SALIDA
     cada línea es un objeto json independiente::
 
         {"asctime": "2024-01-15 10:30:45", "name": "v2m", "levelname": "INFO",
          "message": "grabación iniciada"}
 
-uso
+USO
     importar el logger global desde cualquier módulo::
 
         from v2m.core.logging import logger
@@ -41,7 +41,7 @@ uso
         logger.error(f"error: {e}")
         logger.debug("datos de depuración")
 
-note
+NOTE
     el nivel por defecto es info los mensajes debug no se mostrarán
     a menos que se modifique el nivel del logger
 """
@@ -52,7 +52,7 @@ from pythonjsonlogger import jsonlogger
 
 def setup_logging() -> logging.Logger:
     """
-    configura y retorna un logger estructurado en formato json
+    CONFIGURA Y RETORNA UN LOGGER ESTRUCTURADO EN FORMATO JSON
 
     crea un logger nombrado 'v2m' configurado para emitir mensajes de nivel
     info o superior a stdout en formato json si el módulo se importa
@@ -64,12 +64,12 @@ def setup_logging() -> logging.Logger:
         - ``levelname`` nivel del mensaje info warning error etc
         - ``message`` contenido del mensaje de log
 
-    returns:
+    RETURNS:
         una instancia de ``logging.Logger`` configurada y lista para usar
         todos los módulos deberían importar la instancia global ``logger``
         en lugar de llamar esta función directamente
 
-    example
+    EXAMPLE
         configuración automática al importar::
 
             from v2m.core.logging import logger

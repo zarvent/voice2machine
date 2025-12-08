@@ -24,13 +24,13 @@ from v2m.domain.errors import RecordingError
 
 class AudioRecorder:
     """
-    clase responsable de la grabación de audio utilizando `sounddevice`
+    CLASE RESPONSABLE DE LA GRABACIÓN DE AUDIO UTILIZANDO `SOUNDDEVICE`
 
     maneja el flujo de entrada de audio almacena los frames en un buffer
     pre-allocado y permite detener la grabación devolviendo los datos como
     un array de numpy con zero-copy cuando es posible
 
-    optimizaciones
+    OPTIMIZACIONES
     - buffer pre-allocado para evitar reallocaciones
     - zero-copy slice al detener
     - dtype float32 consistente
@@ -40,9 +40,9 @@ class AudioRecorder:
 
     def __init__(self, sample_rate: int = 16000, channels: int = 1, max_duration_sec: int = 600, device_index: Optional[int] = None):
         """
-        inicializa el grabador de audio con buffer pre-allocado
+        INICIALIZA EL GRABADOR DE AUDIO CON BUFFER PRE-ALLOCADO
 
-        args:
+        ARGS:
             sample_rate: frecuencia de muestreo en hz
             channels: número de canales de audio
             max_duration_sec: duración máxima de grabación en segundos default 10 min
@@ -69,9 +69,9 @@ class AudioRecorder:
 
     def start(self):
         """
-        inicia la grabación de audio en un hilo de fondo callback
+        INICIA LA GRABACIÓN DE AUDIO EN UN HILO DE FONDO CALLBACK
 
-        raises:
+        RAISES:
             RecordingError: si la grabación ya está en progreso o falla al iniciar el stream
         """
         if self._recording:
@@ -126,16 +126,16 @@ class AudioRecorder:
 
     def stop(self, save_path: Optional[Path] = None) -> np.ndarray:
         """
-        detiene la grabación y devuelve el audio capturado
+        DETIENE LA GRABACIÓN Y DEVUELVE EL AUDIO CAPTURADO
 
-        args:
+        ARGS:
             save_path: ruta opcional para guardar el audio como archivo wav
 
-        returns:
+        RETURNS:
             el audio grabado como un array de numpy float32
             nota retorna una copia del buffer para evitar corrupción de datos
 
-        raises:
+        RAISES:
             RecordingError: si no hay una grabación en curso
         """
         if not self._recording:

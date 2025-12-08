@@ -28,7 +28,7 @@ _VAD_WINDOW_SIZE = 512  # silero vad window size para 16khz
 
 class VADService:
     """
-    servicio para la deteccion de actividad de voz vad utilizando silero vad
+    SERVICIO PARA LA DETECCION DE ACTIVIDAD DE VOZ VAD UTILIZANDO SILERO VAD
 
     soporta dos backends:
     - onnx runtime recomendado 100mb footprint más rápido en cpu
@@ -39,9 +39,9 @@ class VADService:
     """
     def __init__(self, prefer_onnx: bool = True):
         """
-        inicializa el servicio vad
+        INICIALIZA EL SERVICIO VAD
 
-        args:
+        ARGS:
             prefer_onnx: si true intenta usar onnx runtime primero menor footprint
         """
         self.model = None
@@ -55,11 +55,11 @@ class VADService:
 
     def load_model(self, timeout_sec: float = 10.0):
         """
-        carga el modelo silero vad de forma perezosa con timeout
+        CARGA EL MODELO SILERO VAD DE FORMA PEREZOSA CON TIMEOUT
 
         intenta cargar onnx primero menor footprint fallback a pytorch
 
-        args:
+        ARGS:
             timeout_sec float: tiempo maximo de espera en segundos
         """
         if self.disabled:
@@ -79,7 +79,7 @@ class VADService:
         self._load_torch_model(timeout_sec)
 
     def _load_onnx_model(self):
-        """carga el modelo silero vad usando onnx runtime 100mb footprint"""
+        """CARGA EL MODELO SILERO VAD USANDO ONNX RUNTIME 100MB FOOTPRINT"""
         import onnxruntime as ort
 
         # descargar modelo onnx si no existe
@@ -103,7 +103,7 @@ class VADService:
         logger.info("✅ silero vad cargado onnx runtime - footprint reducido")
 
     def _get_onnx_model_path(self) -> Path:
-        """obtiene la ruta al modelo onnx descargándolo si es necesario"""
+        """OBTIENE LA RUTA AL MODELO ONNX DESCARGÁNDOLO SI ES NECESARIO"""
         # buscar en cache local de torch hub subcarpeta src/silero_vad/data
         local_cache = Path.home() / ".cache" / "torch" / "hub" / "snakers4_silero-vad_master"
         local_onnx = local_cache / "src" / "silero_vad" / "data" / "silero_vad.onnx"
@@ -141,12 +141,12 @@ class VADService:
             raise FileNotFoundError(f"no se encontró modelo onnx de silero vad: {e}")
 
     def _reset_onnx_states(self):
-        """resetea los estados lstm para una nueva secuencia de audio"""
+        """RESETEA LOS ESTADOS LSTM PARA UNA NUEVA SECUENCIA DE AUDIO"""
         # silero vad onnx state shape [2, batch, 128]
         self._state = np.zeros((2, 1, 128), dtype=np.float32)
 
     def _load_torch_model(self, timeout_sec: float):
-        """carga el modelo usando pytorch fallback 500mb footprint"""
+        """CARGA EL MODELO USANDO PYTORCH FALLBACK 500MB FOOTPRINT"""
         logger.info("cargando modelo silero vad pytorch...")
 
         exc_holder: list[Exception] = []
@@ -183,13 +183,13 @@ class VADService:
 
     def _vad_onnx(self, audio_chunk: np.ndarray, sr: int = 16000) -> float:
         """
-        ejecuta inferencia vad con onnx runtime
+        EJECUTA INFERENCIA VAD CON ONNX RUNTIME
 
-        args:
+        ARGS:
             audio_chunk: chunk de audio 512 samples para 16khz
             sr: sample rate
 
-        returns:
+        RETURNS:
             probabilidad de voz 0.0 - 1.0
         """
         if len(audio_chunk) != _VAD_WINDOW_SIZE:
@@ -216,13 +216,13 @@ class VADService:
 
     def process(self, audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
         """
-        procesa el audio y elimina los segmentos de silencio
+        PROCESA EL AUDIO Y ELIMINA LOS SEGMENTOS DE SILENCIO
 
-        args:
+        ARGS:
             audio np.ndarray: array de numpy con el audio float32
             sample_rate int: frecuencia de muestreo debe ser 8000 o 16000 para silero
 
-        returns:
+        RETURNS:
             np.ndarray: un nuevo array de numpy que contiene solo los segmentos de voz concatenados
             si no se detecta voz devuelve un array vacío
         """
@@ -246,7 +246,7 @@ class VADService:
             return self._process_torch(audio, sample_rate)
 
     def _process_onnx(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
-        """procesa audio usando onnx backend más eficiente"""
+        """PROCESA AUDIO USANDO ONNX BACKEND MÁS EFICIENTE"""
         self._reset_onnx_states()
 
         threshold = config.whisper.vad_parameters.threshold
@@ -302,7 +302,7 @@ class VADService:
         return result
 
     def _process_torch(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
-        """procesa audio usando pytorch backend fallback"""
+        """PROCESA AUDIO USANDO PYTORCH BACKEND FALLBACK"""
         if self.model is None or self.get_speech_timestamps is None:
             return audio
 

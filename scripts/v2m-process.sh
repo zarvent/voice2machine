@@ -17,52 +17,52 @@
 #
 # v2m-process.sh - script para procesar el texto del portapapeles
 #
-# descripción
+# DESCRIPCIÓN
 #   este script lee lo que tengas copiado en el portapapeles y se lo envía
 #   a v2m para procesarlo con inteligencia artificial es ideal para usarlo
 #   con un atajo de teclado
 #
-# uso
+# USO
 #   ./scripts/v2m-process.sh
 #
-# cómo funciona
+# CÓMO FUNCIONA
 #   1 lee el contenido del portapapeles
 #   2 envía el texto al sistema principal
 #   3 copia el resultado procesado al portapapeles
 #   4 te avisa si todo salió bien o si hubo un error
 #
-# dependencias
+# DEPENDENCIAS
 #   - xclip para leer el portapapeles
 #   - notify-send para mostrar notificaciones
 #   - entorno virtual de python en ./venv
 #
-# integración con atajos de teclado
+# INTEGRACIÓN CON ATAJOS DE TECLADO
 #   en gnome
 #   gsettings set org.gnome.settings-daemon.plugins.media-keys \
 #     custom-keybindings "['/org/gnome/.../custom0/']"
 #   gsettings set ... command "$HOME/v2m/scripts/v2m-process.sh"
 #
-# notas
+# NOTAS
 #   - necesitas una sesión gráfica para usar el portapapeles
 #   - te avisará si el portapapeles está vacío
 #
-# autor
+# AUTOR
 #   equipo voice2machine
 #
-# desde
+# DESDE
 #   v1.0.0
 #
 
-# --- configuración ---
+# --- CONFIGURACIÓN ---
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 NOTIFY_EXPIRE_TIME=3000
 
-# --- rutas derivadas ---
+# --- RUTAS DERIVADAS ---
 VENV_PATH="${PROJECT_DIR}/venv"
 MAIN_SCRIPT="${PROJECT_DIR}/src/v2m/main.py"
 
-# --- función principal ---
+# --- FUNCIÓN PRINCIPAL ---
 run_orchestrator() {
     local text_to_process=$1
 
@@ -76,7 +76,7 @@ run_orchestrator() {
     echo "${text_to_process}" | python3 "${MAIN_SCRIPT}" "process"
 }
 
-# --- lógica principal ---
+# --- LÓGICA PRINCIPAL ---
 clipboard_content=$(xclip -o -selection clipboard)
 if [ -n "${clipboard_content}" ]; then
     run_orchestrator "${clipboard_content}"

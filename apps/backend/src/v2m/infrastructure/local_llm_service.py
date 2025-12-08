@@ -14,9 +14,9 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-servicio llm local usando llama-cpp-python
+SERVICIO LLM LOCAL USANDO LLAMA-CPP-PYTHON
 
-diseño clave:
+DISEÑO CLAVE:
 - usa create_chat_completion() que lee la plantilla del gguf automáticamente
 - funciona con qwen llama phi mistral sin cambiar código
 - context manager async para hot-swap de vram
@@ -42,24 +42,24 @@ if TYPE_CHECKING:
 
 class LocalLLMService(LLMService):
     """
-    servicio llm local con gestión de vram bajo demanda
+    SERVICIO LLM LOCAL CON GESTIÓN DE VRAM BAJO DEMANDA
 
     implementa la interfaz llmservice usando llama-cpp-python como backend
     soporta cualquier modelo gguf (qwen llama phi mistral) gracias al uso
     de create_chat_completion() que aplica automáticamente la plantilla
     de chat correcta según los metadatos del archivo gguf
 
-    características principales:
+    CARACTERÍSTICAS PRINCIPALES:
         - carga lazy del modelo no consume vram hasta primer uso
         - método unload() para liberar vram inmediatamente
         - context manager async loaded() para hot-swap automático
         - agnóstico al formato de chat (chatml llama etc)
 
-    attributes:
+    ATTRIBUTES:
         system_prompt: instrucción del sistema para el modelo
         is_loaded: indica si el modelo está cargado en vram
 
-    example:
+    EXAMPLE:
         uso básico con carga lazy::
 
             service = LocalLLMService()
@@ -74,13 +74,13 @@ class LocalLLMService(LLMService):
 
     def __init__(self) -> None:
         """
-        inicializa el servicio de llm local
+        INICIALIZA EL SERVICIO DE LLM LOCAL
 
         carga la configuración desde config.toml y el system prompt desde
         el archivo refine_system.txt el modelo no se carga en este momento
         carga lazy para evitar consumir vram innecesariamente
 
-        raises:
+        RAISES:
             LLMError: si el archivo del modelo no existe
         """
         self._model: Llama | None = None
@@ -97,9 +97,9 @@ class LocalLLMService(LLMService):
 
     def _ensure_model_exists(self) -> None:
         """
-        verifica que el archivo del modelo existe en disco
+        VERIFICA QUE EL ARCHIVO DEL MODELO EXISTE EN DISCO
 
-        raises:
+        RAISES:
             LLMError: si el archivo gguf no existe con instrucciones de descarga
         """
         if not self._model_path.exists():
@@ -112,13 +112,13 @@ class LocalLLMService(LLMService):
 
     def load(self) -> None:
         """
-        carga el modelo en vram
+        CARGA EL MODELO EN VRAM
 
         si el modelo ya está cargado esta función no hace nada
         la carga es una operación costosa (~2-5 segundos) que debe
         hacerse una vez y reutilizarse
 
-        raises:
+        RAISES:
             LLMError: si el archivo del modelo no existe
             RuntimeError: si hay problemas cargando el modelo en gpu
         """
@@ -142,7 +142,7 @@ class LocalLLMService(LLMService):
 
     def unload(self) -> None:
         """
-        libera el modelo de vram inmediatamente
+        LIBERA EL MODELO DE VRAM INMEDIATAMENTE
 
         destruye la instancia del modelo y fuerza garbage collection
         para liberar la memoria cuda lo antes posible
@@ -158,9 +158,9 @@ class LocalLLMService(LLMService):
     @property
     def is_loaded(self) -> bool:
         """
-        indica si el modelo está cargado en vram
+        INDICA SI EL MODELO ESTÁ CARGADO EN VRAM
 
-        returns:
+        RETURNS:
             True si el modelo está cargado y listo para inferencia
         """
         return self._model is not None
@@ -168,22 +168,22 @@ class LocalLLMService(LLMService):
     @asynccontextmanager
     async def loaded(self) -> AsyncIterator[None]:
         """
-        context manager async para hot-swap de vram
+        CONTEXT MANAGER ASYNC PARA HOT-SWAP DE VRAM
 
         carga el modelo al entrar y lo descarga al salir útil para
         gpus con poca memoria donde no es viable mantener múltiples
         modelos cargados simultáneamente
 
-        example:
+        EXAMPLE:
             async with llm_service.loaded():
                 result = await llm_service.process_text(text)
             # vram liberada automáticamente al salir
 
-        note:
+        NOTE:
             si prefieres mantener el modelo cargado para menor latencia
             llama a load() una vez al inicio y no uses este context manager
 
-        yields:
+        YIELDS:
             None el modelo está disponible dentro del bloque
         """
         try:
@@ -194,20 +194,20 @@ class LocalLLMService(LLMService):
 
     async def process_text(self, text: str) -> str:
         """
-        procesa texto usando el modelo local
+        PROCESA TEXTO USANDO EL MODELO LOCAL
 
         usa create_chat_completion() que aplica automáticamente la plantilla
         de chat correcta según los metadatos del gguf esto hace el código
         agnóstico al modelo funciona con qwen llama phi mistral sin
         cambiar una sola línea de python
 
-        args:
+        ARGS:
             text: el texto a procesar/refinar
 
-        returns:
+        RETURNS:
             el texto procesado por el modelo
 
-        raises:
+        RAISES:
             LLMError: si el modelo no existe o hay errores de inferencia
         """
         # lazy loading si no está cargado

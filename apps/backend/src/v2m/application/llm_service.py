@@ -14,7 +14,7 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-módulo que define la interfaz para los servicios de modelos de lenguaje grandes llm
+MÓDULO QUE DEFINE LA INTERFAZ PARA LOS SERVICIOS DE MODELOS DE LENGUAJE GRANDES LLM
 
 esta clase abstracta define el contrato que cualquier servicio de llm debe
 cumplir para ser utilizado por la aplicación la capa de aplicación depende de
@@ -25,7 +25,7 @@ from abc import ABC, abstractmethod
 
 class LLMService(ABC):
     """
-    clase base abstracta para los servicios de modelos de lenguaje
+    CLASE BASE ABSTRACTA PARA LOS SERVICIOS DE MODELOS DE LENGUAJE
 
     define las operaciones que se pueden realizar con un llm como procesar texto
     """
@@ -33,12 +33,12 @@ class LLMService(ABC):
     @abstractmethod
     async def process_text(self, text: str) -> str:
         """
-        procesa y refina un bloque de texto utilizando el llm
+        PROCESA Y REFINA UN BLOQUE DE TEXTO UTILIZANDO EL LLM
 
-        args:
+        ARGS:
             text: el texto de entrada a procesar
 
-        returns:
+        RETURNS:
             el texto procesado y refinado por el llm
         """
         raise NotImplementedError

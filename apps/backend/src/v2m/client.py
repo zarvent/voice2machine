@@ -14,7 +14,7 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-cliente de línea de comandos para comunicarse con el daemon de v2m
+CLIENTE DE LÍNEA DE COMANDOS PARA COMUNICARSE CON EL DAEMON DE V2M
 
 este módulo proporciona funcionalidades para enviar comandos al daemon
 de voice2machine a través de un socket unix es la forma principal de
@@ -23,7 +23,7 @@ interactuar con el servicio desde scripts externos o la terminal
 el cliente establece una conexión efímera con el socket del daemon
 envía el comando y espera una respuesta antes de cerrar la conexión
 
-ejemplo
+EJEMPLO
     uso desde línea de comandos::
 
         python -m v2m.client START_RECORDING
@@ -38,7 +38,7 @@ ejemplo
         response = asyncio.run(send_command("PING"))
         print(response)  # "PONG"
 
-note
+NOTE
     el daemon debe estar ejecutándose antes de enviar comandos
     iniciar con ``python -m v2m.main --daemon``
 """
@@ -50,29 +50,29 @@ from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand
 
 async def send_command(command: str) -> str:
     """
-    envía un comando al daemon a través de un socket unix
+    ENVÍA UN COMANDO AL DAEMON A TRAVÉS DE UN SOCKET UNIX
 
     establece una conexión asíncrona con el socket del daemon envía el
     comando codificado en utf-8 y espera una respuesta la conexión se
     cierra automáticamente después de recibir la respuesta
 
-    args:
+    ARGS:
         command: el comando a enviar debe ser uno de los valores definidos
             en ``IPCCommand`` (ej ``START_RECORDING`` ``STOP_RECORDING``
             ``PING`` ``SHUTDOWN`` ``PROCESS_TEXT <texto>``)
 
-    returns:
+    RETURNS:
         la respuesta del daemon como cadena de texto respuestas típicas
             - ``OK`` comando ejecutado exitosamente
             - ``PONG`` respuesta al comando ping
             - ``ERROR: <mensaje>`` ocurrió un error
             - ``UNKNOWN_COMMAND`` comando no reconocido
 
-    raises:
+    RAISES:
         SystemExit: si el daemon no está corriendo filenotfounderror
             o rechaza la conexión connectionrefusederror
 
-    example
+    EXAMPLE
         verificar si el daemon está activo::
 
             response = await send_command("PING")
@@ -105,20 +105,20 @@ async def send_command(command: str) -> str:
 
 def main() -> None:
     """
-    punto de entrada para el cliente de línea de comandos
+    PUNTO DE ENTRADA PARA EL CLIENTE DE LÍNEA DE COMANDOS
 
     analiza los argumentos de la línea de comandos construye el mensaje
     ipc completo incluyendo payload opcional y lo envía al daemon
     imprime la respuesta recibida a stdout
 
-    argumentos cli
+    ARGUMENTOS CLI
         command: comando ipc a enviar requerido opciones
             ``START_RECORDING`` ``STOP_RECORDING`` ``PING``
             ``SHUTDOWN`` ``PROCESS_TEXT``
         payload: datos adicionales para el comando opcional
             solo aplicable a ``PROCESS_TEXT``
 
-    example
+    EXAMPLE
         iniciar grabación::
 
             python -m v2m.client START_RECORDING

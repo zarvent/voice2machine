@@ -14,7 +14,7 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-daemon principal de voice2machine
+DAEMON PRINCIPAL DE VOICE2MACHINE
 
 este módulo implementa el proceso daemon que mantiene el modelo whisper
 cargado en memoria y escucha comandos ipc a través de un socket unix
@@ -25,14 +25,14 @@ el daemon es el componente central de la arquitectura responsable de
     - despachar comandos al bus de comandos (patrón cqrs)
     - gestionar el ciclo de vida del servicio
 
-arquitectura
+ARQUITECTURA
     el daemon utiliza asyncio para manejar múltiples conexiones de clientes
     de forma concurrente los comandos recibidos son despachados al
     ``CommandBus`` que los redirige al handler apropiado
 
     socket unix -> daemon -> commandbus -> handler -> servicios
 
-ejemplo
+EJEMPLO
     iniciar el daemon directamente::
 
         python -m v2m.daemon
@@ -41,7 +41,7 @@ ejemplo
 
         python -m v2m.main --daemon
 
-note
+NOTE
     el daemon debe ejecutarse con permisos para acceder al micrófono
     y crear archivos en /tmp/
 """
@@ -63,36 +63,36 @@ from v2m.config import config
 
 class Daemon:
     """
-    clase principal del daemon que gestiona el ciclo de vida y las comunicaciones ipc
+    CLASE PRINCIPAL DEL DAEMON QUE GESTIONA EL CICLO DE VIDA Y LAS COMUNICACIONES IPC
 
     el daemon es un proceso persistente diseñado para ejecutarse en segundo plano
     mantiene el modelo whisper en memoria para evitar tiempos de carga en cada
     transcripción y proporciona una interfaz ipc para recibir comandos
 
-    attributes:
+    ATTRIBUTES:
         running: indica si el daemon está activo y procesando comandos
         socket_path: ruta al archivo del socket unix para comunicación ipc
         command_bus: instancia del bus de comandos para despachar operaciones
 
-    example
+    EXAMPLE
         iniciar el daemon::
 
             daemon = Daemon()
             daemon.run()  # bloquea hasta sigterm o sigint
 
-    warning
+    WARNING
         solo debe haber una instancia del daemon ejecutándose a la vez
         el daemon detecta instancias previas mediante el socket unix
     """
     def __init__(self) -> None:
         """
-        inicializa la instancia del daemon
+        INICIALIZA LA INSTANCIA DEL DAEMON
 
         configura la ruta del socket obtiene el bus de comandos del contenedor
         de inyección de dependencias y limpia archivos huérfanos de ejecuciones
         anteriores que pudieron terminar de forma inesperada
 
-        note
+        NOTE
             si existe un archivo de bandera de grabación de una ejecución
             anterior por un error será eliminado automáticamente
         """
@@ -114,24 +114,24 @@ class Daemon:
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """
-        maneja las conexiones entrantes de clientes ipc
+        MANEJA LAS CONEXIONES ENTRANTES DE CLIENTES IPC
 
         este método es llamado por el servidor asyncio para cada nueva conexión
         lee el mensaje del socket lo decodifica ejecuta el comando correspondiente
         y envía una respuesta al cliente
 
-        args:
+        ARGS:
             reader: flujo de lectura asíncrono para recibir datos del cliente
             writer: flujo de escritura asíncrono para enviar respuestas al cliente
 
-        comandos soportados
+        COMANDOS SOPORTADOS
             - ``START_RECORDING`` inicia la grabación de audio
             - ``STOP_RECORDING`` detiene y transcribe el audio
             - ``PROCESS_TEXT <texto>`` refina el texto con llm
             - ``PING`` verifica que el daemon esté activo responde pong
             - ``SHUTDOWN`` detiene el daemon de forma ordenada
 
-        note
+        NOTE
             los errores durante el procesamiento de comandos son capturados
             y devueltos como respuesta ``ERROR: <mensaje>`` sin terminar
             la conexión del daemon
@@ -193,16 +193,16 @@ class Daemon:
 
     async def start_server(self) -> None:
         """
-        inicia el servidor de socket unix
+        INICIA EL SERVIDOR DE SOCKET UNIX
 
         verifica si existe un socket previo y determina si hay otro daemon
         activo si el socket existe pero no hay daemon escuchando lo elimina
         y crea uno nuevo
 
-        raises:
+        RAISES:
             SystemExit: si ya hay otro daemon activo escuchando en el socket
 
-        note
+        NOTE
             este método bloquea indefinidamente hasta que se llame a ``stop()``
             o se reciba una señal de terminación
         """
@@ -232,12 +232,12 @@ class Daemon:
 
     def _cleanup_orphaned_processes(self) -> None:
         """
-        limpieza agresiva de todos los procesos v2m huérfanos
+        LIMPIEZA AGRESIVA DE TODOS LOS PROCESOS V2M HUÉRFANOS
 
         esta función es crítica para la experiencia de usuario un proceso consumiendo gpu sin
         feedback claro se interpreta como malware o minería de criptomonedas
 
-        política tolerancia cero para procesos zombie
+        POLÍTICA TOLERANCIA CERO PARA PROCESOS ZOMBIE
         - mata todos los procesos v2m excepto el actual
         - libera vram inmediatamente
         - limpia todos los archivos residuales
@@ -301,7 +301,7 @@ class Daemon:
 
     def _cleanup_resources(self) -> None:
         """
-        limpia recursos al terminar llamado por atexit
+        LIMPIA RECURSOS AL TERMINAR LLAMADO POR ATEXIT
 
         libera vram elimina socket y pid file para prevenir procesos zombie
         """
@@ -331,13 +331,13 @@ class Daemon:
 
     def stop(self) -> None:
         """
-        detiene el daemon y libera recursos
+        DETIENE EL DAEMON Y LIBERA RECURSOS
 
         realiza una limpieza ordenada eliminando el archivo del socket unix
         y terminando el proceso este método es llamado automáticamente al
         recibir señales sigint o sigterm o al procesar el comando shutdown
 
-        raises:
+        RAISES:
             SystemExit: siempre termina con código 0 exit exitoso
         """
         logger.info("deteniendo daemon...")
@@ -346,7 +346,7 @@ class Daemon:
 
     def run(self) -> None:
         """
-        ejecuta el bucle principal del daemon
+        EJECUTA EL BUCLE PRINCIPAL DEL DAEMON
 
         configura los manejadores de señales posix sigint sigterm para
         permitir una terminación ordenada crea un nuevo event loop de asyncio
@@ -354,11 +354,11 @@ class Daemon:
 
         este método es bloqueante y no retorna hasta que el daemon termine
 
-        señales manejadas
+        SEÑALES MANEJADAS
             - ``SIGINT`` interrupción de teclado ctrl+c
             - ``SIGTERM`` señal de terminación estándar
 
-        example
+        EXAMPLE
             uso típico::
 
                 if __name__ == "__main__":

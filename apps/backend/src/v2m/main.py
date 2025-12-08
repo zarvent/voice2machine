@@ -14,7 +14,7 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-punto de entrada principal para la aplicación voice2machine
+PUNTO DE ENTRADA PRINCIPAL PARA LA APLICACIÓN VOICE2MACHINE
 
 este módulo actúa como un lanzador unificado que puede operar en dos modos
 
@@ -24,7 +24,7 @@ este módulo actúa como un lanzador unificado que puede operar en dos modos
     2 **modo cliente** (``<COMMAND>``) envía comandos al daemon en
        ejecución a través de socket unix
 
-ejemplos de uso
+EJEMPLOS DE USO
     iniciar el daemon proceso en primer plano::
 
         python -m v2m.main --daemon
@@ -40,7 +40,7 @@ ejemplos de uso
 
         python -m v2m.main PROCESS_TEXT "texto a refinar"
 
-note
+NOTE
     para uso en producción se recomienda ejecutar el daemon como servicio
     systemd ver ``scripts/install_service.py`` para más detalles
 """
@@ -55,7 +55,7 @@ from v2m.core.logging import logger
 
 def _setup_uvloop() -> None:
     """
-    configura uvloop como event loop si está disponible
+    CONFIGURA UVLOOP COMO EVENT LOOP SI ESTÁ DISPONIBLE
 
     uvloop es 2-4x más rápido que el asyncio loop estándar
     si no está instalado usa el loop estándar sin error
@@ -70,13 +70,13 @@ def _setup_uvloop() -> None:
 
 def main() -> None:
     """
-    función principal que procesa argumentos y ejecuta el modo apropiado
+    FUNCIÓN PRINCIPAL QUE PROCESA ARGUMENTOS Y EJECUTA EL MODO APROPIADO
 
     analiza los argumentos de línea de comandos para determinar si debe
     iniciar el servicio en segundo plano daemon o actuar como cliente
     enviando comandos ipc
 
-    argumentos cli
+    ARGUMENTOS CLI
         --daemon: si está presente inicia el daemon en primer plano
             el proceso no se bifurca no fork permitiendo ver logs
             directamente para ejecutar en segundo plano usar nohup
@@ -90,15 +90,15 @@ def main() -> None:
             solo aplicable a comandos que requieren datos adicionales
             como ``PROCESS_TEXT``
 
-    returns:
+    RETURNS:
         none en modo daemon nunca retorna ejecuta indefinidamente
         en modo cliente termina después de enviar el comando
 
-    raises:
+    RAISES:
         SystemExit: con código 1 si no se proporcionan argumentos o
             si hay un error de comunicación con el daemon
 
-    example
+    EXAMPLE
         desde python::
 
             from v2m.main import main

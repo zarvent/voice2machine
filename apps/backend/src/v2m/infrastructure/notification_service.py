@@ -14,19 +14,19 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-servicio de notificaciones de escritorio para linux
+SERVICIO DE NOTIFICACIONES DE ESCRITORIO PARA LINUX
 
 este módulo implementa un servicio de notificaciones robusto que soporta
 auto-dismiss programático via dbus resolviendo la limitación de unity o gnome
 que ignora el parámetro expire-time de notify-send
 
-arquitectura:
+ARQUITECTURA:
     - usa freedesktop notifications spec via gdbus sin dependencias externas
     - thread pool executor singleton para manejar cierres sin fugas de hilos
     - fallback automático a notify-send si dbus falla
     - configuración inyectada desde config.toml
 
-example:
+EXAMPLE:
     uso básico::
 
         from v2m.infrastructure.notification_service import LinuxNotificationService
@@ -39,7 +39,7 @@ example:
 
         service.shutdown()  # espera a que terminen los cierres pendientes
 
-note:
+NOTE:
     este servicio es seguro para hilos y puede usarse desde múltiples hilos
     simultáneamente sin problemas de concurrencia
 """
@@ -66,9 +66,9 @@ if TYPE_CHECKING:
 @dataclass(frozen=True, slots=True)
 class NotificationResult:
     """
-    resultado inmutable de enviar una notificación
+    RESULTADO INMUTABLE DE ENVIAR UNA NOTIFICACIÓN
 
-    attributes:
+    ATTRIBUTES:
         success: true si la notificación se envió correctamente
         notification_id: el id asignado por dbus o none si falló
         error: mensaje de error si success es false
@@ -80,23 +80,23 @@ class NotificationResult:
 
 class LinuxNotificationService(NotificationInterface):
     """
-    servicio de notificaciones para linux con auto-dismiss via dbus
+    SERVICIO DE NOTIFICACIONES PARA LINUX CON AUTO-DISMISS VIA DBUS
 
     implementa el patrón singleton para el thread pool executor compartido
     entre todas las instancias garantizando eficiencia de recursos y
     correcta limpieza al finalizar la aplicación
 
-    attributes:
+    ATTRIBUTES:
         expire_time_ms: tiempo en ms antes de auto-cerrar de config
         auto_dismiss: si true fuerza cierre via dbus de config
 
-    class attributes:
+    CLASS ATTRIBUTES:
         _executor: thread pool compartido entre instancias
         _instances: referencias débiles a instancias activas para apagado
         _lock: mutex para inicialización segura de hilos del executor
         MAX_POOL_SIZE: máximo de hilos para cierres concurrentes
 
-    example:
+    EXAMPLE:
         inyección de dependencias en un manejador::
 
             class MyHandler:
@@ -120,9 +120,9 @@ class LinuxNotificationService(NotificationInterface):
 
     def __init__(self, config: Optional[NotificationsConfig] = None) -> None:
         """
-        inicializa el servicio con configuración opcional
+        INICIALIZA EL SERVICIO CON CONFIGURACIÓN OPCIONAL
 
-        args:
+        ARGS:
             config: configuración de notificaciones si none se carga
                 automáticamente desde config.toml
         """
@@ -144,7 +144,7 @@ class LinuxNotificationService(NotificationInterface):
     @classmethod
     def _ensure_executor(cls) -> None:
         """
-        inicializa el thread pool executor singleton seguro para hilos
+        INICIALIZA EL THREAD POOL EXECUTOR SINGLETON SEGURO PARA HILOS
 
         usa patrón double-checked locking para evitar contención
         innecesaria después de la primera inicialización
@@ -163,7 +163,7 @@ class LinuxNotificationService(NotificationInterface):
     @classmethod
     def _shutdown_executor(cls) -> None:
         """
-        cierra el executor limpiamente esperando tareas pendientes
+        CIERRA EL EXECUTOR LIMPIAMENTE ESPERANDO TAREAS PENDIENTES
 
         llamado automáticamente por atexit o manualmente via shutdown
         """
@@ -175,16 +175,16 @@ class LinuxNotificationService(NotificationInterface):
 
     def notify(self, title: str, message: str) -> None:
         """
-        envía una notificación al escritorio con auto-dismiss opcional
+        ENVÍA UNA NOTIFICACIÓN AL ESCRITORIO CON AUTO-DISMISS OPCIONAL
 
         el método es no bloqueante la notificación se envía y el cierre
         se programa en segundo plano sin bloquear al invocador
 
-        args:
+        ARGS:
             title: título de la notificación breve y descriptivo
             message: cuerpo del mensaje máx 100 caracteres recomendado
 
-        note:
+        NOTE:
             si auto_dismiss está habilitado y dbus funciona el cierre
             se ejecuta después de expire_time_ms en un hilo del pool
         """
@@ -198,16 +198,16 @@ class LinuxNotificationService(NotificationInterface):
 
     def _send_notification(self, title: str, message: str) -> NotificationResult:
         """
-        envía notificación via dbus y retorna el id de notificación
+        ENVÍA NOTIFICACIÓN VIA DBUS Y RETORNA EL ID DE NOTIFICACIÓN
 
         usa gdbus para evitar dependencias python adicionales
         gdbus viene preinstalado en ubuntu debian fedora
 
-        args:
+        ARGS:
             title: título de la notificación
             message: cuerpo del mensaje
 
-        returns:
+        RETURNS:
             notificationresult con success=true y notification_id si ok
             notificationresult con success=false y error si falló
         """
@@ -259,12 +259,12 @@ class LinuxNotificationService(NotificationInterface):
 
     def _schedule_dismiss(self, notification_id: int) -> None:
         """
-        programa el cierre de una notificación en el thread pool
+        PROGRAMA EL CIERRE DE UNA NOTIFICACIÓN EN EL THREAD POOL
 
-        args:
+        ARGS:
             notification_id: id de la notificación a cerrar
 
-        note:
+        NOTE:
             usa el executor singleton para evitar creación de hilos
             por notificación lo que causaría fugas de hilos
         """
@@ -305,12 +305,12 @@ class LinuxNotificationService(NotificationInterface):
 
     def _send_fallback(self, title: str, message: str) -> None:
         """
-        envía notificación usando notify-send como fallback
+        ENVÍA NOTIFICACIÓN USANDO NOTIFY-SEND COMO FALLBACK
 
         se usa cuando dbus no está disponible o falla el notify
         no soporta auto-dismiss pero al menos muestra la notificación
 
-        args:
+        ARGS:
             title: título de la notificación
             message: cuerpo del mensaje
         """
@@ -334,11 +334,11 @@ class LinuxNotificationService(NotificationInterface):
     @property
     def pending_dismissals(self) -> int:
         """
-        retorna el número de cierres pendientes en el executor
+        RETORNA EL NÚMERO DE CIERRES PENDIENTES EN EL EXECUTOR
 
         útil para pruebas y depuración
 
-        returns:
+        RETURNS:
             número de tareas de cierre aún en cola o ejecutando
         """
         with self._pending_lock:
@@ -346,13 +346,13 @@ class LinuxNotificationService(NotificationInterface):
 
     def shutdown(self, wait: bool = True) -> None:
         """
-        cierra esta instancia y opcionalmente espera tareas pendientes
+        CIERRA ESTA INSTANCIA Y OPCIONALMENTE ESPERA TAREAS PENDIENTES
 
-        args:
+        ARGS:
             wait: si true espera a que terminen los cierres pendientes
                 antes de retornar default true
 
-        note:
+        NOTE:
             el executor singleton no se cierra aquí solo se marca la instancia
             como inactiva el executor se cierra en atexit o llamando
             shutdown_all explícitamente
@@ -365,7 +365,7 @@ class LinuxNotificationService(NotificationInterface):
     @classmethod
     def shutdown_all(cls) -> None:
         """
-        cierra el executor singleton y todas las instancias
+        CIERRA EL EXECUTOR SINGLETON Y TODAS LAS INSTANCIAS
 
         usar solo al finalizar la aplicación o en pruebas
         """
