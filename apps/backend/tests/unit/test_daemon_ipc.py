@@ -141,6 +141,7 @@ async def test_oversized_message_rejection(mock_daemon):
         pass
 
     # Verify error response
-    assert "ERROR" in response or "too large" in response.lower(), \
-        f"Expected error for oversized message, got: {response}"
+    assert "ERROR" in response, f"Expected ERROR in response, got: {response}"
+    assert "too large" in response.lower() or "invalid message length" in response.lower(), \
+        f"Expected specific error message about size, got: {response}"
 

@@ -141,11 +141,23 @@ class Daemon:
             header_data = await reader.readexactly(4)
             length = int.from_bytes(header_data, byteorder="big")
             
-            # Validate message size to prevent memory exhaustion and malicious inputs
-            # Note: length < 0 is technically impossible with unsigned int, but checked for defense-in-depth
-            if length < 0 or length > MAX_MESSAGE_SIZE:
-                logger.error(f"Invalid message length: {length} bytes (valid range: 0-{MAX_MESSAGE_SIZE})")
-                error_msg = f"ERROR: Invalid message length ({length} bytes, valid range: 0-{MAX_MESSAGE_SIZE})"
+            # Validate message size to prevent memory exhaustion
+            # int.from_bytes with unsigned interpretation cannot produce negative values
+            if length > MAX_MESSAGE_SIZE:
+                logger.error(f"Message too large: {length} bytes (max: {MAX_MESSAGE_SIZE})")
+                error_msg = f"ERROR: Message too large ({length} bytes, max: {MAX_MESSAGE_SIZE})"
+                error_bytes = error_msg.encode("utf-8")
+                writer.write(len(error_bytes).to_bytes(4, byteorder="big"))
+                writer.write(error_bytes)
+                await writer.drain()
+                writer.close()
+                await writer.wait_closed()
+                return
+            
+            # Handle empty messages
+            if length == 0:
+                logger.warning("Received empty message from client")
+                error_msg = "ERROR: Empty message"
                 error_bytes = error_msg.encode("utf-8")
                 writer.write(len(error_bytes).to_bytes(4, byteorder="big"))
                 writer.write(error_bytes)

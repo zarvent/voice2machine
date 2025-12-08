@@ -46,7 +46,10 @@ note
 import asyncio
 import sys
 import argparse
+import os
+from pathlib import Path
 from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand, MAX_MESSAGE_SIZE
+from v2m.core.logging import logger
 
 async def send_command(command: str) -> str:
     """
@@ -80,6 +83,13 @@ async def send_command(command: str) -> str:
                 print("Daemon activo")
     """
     try:
+        # Check if socket exists before attempting connection
+        socket_path = Path(SOCKET_PATH)
+        if not socket_path.exists():
+            logger.error(f"Daemon not running (socket not found at {SOCKET_PATH})")
+            print(f"Error: Daemon not running (socket not found at {SOCKET_PATH})", file=sys.stderr)
+            sys.exit(1)
+        
         reader, writer = await asyncio.open_unix_connection(SOCKET_PATH)
 
         # Protocolo de framing: 4 bytes longitud (Big Endian) + Payload
@@ -88,6 +98,7 @@ async def send_command(command: str) -> str:
         
         # Validate outgoing message size
         if length > MAX_MESSAGE_SIZE:
+            logger.error(f"Message too large: {length} bytes (max: {MAX_MESSAGE_SIZE})")
             print(f"Error: Message too large ({length} bytes, max: {MAX_MESSAGE_SIZE})", file=sys.stderr)
             sys.exit(1)
         
@@ -97,18 +108,37 @@ async def send_command(command: str) -> str:
 
         # Read response with same framing protocol
         try:
-            response_header = await reader.readexactly(4)
+            # Add timeout to prevent infinite blocking if daemon dies
+            response_header = await asyncio.wait_for(
+                reader.readexactly(4),
+                timeout=5.0
+            )
             response_length = int.from_bytes(response_header, byteorder="big")
             
-            # Validate response length to prevent memory exhaustion and malicious responses
-            # Note: response_length < 0 is technically impossible with unsigned int, but checked for defense-in-depth
-            if response_length < 0 or response_length > MAX_MESSAGE_SIZE:
-                print(f"Error: Invalid response length ({response_length} bytes, valid range: 0-{MAX_MESSAGE_SIZE})", file=sys.stderr)
+            # Validate response length to prevent memory exhaustion
+            # int.from_bytes with unsigned interpretation cannot produce negative values
+            if response_length > MAX_MESSAGE_SIZE:
+                logger.error(f"Response too large: {response_length} bytes (max: {MAX_MESSAGE_SIZE})")
+                print(f"Error: Response too large ({response_length} bytes, max: {MAX_MESSAGE_SIZE})", file=sys.stderr)
                 sys.exit(1)
             
-            response_data = await reader.readexactly(response_length)
+            # Handle empty responses
+            if response_length == 0:
+                logger.warning("Empty response from daemon")
+                print("Warning: Empty response from daemon", file=sys.stderr)
+                return ""
+            
+            response_data = await asyncio.wait_for(
+                reader.readexactly(response_length),
+                timeout=5.0
+            )
             response = response_data.decode("utf-8")
+        except asyncio.TimeoutError:
+            logger.error("Timeout waiting for daemon response")
+            print("Error: Timeout waiting for daemon response", file=sys.stderr)
+            sys.exit(1)
         except asyncio.IncompleteReadError as e:
+            logger.error(f"Incomplete response from daemon (received {len(e.partial)} bytes)")
             print(f"Error: Incomplete response from daemon (received {len(e.partial)} bytes)", file=sys.stderr)
             sys.exit(1)
         # print(f"Response: {response}")
@@ -117,9 +147,11 @@ async def send_command(command: str) -> str:
         await writer.wait_closed()
         return response
     except FileNotFoundError:
+        logger.error("Daemon socket not found")
         print("Error: Daemon is not running. Start it with 'python -m v2m.daemon'", file=sys.stderr)
         sys.exit(1)
     except ConnectionRefusedError:
+        logger.error("Connection refused by daemon")
         print("Error: Connection refused. Daemon might be dead.", file=sys.stderr)
         sys.exit(1)
 
