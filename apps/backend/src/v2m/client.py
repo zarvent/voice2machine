@@ -46,7 +46,7 @@ note
 import asyncio
 import sys
 import argparse
-from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand
+from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand, MAX_MESSAGE_SIZE
 
 async def send_command(command: str) -> str:
     """
@@ -93,6 +93,12 @@ async def send_command(command: str) -> str:
         try:
             response_header = await reader.readexactly(4)
             response_length = int.from_bytes(response_header, byteorder="big")
+            
+            # Validate response length to prevent memory exhaustion
+            if response_length > MAX_MESSAGE_SIZE:
+                print(f"Error: Response too large ({response_length} bytes, max: {MAX_MESSAGE_SIZE})", file=sys.stderr)
+                sys.exit(1)
+            
             response_data = await reader.readexactly(response_length)
             response = response_data.decode("utf-8")
         except asyncio.IncompleteReadError as e:

@@ -121,9 +121,14 @@ async def test_oversized_message_rejection(mock_daemon):
     writer.write(oversized_length.to_bytes(4, byteorder="big"))
     await writer.drain()
     
-    # Try to read response (should be error message without framing)
-    data = await reader.read(1024)
-    response = data.decode("utf-8")
+    # Read response using the framing protocol
+    try:
+        response_header = await reader.readexactly(4)
+        response_length = int.from_bytes(response_header, byteorder="big")
+        response_data = await reader.readexactly(response_length)
+        response = response_data.decode("utf-8")
+    except asyncio.IncompleteReadError:
+        response = "Connection closed"
     
     writer.close()
     await writer.wait_closed()
