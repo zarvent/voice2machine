@@ -14,36 +14,36 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-módulo de configuración de la aplicación voice2machine
+MÓDULO DE CONFIGURACIÓN DE LA APLICACIÓN VOICE2MACHINE
 
 este módulo proporciona un sistema de configuración robusto y tipado utilizando
 pydantic settings soporta múltiples fuentes de configuración con la siguiente
-prioridad (de mayor a menor)
+prioridad de mayor a menor
 
-    1 argumentos de inicialización (constructor)
+    1 argumentos de inicialización constructor
     2 variables de entorno
     3 archivo .env
     4 archivo config.toml
     5 valores por defecto
 
-la configuración está organizada en secciones lógicas
+LA CONFIGURACIÓN ESTÁ ORGANIZADA EN SECCIONES LÓGICAS
     - ``PathsConfig`` rutas de archivos temporales y del sistema
     - ``WhisperConfig`` parámetros del modelo de transcripción
     - ``GeminiConfig`` configuración del servicio llm
 
-ejemplo
+EJEMPLO
     acceder a la configuración desde cualquier parte de la aplicación::
 
         from v2m.config import config
 
-        # Acceder a configuración de Whisper
+        # acceder a configuración de whisper
         modelo = config.whisper.model
         dispositivo = config.whisper.device
 
-        # Acceder a rutas
+        # acceder a rutas
         archivo_audio = config.paths.audio_file
 
-notas
+NOTAS
     - el archivo config.toml debe estar en la raíz del proyecto
     - las variables de entorno tienen prefijo automático del nombre de la sección
     - gemini_api_key debe definirse en el archivo .env o como variable de entorno
@@ -64,12 +64,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class PathsConfig(BaseModel):
     """
-    configuración de rutas de archivos y directorios para la aplicación
+    CONFIGURACIÓN DE RUTAS DE ARCHIVOS Y DIRECTORIOS PARA LA APLICACIÓN
 
     esta clase define las rutas utilizadas por el sistema para almacenar
     archivos temporales banderas de estado y registros de depuración
 
-    attributes:
+    ATTRIBUTES:
         recording_flag: ruta al archivo pid que indica una grabación activa
             se crea cuando inicia la grabación y se elimina al terminar
         audio_file: ruta al archivo wav temporal donde se guarda el audio
@@ -78,13 +78,13 @@ class PathsConfig(BaseModel):
         venv_path: ruta al entorno virtual de python de la aplicación
             utilizado por los scripts de shell para activar el entorno
 
-    example
+    EXAMPLE
         acceder a las rutas configuradas::
 
             from v2m.config import config
 
             if config.paths.recording_flag.exists():
-                print("Hay una grabación en progreso")
+                print("hay una grabación en progreso")
     """
     recording_flag: Path = Field(default=Path("/tmp/v2m_recording.pid"))
     audio_file: Path = Field(default=Path("/tmp/v2m_audio.wav"))
@@ -96,15 +96,15 @@ class PathsConfig(BaseModel):
 
 class VadParametersConfig(BaseModel):
     """
-    parámetros para la detección de actividad de voz (vad)
+    PARÁMETROS PARA LA DETECCIÓN DE ACTIVIDAD DE VOZ VAD
 
-    el vad (voice activity detection) filtra los segmentos de silencio del audio
+    el vad voice activity detection filtra los segmentos de silencio del audio
     antes de enviarlos al modelo de transcripción mejorando la eficiencia y
     reduciendo alucinaciones en pausas largas
 
-    attributes:
-        threshold: umbral de probabilidad (0.0 a 1.0) para clasificar un
-            segmento como voz valores más altos = detección más estricta
+    ATTRIBUTES:
+        threshold: umbral de probabilidad 0.0 a 1.0 para clasificar un
+            segmento como voz valores más altos igual a detección más estricta
             por defecto 0.5
         min_speech_duration_ms: duración mínima en milisegundos que debe tener
             un segmento de audio para ser considerado como habla filtra
@@ -113,39 +113,39 @@ class VadParametersConfig(BaseModel):
             requerida para considerar que el habla terminó valores más altos
             permiten pausas más largas dentro de una oración por defecto 500ms
 
-    note
+    NOTE
         estos parámetros se pasan directamente a faster-whisper cuando
-        ``vad_filter=True`` está habilitado en whisperconfig
+        ``vad_filter=true`` está habilitado en whisperconfig
     """
     threshold: float = 0.3
     min_speech_duration_ms: int = 250
     min_silence_duration_ms: int = 500
-    backend: str = "torch"  # 'onnx' o 'torch'. Torch es más pesado pero más robusto históricamente.
+    backend: str = "torch"  # 'onnx' o 'torch'. torch es más pesado pero más robusto históricamente.
 
     def __getitem__(self, item):
         return getattr(self, item)
 
 class WhisperConfig(BaseModel):
     """
-    configuración para el modelo de transcripción whisper
+    CONFIGURACIÓN PARA EL MODELO DE TRANSCRIPCIÓN WHISPER
 
     define todos los parámetros necesarios para cargar y ejecutar el modelo
     faster-whisper incluyendo configuración de hardware idioma y opciones
     de decodificación
 
-    attributes:
+    ATTRIBUTES:
         model: nombre o ruta del modelo whisper a utilizar modelos disponibles
             ``tiny`` ``base`` ``small`` ``medium`` ``large-v2``
             ``large-v3`` ``large-v3-turbo`` por defecto ``large-v2``
-        language: código iso 639-1 del idioma para la transcripción (ej ``es``
-            ``en``) usar ``auto`` para detección automática por defecto ``es``
+        language: código iso 639-1 del idioma para la transcripción ej ``es``
+            ``en`` usar ``auto`` para detección automática por defecto ``es``
         device: dispositivo de cómputo ``cuda`` para gpu nvidia o ``cpu``
             por defecto ``cuda``
         compute_type: precisión numérica para inferencia opciones ``float32``
             ``float16`` ``int8`` gpu soporta ``float16`` cpu prefiere ``int8``
             por defecto ``float16``
         device_index: índice de la gpu a utilizar cuando hay múltiples
-            por defecto 0 (primera gpu)
+            por defecto 0 primera gpu
         num_workers: número de workers para procesamiento paralelo de audio
             por defecto 4
         beam_size: tamaño del beam search durante la decodificación valores
@@ -153,12 +153,12 @@ class WhisperConfig(BaseModel):
         best_of: número de candidatos a considerar en cada paso de
             decodificación por defecto 2
         temperature: temperatura para el muestreo 0.0 para decodificación
-            determinística (greedy) por defecto 0.0
+            determinística greedy por defecto 0.0
         vad_filter: si se debe aplicar filtro vad integrado de faster-whisper
-            para remover silencios por defecto ``True``
+            para remover silencios por defecto ``true``
         vad_parameters: configuración detallada de los parámetros vad
 
-    example
+    EXAMPLE
         configuración típica para gpu con alta calidad::
 
             [whisper]
@@ -185,17 +185,17 @@ class WhisperConfig(BaseModel):
 
 class GeminiConfig(BaseModel):
     """
-    configuración para el servicio llm de google gemini
+    CONFIGURACIÓN PARA EL SERVICIO LLM DE GOOGLE GEMINI
 
     define los parámetros para conectarse a la api de google gemini y configurar
     el comportamiento del modelo de lenguaje utilizado para refinar las
     transcripciones
 
-    attributes:
+    ATTRIBUTES:
         model: identificador del modelo gemini formato
             ``models/<nombre-modelo>`` por defecto ``models/gemini-1.5-flash-latest``
-        temperature: temperatura para la generación de texto (0.0 a 2.0)
-            valores más bajos = respuestas más determinísticas
+        temperature: temperatura para la generación de texto 0.0 a 2.0
+            valores más bajos igual a respuestas más determinísticas
             por defecto 0.3
         max_tokens: número máximo de tokens a generar en la respuesta
             por defecto 2048
@@ -204,19 +204,19 @@ class GeminiConfig(BaseModel):
         request_timeout: tiempo máximo de espera para una solicitud http
             en segundos por defecto 30
         retry_attempts: número de reintentos automáticos ante errores
-            transitorios (red rate limiting) por defecto 3
+            transitorios red rate limiting por defecto 3
         retry_min_wait: tiempo mínimo de espera entre reintentos en segundos
             usado con backoff exponencial por defecto 2
         retry_max_wait: tiempo máximo de espera entre reintentos en segundos
             por defecto 10
         api_key: clave de api para autenticación con google cloud
-            se recomienda definir en archivo ``.env`` como ``GEMINI_API_KEY``
+            se recomienda definir en archivo ``.env`` como ``gemini_api_key``
 
-    warning
+    WARNING
         la ``api_key`` es sensible y no debe incluirse en control de versiones
         utiliza variables de entorno o un archivo ``.env`` local
 
-    example
+    EXAMPLE
         configuración en config.toml::
 
             [gemini]
@@ -240,19 +240,19 @@ class GeminiConfig(BaseModel):
 
 class NotificationsConfig(BaseModel):
     """
-    configuración para el sistema de notificaciones del escritorio
+    CONFIGURACIÓN PARA EL SISTEMA DE NOTIFICACIONES DEL ESCRITORIO
 
     define parámetros para controlar el comportamiento de las notificaciones
     visuales incluyendo tiempo de expiración y cierre programático
 
-    attributes:
+    ATTRIBUTES:
         expire_time_ms: tiempo en milisegundos antes de auto-cerrar la
-            notificación por defecto 3000 (3 segundos)
+            notificación por defecto 3000 o 3 segundos
         auto_dismiss: si true fuerza el cierre programático via dbus
-            necesario para unity/gnome que ignoran expire-time
-            por defecto True
+            necesario para unity o gnome que ignoran expire-time
+            por defecto true
 
-    example:
+    EXAMPLE:
         configuración en config.toml::
 
             [notifications]
@@ -268,22 +268,22 @@ class NotificationsConfig(BaseModel):
 
 class LocalLLMConfig(BaseModel):
     """
-    configuración para el modelo de lenguaje local usando llama.cpp
+    CONFIGURACIÓN PARA EL MODELO DE LENGUAJE LOCAL USANDO LLAMA.CPP
 
-    permite ejecutar modelos GGUF (como Qwen, Llama, Phi, Mistral) localmente
-    en GPU sin depender de APIs externas
+    permite ejecutar modelos gguf como qwen llama phi mistral localmente
+    en gpu sin depender de apis externas
 
-    attributes:
-        model_path: ruta relativa al archivo GGUF del modelo desde BASE_DIR
-            por defecto usa Qwen2.5-3B-Instruct Q4_K_M
-        n_gpu_layers: número de capas a cargar en GPU usar -1 para todas
-            las capas (full GPU offload) por defecto -1
+    ATTRIBUTES:
+        model_path: ruta relativa al archivo gguf del modelo desde base_dir
+            por defecto usa qwen2.5-3b-instruct q4_k_m
+        n_gpu_layers: número de capas a cargar en gpu usar -1 para todas
+            las capas full gpu offload por defecto -1
         n_ctx: tamaño del context window en tokens por defecto 2048
-        temperature: temperatura para generación (0.0-2.0) valores bajos
-            = respuestas más determinísticas por defecto 0.3
+        temperature: temperatura para generación 0.0 a 2.0 valores bajos
+            igual a respuestas más determinísticas por defecto 0.3
         max_tokens: máximo de tokens a generar en la respuesta por defecto 512
 
-    example:
+    EXAMPLE:
         configuración en config.toml::
 
             [llm.local]
@@ -303,19 +303,19 @@ class LocalLLMConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     """
-    configuración del servicio LLM con selector de backend
+    CONFIGURACIÓN DEL SERVICIO LLM CON SELECTOR DE BACKEND
 
-    permite elegir entre un modelo local (llama.cpp) o la API de Gemini
+    permite elegir entre un modelo local llama.cpp o la api de gemini
     el backend se selecciona mediante la opción ``backend``
 
-    attributes:
+    ATTRIBUTES:
         backend: selector del backend a usar
-            - "local": modelo GGUF local con llama.cpp (offline)
-            - "gemini": API de Google Gemini (cloud)
+            - "local": modelo gguf local con llama.cpp offline
+            - "gemini": api de google gemini cloud
             por defecto "local"
         local: configuración específica para el backend local
 
-    example:
+    EXAMPLE:
         configuración en config.toml::
 
             [llm]
@@ -333,19 +333,19 @@ class LLMConfig(BaseModel):
 
 class TranscriptionConfig(BaseModel):
     """
-    configuración del servicio de transcripción con selector de backend
+    CONFIGURACIÓN DEL SERVICIO DE TRANSCRIPCIÓN CON SELECTOR DE BACKEND
 
     permite elegir entre diferentes implementaciones de transcripción
     el backend se selecciona mediante la opción ``backend``
 
-    attributes:
+    ATTRIBUTES:
         backend: selector del backend a usar
-            - "whisper": faster-whisper (default, GPU acelerado)
-            - futuro: "vosk", "speechbrain", "custom"
+            - "whisper": faster-whisper default gpu acelerado
+            - futuro: "vosk" "speechbrain" "custom"
             por defecto "whisper"
         whisper: configuración específica para el backend whisper
 
-    example:
+    EXAMPLE:
         configuración en config.toml::
 
             [transcription]
@@ -363,32 +363,32 @@ class TranscriptionConfig(BaseModel):
 
 class Settings(BaseSettings):
     """
-    clase principal de configuración que agrupa todas las secciones
+    CLASE PRINCIPAL DE CONFIGURACIÓN QUE AGRUPA TODAS LAS SECCIONES
 
     esta clase actúa como el punto de acceso centralizado para toda la
     configuración de la aplicación utiliza pydantic settings para cargar
     y validar la configuración desde múltiples fuentes
 
-    attributes:
+    ATTRIBUTES:
         paths: configuración de rutas de archivos y directorios
         whisper: configuración del modelo de transcripción whisper
         gemini: configuración del servicio llm gemini
 
-    example
+    EXAMPLE
         uso típico desde cualquier módulo::
 
             from v2m.config import config
 
-            # La instancia 'config' está pre-inicializada
-            print(f"Modelo Whisper: {config.whisper.model}")
-            print(f"Dispositivo: {config.whisper.device}")
+            # la instancia 'config' está pre-inicializada
+            print(f"modelo whisper: {config.whisper.model}")
+            print(f"dispositivo: {config.whisper.device}")
 
-    note
+    NOTE
         esta clase no debe instanciarse directamente usar la instancia
         global ``config`` exportada por este módulo
     """
     paths: PathsConfig = Field(default_factory=PathsConfig)
-    whisper: WhisperConfig = Field(default_factory=WhisperConfig)  # DEPRECATED: use transcription.whisper
+    whisper: WhisperConfig = Field(default_factory=WhisperConfig)  # deprecated use transcription.whisper
     gemini: GeminiConfig = Field(default_factory=GeminiConfig)
     notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
@@ -411,26 +411,26 @@ class Settings(BaseSettings):
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> Tuple[PydanticBaseSettingsSource, ...]:
         """
-        personaliza el orden de las fuentes de configuración
+        PERSONALIZA EL ORDEN DE LAS FUENTES DE CONFIGURACIÓN
 
         este método sobrescribe el comportamiento por defecto de pydantic settings
         para incluir archivos toml como fuente de configuración adicional
 
-        el orden de prioridad resultante es (de mayor a menor)
-            1 argumentos del constructor (init_settings)
-            2 variables de entorno (env_settings)
-            3 archivo .env (dotenv_settings)
-            4 archivo config.toml (tomlconfigsettingssource)
-            5 archivos de secretos (file_secret_settings)
+        el orden de prioridad resultante es de mayor a menor
+            1 argumentos del constructor init_settings
+            2 variables de entorno env_settings
+            3 archivo .env dotenv_settings
+            4 archivo config.toml tomlconfigsettingssource
+            5 archivos de secretos file_secret_settings
 
-        args:
+        ARGS:
             settings_cls: la clase de configuración siendo inicializada
             init_settings: fuente para valores pasados al constructor
             env_settings: fuente para variables de entorno del sistema
             dotenv_settings: fuente para valores del archivo .env
-            file_secret_settings: fuente para archivos de secretos (docker secrets)
+            file_secret_settings: fuente para archivos de secretos docker secrets
 
-        returns:
+        RETURNS:
             tupla ordenada de fuentes de configuración las fuentes al inicio
             tienen mayor prioridad y sobrescriben valores de fuentes posteriores
         """

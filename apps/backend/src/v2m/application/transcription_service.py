@@ -14,11 +14,11 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-módulo que define la interfaz para los servicios de transcripción de audio
+MÓDULO QUE DEFINE LA INTERFAZ PARA LOS SERVICIOS DE TRANSCRIPCIÓN DE AUDIO
 
 esta clase abstracta establece el contrato que cualquier servicio de transcripción
 debe seguir la capa de aplicación interactúa con esta interfaz permitiendo
-que la implementación subyacente (ej `whispertranscriptionservice`) pueda ser
+que la implementación subyacente ej `whispertranscriptionservice` pueda ser
 intercambiada sin afectar la lógica de negocio
 """
 
@@ -26,7 +26,7 @@ from abc import ABC, abstractmethod
 
 class TranscriptionService(ABC):
     """
-    clase base abstracta para los servicios de transcripción
+    CLASE BASE ABSTRACTA PARA LOS SERVICIOS DE TRANSCRIPCIÓN
 
     define las operaciones esenciales para la grabación y transcripción de audio
     """
@@ -34,16 +34,16 @@ class TranscriptionService(ABC):
     @abstractmethod
     def start_recording(self) -> None:
         """
-        inicia el proceso de grabación de audio desde el dispositivo de entrada
+        INICIA EL PROCESO DE GRABACIÓN DE AUDIO DESDE EL DISPOSITIVO DE ENTRADA
         """
         raise NotImplementedError
 
     @abstractmethod
     def stop_and_transcribe(self) -> str:
         """
-        detiene la grabación actual y procesa el audio para obtener una transcripción
+        DETIENE LA GRABACIÓN ACTUAL Y PROCESA EL AUDIO PARA OBTENER UNA TRANSCRIPCIÓN
 
-        returns:
+        RETURNS:
             el texto transcrito del audio grabado
         """
         raise NotImplementedError

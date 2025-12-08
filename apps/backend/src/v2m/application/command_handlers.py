@@ -14,14 +14,14 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-módulo que contiene los manejadores de comandos (command handlers)
+MÓDULO QUE CONTIENE LOS MANEJADORES DE COMANDOS COMMAND HANDLERS
 
 los handlers son el corazón de la lógica de negocio de la aplicación
 cada handler se suscribe a un tipo de comando específico y ejecuta las acciones
 correspondientes cuando ese comando es despachado por el command bus
 
-este enfoque inspirado en cqrs (command query responsibility segregation)
-permite un bajo acoplamiento entre el punto de entrada de la aplicación (main.py)
+este enfoque inspirado en cqrs command query responsibility segregation
+permite un bajo acoplamiento entre el punto de entrada de la aplicación main.py
 y la lógica de negocio real
 """
 
@@ -36,13 +36,13 @@ from v2m.application.llm_service import LLMService
 from v2m.core.interfaces import NotificationInterface, ClipboardInterface
 from v2m.config import config
 
-# executor dedicado para operaciones de ml (single worker para evitar contención gpu)
+# executor dedicado para operaciones de ml single worker para evitar contención gpu
 # esto es más eficiente que el default threadpoolexecutor de asyncio.to_thread
 _ml_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ml-inference")
 
 class StartRecordingHandler(CommandHandler):
     """
-    manejador para el comando `StartRecordingCommand`
+    MANEJADOR PARA EL COMANDO `STARTRECORDINGCOMMAND`
 
     este handler interactúa con el servicio de transcripción para iniciar
     el proceso de grabación de audio también notifica al usuario que
@@ -50,9 +50,9 @@ class StartRecordingHandler(CommandHandler):
     """
     def __init__(self, transcription_service: TranscriptionService, notification_service: NotificationInterface) -> None:
         """
-        inicializa el handler con sus dependencias
+        INICIALIZA EL HANDLER CON SUS DEPENDENCIAS
 
-        args:
+        ARGS:
             transcription_service: el servicio responsable de la grabación y transcripción
             notification_service: el servicio para enviar notificaciones al usuario
         """
@@ -61,9 +61,9 @@ class StartRecordingHandler(CommandHandler):
 
     async def handle(self, command: StartRecordingCommand) -> None:
         """
-        ejecuta la lógica para iniciar la grabación
+        EJECUTA LA LÓGICA PARA INICIAR LA GRABACIÓN
 
-        args:
+        ARGS:
             command: el comando que activa este handler
         """
         # start_recording es rápido pero por seguridad lo corremos en un hilo
@@ -73,29 +73,29 @@ class StartRecordingHandler(CommandHandler):
         # crear bandera de grabación para que el script bash sepa que estamos grabando
         config.paths.recording_flag.touch()
 
-        self.notification_service.notify("🎤 Voice2Machine", "Grabación iniciada...")
+        self.notification_service.notify("🎤 voice2machine", "grabación iniciada...")
 
     def listen_to(self) -> Type[Command]:
         """
-        se suscribe al tipo de comando `StartRecordingCommand`
+        SE SUSCRIBE AL TIPO DE COMANDO `STARTRECORDINGCOMMAND`
 
-        returns:
+        RETURNS:
             el tipo de comando que este handler puede manejar
         """
         return StartRecordingCommand
 
 class StopRecordingHandler(CommandHandler):
     """
-    manejador para el comando `StopRecordingCommand`
+    MANEJADOR PARA EL COMANDO `STOPRECORDINGCOMMAND`
 
     este handler detiene la grabación obtiene la transcripción del audio
     la copia al portapapeles y notifica al usuario del resultado
     """
     def __init__(self, transcription_service: TranscriptionService, notification_service: NotificationInterface, clipboard_service: ClipboardInterface) -> None:
         """
-        inicializa el handler con sus dependencias
+        INICIALIZA EL HANDLER CON SUS DEPENDENCIAS
 
-        args:
+        ARGS:
             transcription_service: el servicio responsable de la grabación y transcripción
             notification_service: el servicio para enviar notificaciones al usuario
             clipboard_service: el servicio para interactuar con el portapapeles
@@ -106,19 +106,19 @@ class StopRecordingHandler(CommandHandler):
 
     async def handle(self, command: StopRecordingCommand) -> None:
         """
-        ejecuta la lógica para detener la grabación y transcribir
+        EJECUTA LA LÓGICA PARA DETENER LA GRABACIÓN Y TRANSCRIBIR
 
         notifica al usuario durante el procesamiento y maneja el caso donde
         no se detecta voz en el audio
 
-        args:
+        ARGS:
             command: el comando que activa este handler
         """
         # borrar bandera de grabación para que el script bash sepa que ya paramos
         if config.paths.recording_flag.exists():
             config.paths.recording_flag.unlink()
 
-        self.notification_service.notify("⚡ V2M Processing", "Procesando...")
+        self.notification_service.notify("⚡ v2m procesando", "procesando...")
 
         # usar executor dedicado para ml - evita contención con otras tareas async
         loop = asyncio.get_event_loop()
@@ -129,35 +129,35 @@ class StopRecordingHandler(CommandHandler):
 
         # si la transcripción está vacía no tiene sentido copiarla
         if not transcription.strip():
-            self.notification_service.notify("❌ Whisper", "No se detectó voz en el audio")
+            self.notification_service.notify("❌ whisper", "no se detectó voz en el audio")
             return
 
         self.clipboard_service.copy(transcription)
         preview = transcription[:80] # se muestra una vista previa para no saturar la notificación
-        self.notification_service.notify(f"✅ Whisper - Copiado", f"{preview}...")
+        self.notification_service.notify(f"✅ whisper - copiado", f"{preview}...")
 
     def listen_to(self) -> Type[Command]:
         """
-        se suscribe al tipo de comando `StopRecordingCommand`
+        SE SUSCRIBE AL TIPO DE COMANDO `STOPRECORDINGCOMMAND`
 
-        returns:
+        RETURNS:
             el tipo de comando que este handler puede manejar
         """
         return StopRecordingCommand
 
 class ProcessTextHandler(CommandHandler):
     """
-    manejador para el comando `ProcessTextCommand`
+    MANEJADOR PARA EL COMANDO `PROCESSTEXTCOMMAND`
 
-    este handler utiliza un servicio de llm (large language model) para
+    este handler utiliza un servicio de llm large language model para
     procesar y refinar un texto dado el resultado se copia al portapapeles
     """
     def __init__(self, llm_service: LLMService, notification_service: NotificationInterface, clipboard_service: ClipboardInterface) -> None:
         """
-        inicializa el handler con sus dependencias
+        INICIALIZA EL HANDLER CON SUS DEPENDENCIAS
 
-        args:
-            llm_service: el servicio que interactúa con el llm (ej gemini)
+        ARGS:
+            llm_service: el servicio que interactúa con el llm ej gemini
             notification_service: el servicio para enviar notificaciones al usuario
             clipboard_service: el servicio para interactuar con el portapapeles
         """
@@ -167,9 +167,9 @@ class ProcessTextHandler(CommandHandler):
 
     async def handle(self, command: ProcessTextCommand) -> None:
         """
-        ejecuta la lógica para procesar el texto con el llm
+        EJECUTA LA LÓGICA PARA PROCESAR EL TEXTO CON EL LLM
 
-        args:
+        ARGS:
             command: el comando que contiene el texto a procesar
         """
         try:
@@ -182,19 +182,19 @@ class ProcessTextHandler(CommandHandler):
                 refined_text = await asyncio.to_thread(self.llm_service.process_text, command.text)
 
             self.clipboard_service.copy(refined_text)
-            self.notification_service.notify("✅ Gemini - Copiado", f"{refined_text[:80]}...")
+            self.notification_service.notify("✅ gemini - copiado", f"{refined_text[:80]}...")
 
         except Exception as e:
             # fallback si falla el llm copiamos el texto original
-            self.notification_service.notify("⚠️ Gemini Falló", "Usando texto original...")
+            self.notification_service.notify("⚠️ gemini falló", "usando texto original...")
             self.clipboard_service.copy(command.text)
-            self.notification_service.notify("✅ Whisper - Copiado (Raw)", f"{command.text[:80]}...")
+            self.notification_service.notify("✅ whisper - copiado (crudo)", f"{command.text[:80]}...")
 
     def listen_to(self) -> Type[Command]:
         """
-        se suscribe al tipo de comando `ProcessTextCommand`
+        SE SUSCRIBE AL TIPO DE COMANDO `PROCESSTEXTCOMMAND`
 
-        returns:
+        RETURNS:
             el tipo de comando que este handler puede manejar
         """
         return ProcessTextCommand

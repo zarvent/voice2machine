@@ -14,32 +14,32 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-protocolo de comunicación inter-procesos (ipc) para voice2machine
+PROTOCOLO DE COMUNICACIÓN INTER-PROCESOS IPC PARA VOICE2MACHINE
 
 este módulo define el protocolo de comunicación entre el cliente y el daemon
 utiliza un socket unix para comunicación local eficiente y segura
 
-protocolo
+PROTOCOLO
     la comunicación es síncrona tipo request-response
 
     1 el cliente abre una conexión al socket unix
-    2 envía un comando como texto plano (utf-8)
+    2 envía un comando como texto plano utf-8
     3 el daemon procesa el comando
     4 el daemon responde con un mensaje de estado
     5 la conexión se cierra
 
-formato de comandos
-    - comandos simples ``COMANDO`` (ej ``START_RECORDING``)
-    - comandos con payload ``COMANDO <datos>`` (ej ``PROCESS_TEXT hola mundo``)
+FORMATO DE COMANDOS
+    - comandos simples ``COMANDO`` ej ``START_RECORDING``
+    - comandos con payload ``COMANDO <datos>`` ej ``PROCESS_TEXT hola mundo``
 
-respuestas
+RESPUESTAS
     - ``OK`` operación exitosa
     - ``PONG`` respuesta a ping
     - ``ERROR: <mensaje>`` error durante la operación
     - ``UNKNOWN_COMMAND`` comando no reconocido
     - ``SHUTTING_DOWN`` el daemon se está deteniendo
 
-constantes
+CONSTANTES
     - ``SOCKET_PATH`` ruta predeterminada del socket unix
 """
 
@@ -47,18 +47,18 @@ from enum import Enum
 
 class IPCCommand(str, Enum):
     """
-    enumeración de los comandos ipc disponibles
+    ENUMERACIÓN DE LOS COMANDOS IPC DISPONIBLES
 
     define los comandos que pueden ser enviados desde el cliente al daemon
     para controlar su comportamiento hereda de ``str`` para permitir
     comparación directa con cadenas de texto
 
-    attributes:
+    ATTRIBUTES:
         START_RECORDING: inicia la captura de audio desde el micrófono
             el daemon comienza a grabar y crea el archivo de bandera
         STOP_RECORDING: detiene la grabación actual y dispara la
             transcripción el resultado se copia al portapapeles
-        PROCESS_TEXT: procesa texto existente con el llm (gemini)
+        PROCESS_TEXT: procesa texto existente con el llm gemini
             requiere un payload con el texto a procesar
             formato ``PROCESS_TEXT <texto>``
         PING: comando de heartbeat para verificar si el daemon está
@@ -66,17 +66,17 @@ class IPCCommand(str, Enum):
         SHUTDOWN: solicita al daemon que termine de forma ordenada
             limpia recursos y cierra el socket
 
-    example
+    EXAMPLE
         uso en comparaciones::
 
             message = "START_RECORDING"
             if message == IPCCommand.START_RECORDING:
-                print("Iniciando grabación...")
+                print("iniciando grabación...")
 
         iteración sobre comandos::
 
             for cmd in IPCCommand:
-                print(f"Comando: {cmd.value}")
+                print(f"comando: {cmd.value}")
     """
     START_RECORDING = "START_RECORDING"
     STOP_RECORDING = "STOP_RECORDING"
