@@ -140,6 +140,16 @@ class Daemon:
             # Protocolo de framing: 4 bytes longitud (Big Endian) + Payload
             header_data = await reader.readexactly(4)
             length = int.from_bytes(header_data, byteorder="big")
+            
+            # Validate message size to prevent memory exhaustion
+            from v2m.core.ipc_protocol import MAX_MESSAGE_SIZE
+            if length > MAX_MESSAGE_SIZE:
+                logger.error(f"Message too large: {length} bytes (max: {MAX_MESSAGE_SIZE})")
+                writer.write(b"ERROR: Message too large")
+                await writer.drain()
+                writer.close()
+                return
+            
             payload_data = await reader.readexactly(length)
             message = payload_data.decode("utf-8").strip()
         except asyncio.IncompleteReadError:
@@ -184,7 +194,11 @@ class Daemon:
             logger.error(f"Error handling command {message}: {e}")
             response = f"ERROR: {str(e)}"
 
-        writer.write(response.encode())
+        # Send response with same framing protocol
+        response_bytes = response.encode("utf-8")
+        response_length = len(response_bytes)
+        writer.write(response_length.to_bytes(4, byteorder="big"))
+        writer.write(response_bytes)
         await writer.drain()
         writer.close()
 

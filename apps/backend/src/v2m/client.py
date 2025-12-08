@@ -89,8 +89,15 @@ async def send_command(command: str) -> str:
         writer.write(message_bytes)
         await writer.drain()
 
-        data = await reader.read(1024)
-        response = data.decode()
+        # Read response with same framing protocol
+        try:
+            response_header = await reader.readexactly(4)
+            response_length = int.from_bytes(response_header, byteorder="big")
+            response_data = await reader.readexactly(response_length)
+            response = response_data.decode("utf-8")
+        except asyncio.IncompleteReadError as e:
+            print(f"Error: Incomplete response from daemon (received {len(e.partial)} bytes)", file=sys.stderr)
+            sys.exit(1)
         # print(f"Response: {response}")
 
         writer.close()

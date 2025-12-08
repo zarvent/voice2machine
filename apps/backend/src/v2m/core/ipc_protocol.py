@@ -20,12 +20,28 @@ este módulo define el protocolo de comunicación entre el cliente y el daemon
 utiliza un socket unix para comunicación local eficiente y segura
 
 protocolo
-    la comunicación es síncrona tipo request-response
+    la comunicación es síncrona tipo request-response con framing de longitud
+    
+    **framing protocol**:
+    todos los mensajes (requests y responses) usan el mismo formato:
+    
+    1. 4 bytes: longitud del payload (Big Endian unsigned integer)
+    2. N bytes: payload utf-8
+    
+    ejemplo::
+    
+        # Enviar "PING" (4 bytes)
+        \\x00\\x00\\x00\\x04PING
+        
+        # Recibir "PONG" (4 bytes)
+        \\x00\\x00\\x00\\x04PONG
 
+    **flujo de comunicación**:
+    
     1 el cliente abre una conexión al socket unix
-    2 envía un comando como texto plano (utf-8)
+    2 envía longitud + comando (con payload opcional)
     3 el daemon procesa el comando
-    4 el daemon responde con un mensaje de estado
+    4 el daemon responde con longitud + mensaje de estado
     5 la conexión se cierra
 
 formato de comandos
@@ -41,6 +57,7 @@ respuestas
 
 constantes
     - ``SOCKET_PATH`` ruta predeterminada del socket unix
+    - ``MAX_MESSAGE_SIZE`` tamaño máximo de mensaje (10MB) para prevenir ataques DoS
 """
 
 from enum import Enum
@@ -85,3 +102,6 @@ class IPCCommand(str, Enum):
     SHUTDOWN = "SHUTDOWN"
 
 SOCKET_PATH = "/tmp/v2m.sock"
+
+# Maximum message size: 10MB (prevents memory exhaustion attacks)
+MAX_MESSAGE_SIZE = 10 * 1024 * 1024

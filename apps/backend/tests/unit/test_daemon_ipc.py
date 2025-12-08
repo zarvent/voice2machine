@@ -6,6 +6,7 @@ import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 from v2m.daemon import Daemon
 from v2m.client import send_command, SOCKET_PATH
+from v2m.core.ipc_protocol import MAX_MESSAGE_SIZE
 
 @pytest.fixture
 def mock_daemon(monkeypatch, tmp_path):
@@ -38,6 +39,7 @@ def mock_daemon(monkeypatch, tmp_path):
 async def test_large_payload_truncation(mock_daemon):
     """
     Test that large payloads are correctly received with the fix.
+    Verifies the length-prefix framing protocol handles payloads >4KB.
     """
     daemon, mock_bus = mock_daemon
 
@@ -71,3 +73,70 @@ async def test_large_payload_truncation(mock_daemon):
     # The command parser splits "PROCESS_TEXT <text>"
     # so cmd_obj.text should be the payload
     assert len(cmd_obj.text) == 5000, f"Payload truncated! Expected 5000, got {len(cmd_obj.text)}"
+
+@pytest.mark.asyncio
+async def test_ping_pong_symmetric_protocol(mock_daemon):
+    """
+    Test that PING/PONG works with symmetric framing protocol.
+    Both request and response should use 4-byte length headers.
+    """
+    daemon, mock_bus = mock_daemon
+
+    # Start server in background task
+    server_task = asyncio.create_task(daemon.start_server())
+    await asyncio.sleep(0.1)
+
+    # Send PING command
+    response = await send_command("PING")
+
+    # Stop server
+    daemon.stop()
+    server_task.cancel()
+    try:
+        await server_task
+    except asyncio.CancelledError:
+        pass
+
+    # Verify response
+    assert response == "PONG", f"Expected 'PONG', got '{response}'"
+
+@pytest.mark.asyncio
+async def test_oversized_message_rejection(mock_daemon):
+    """
+    Test that messages exceeding MAX_MESSAGE_SIZE are rejected.
+    This prevents memory exhaustion attacks.
+    """
+    daemon, mock_bus = mock_daemon
+
+    # Start server in background task
+    server_task = asyncio.create_task(daemon.start_server())
+    await asyncio.sleep(0.1)
+
+    # Create a payload that exceeds MAX_MESSAGE_SIZE
+    # We'll manually create the framed message to bypass client validation
+    reader, writer = await asyncio.open_unix_connection(str(daemon.socket_path))
+    
+    # Send a header claiming the message is larger than MAX_MESSAGE_SIZE
+    oversized_length = MAX_MESSAGE_SIZE + 1
+    writer.write(oversized_length.to_bytes(4, byteorder="big"))
+    await writer.drain()
+    
+    # Try to read response (should be error message without framing)
+    data = await reader.read(1024)
+    response = data.decode("utf-8")
+    
+    writer.close()
+    await writer.wait_closed()
+
+    # Stop server
+    daemon.stop()
+    server_task.cancel()
+    try:
+        await server_task
+    except asyncio.CancelledError:
+        pass
+
+    # Verify error response
+    assert "ERROR" in response or "too large" in response.lower(), \
+        f"Expected error for oversized message, got: {response}"
+
