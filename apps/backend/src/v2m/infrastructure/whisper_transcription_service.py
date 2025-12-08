@@ -145,9 +145,12 @@ class WhisperTranscriptionService(TranscriptionService):
             if lang == "auto":
                 lang = None  # none activa la detección automática en faster-whisper
 
-            # 2 prompt inicial compacto spanglish técnico
-            # reducido a ~15 tokens vs ~40 tokens original para menor latencia
-            bilingual_prompt = "Español y código técnico. Puntuación correcta."
+            # 2 prompt inicial "Coaching" para contexto técnico bilingüe (SOTA 2025)
+            # define rol y expectativas claramente para reducir alucinaciones
+            bilingual_prompt = (
+                "Technical transcription of a software engineering discussion. "
+                "Mix of Spanish and English commands. Code snippets included."
+            )
 
             # faster-whisper acepta numpy array directamente
             # nota vad interno deshabilitado ya aplicamos silero vad arriba

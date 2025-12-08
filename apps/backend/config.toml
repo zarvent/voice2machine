@@ -8,7 +8,7 @@ venv_path = "~/v2m/venv"
 model = "large-v3-turbo"
 language = "auto"
 device = "cuda"
-compute_type = "float16"
+compute_type = "int8_float16" # Eficiencia pura: 4x menos VRAM, usa Tensor Cores
 device_index = 0
 num_workers = 2  # 2 workers suficientes para single stream
 
@@ -33,7 +33,7 @@ backend = "whisper"  # selector de backend: "whisper", futuro: "vosk", "custom"
 model = "large-v3-turbo"
 language = "auto"
 device = "cuda"
-compute_type = "float16"
+compute_type = "int8_float16"
 device_index = 0
 num_workers = 2
 beam_size = 5

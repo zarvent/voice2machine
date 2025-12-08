@@ -170,7 +170,7 @@ class WhisperConfig(BaseModel):
     model: str = "large-v2"
     language: str = "es"
     device: str = "cuda"
-    compute_type: str = "float16"
+    compute_type: str = "int8_float16"
     device_index: int = 0
     num_workers: int = 4
     beam_size: int = 2
