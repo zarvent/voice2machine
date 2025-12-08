@@ -150,6 +150,7 @@ class Daemon:
                 writer.write(error_bytes)
                 await writer.drain()
                 writer.close()
+                await writer.wait_closed()
                 return
             
             payload_data = await reader.readexactly(length)
@@ -203,6 +204,7 @@ class Daemon:
         writer.write(response_bytes)
         await writer.drain()
         writer.close()
+        await writer.wait_closed()
 
         if message == IPCCommand.SHUTDOWN:
             self.stop()
