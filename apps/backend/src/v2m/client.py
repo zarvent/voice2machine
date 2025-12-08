@@ -100,9 +100,9 @@ async def send_command(command: str) -> str:
             response_header = await reader.readexactly(4)
             response_length = int.from_bytes(response_header, byteorder="big")
             
-            # Validate response length to prevent memory exhaustion
-            if response_length > MAX_MESSAGE_SIZE:
-                print(f"Error: Response too large ({response_length} bytes, max: {MAX_MESSAGE_SIZE})", file=sys.stderr)
+            # Validate response length to prevent memory exhaustion and malicious responses
+            if response_length < 0 or response_length > MAX_MESSAGE_SIZE:
+                print(f"Error: Invalid response length ({response_length} bytes, valid range: 0-{MAX_MESSAGE_SIZE})", file=sys.stderr)
                 sys.exit(1)
             
             response_data = await reader.readexactly(response_length)

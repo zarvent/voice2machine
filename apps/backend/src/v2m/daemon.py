@@ -141,10 +141,10 @@ class Daemon:
             header_data = await reader.readexactly(4)
             length = int.from_bytes(header_data, byteorder="big")
             
-            # Validate message size to prevent memory exhaustion
-            if length > MAX_MESSAGE_SIZE:
-                logger.error(f"Message too large: {length} bytes (max: {MAX_MESSAGE_SIZE})")
-                error_msg = f"ERROR: Message too large ({length} bytes, max: {MAX_MESSAGE_SIZE})"
+            # Validate message size to prevent memory exhaustion and malicious inputs
+            if length < 0 or length > MAX_MESSAGE_SIZE:
+                logger.error(f"Invalid message length: {length} bytes (valid range: 0-{MAX_MESSAGE_SIZE})")
+                error_msg = f"ERROR: Invalid message length ({length} bytes, valid range: 0-{MAX_MESSAGE_SIZE})"
                 error_bytes = error_msg.encode("utf-8")
                 writer.write(len(error_bytes).to_bytes(4, byteorder="big"))
                 writer.write(error_bytes)
