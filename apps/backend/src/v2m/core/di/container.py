@@ -230,18 +230,18 @@ class Container:
         - compilación de kernels cuda (primera vez)
         """
         try:
-            # Precargar Whisper (el más pesado)
+            # precargar whisper (el más pesado)
             _ = self.transcription_service.model
-            logger.info("✅ Whisper precargado correctamente")
+            logger.info("✅ whisper precargado correctamente")
         except Exception as e:
-            logger.warning(f"⚠️ No se pudo precargar Whisper: {e}")
+            logger.warning(f"⚠️ no se pudo precargar whisper: {e}")
 
         try:
-            # Precargar Silero VAD (más ligero)
+            # precargar silero vad (más ligero)
             self.vad_service.load_model(timeout_sec=15.0)
-            logger.info("✅ Silero VAD precargado correctamente")
+            logger.info("✅ silero vad precargado correctamente")
         except Exception as e:
-            logger.warning(f"⚠️ No se pudo precargar VAD: {e}")
+            logger.warning(f"⚠️ no se pudo precargar vad: {e}")
 
     async def wait_for_warmup(self, timeout: float = 30.0) -> bool:
         """
@@ -261,7 +261,7 @@ class Container:
             )
             return True
         except asyncio.TimeoutError:
-            logger.warning(f"Warmup timeout después de {timeout}s")
+            logger.warning(f"timeout de warmup después de {timeout}s")
             return False
 
 # --- instancia global del contenedor ---

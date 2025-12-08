@@ -13,6 +13,28 @@
 # You should have received a copy of the GNU General Public License
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
+"""
+SERVICIO DE DETECCIÓN DE ACTIVIDAD DE VOZ (VAD) USANDO SILERO
+
+este módulo implementa el preprocesamiento de audio para eliminar segmentos
+de silencio antes de enviarlos a whisper mejorando eficiencia y reduciendo
+alucinaciones en pausas largas
+
+BACKENDS SOPORTADOS:
+    - onnx runtime (recomendado): ~100mb footprint, más rápido en cpu
+    - pytorch (fallback): ~500mb footprint, necesario si onnx no está disponible
+
+el vad procesa el audio en chunks de 512 samples (para 16khz) y detecta
+qué segmentos contienen voz según un umbral configurable
+
+EXAMPLE:
+    uso típico dentro de whisper_transcription_service::
+
+        vad = VADService()
+        audio_truncado = vad.process(audio_raw)
+        # audio_truncado solo contiene los segmentos con voz
+"""
+
 # lazy imports torch es pesado 500mb onnx es más ligero 100mb
 import numpy as np
 from typing import List, Optional, Callable

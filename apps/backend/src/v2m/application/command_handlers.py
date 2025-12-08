@@ -26,6 +26,7 @@ y la lógica de negocio real
 """
 
 import asyncio
+import atexit
 from concurrent.futures import ThreadPoolExecutor
 from typing import Type
 from v2m.core.cqrs.command import Command
@@ -39,6 +40,7 @@ from v2m.config import config
 # executor dedicado para operaciones de ml single worker para evitar contención gpu
 # esto es más eficiente que el default threadpoolexecutor de asyncio.to_thread
 _ml_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ml-inference")
+atexit.register(_ml_executor.shutdown, wait=True)
 
 class StartRecordingHandler(CommandHandler):
     """
@@ -182,11 +184,13 @@ class ProcessTextHandler(CommandHandler):
                 refined_text = await asyncio.to_thread(self.llm_service.process_text, command.text)
 
             self.clipboard_service.copy(refined_text)
-            self.notification_service.notify("✅ gemini - copiado", f"{refined_text[:80]}...")
+            backend_name = config.llm.backend  # "local" o "gemini"
+            self.notification_service.notify(f"✅ {backend_name} - copiado", f"{refined_text[:80]}...")
 
         except Exception as e:
             # fallback si falla el llm copiamos el texto original
-            self.notification_service.notify("⚠️ gemini falló", "usando texto original...")
+            backend_name = config.llm.backend
+            self.notification_service.notify(f"⚠️ {backend_name} falló", "usando texto original...")
             self.clipboard_service.copy(command.text)
             self.notification_service.notify("✅ whisper - copiado (crudo)", f"{command.text[:80]}...")
 

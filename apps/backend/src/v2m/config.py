@@ -388,7 +388,7 @@ class Settings(BaseSettings):
         global ``config`` exportada por este módulo
     """
     paths: PathsConfig = Field(default_factory=PathsConfig)
-    whisper: WhisperConfig = Field(default_factory=WhisperConfig)  # deprecated use transcription.whisper
+    whisper: WhisperConfig = Field(default_factory=WhisperConfig)  # DEPRECATED v2.0: usar transcription.whisper
     gemini: GeminiConfig = Field(default_factory=GeminiConfig)
     notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
