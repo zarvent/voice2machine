@@ -136,8 +136,19 @@ class Daemon:
             y devueltos como respuesta ``ERROR: <mensaje>`` sin terminar
             la conexión del daemon
         """
-        data = await reader.read(4096)
-        message = data.decode().strip()
+        try:
+            # Protocolo de framing: 4 bytes longitud (Big Endian) + Payload
+            header_data = await reader.readexactly(4)
+            length = int.from_bytes(header_data, byteorder="big")
+            payload_data = await reader.readexactly(length)
+            message = payload_data.decode("utf-8").strip()
+        except asyncio.IncompleteReadError:
+            logger.warning("Incomplete read from client")
+            return
+        except Exception as e:
+            logger.error(f"Error reading IPC message: {e}")
+            return
+
         logger.info(f"Received IPC message: {message}")
 
         response = "OK"

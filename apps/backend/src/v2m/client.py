@@ -82,7 +82,11 @@ async def send_command(command: str) -> str:
     try:
         reader, writer = await asyncio.open_unix_connection(SOCKET_PATH)
 
-        writer.write(command.encode())
+        # Protocolo de framing: 4 bytes longitud (Big Endian) + Payload
+        message_bytes = command.encode("utf-8")
+        length = len(message_bytes)
+        writer.write(length.to_bytes(4, byteorder="big"))
+        writer.write(message_bytes)
         await writer.drain()
 
         data = await reader.read(1024)
