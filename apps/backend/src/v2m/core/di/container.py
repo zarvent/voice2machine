@@ -66,7 +66,7 @@ from v2m.application.llm_service import LLMService
 from v2m.core.interfaces import NotificationInterface, ClipboardInterface
 from v2m.core.providers import llm_registry, transcription_registry, ProviderNotFoundError
 
-from v2m.infrastructure.vad_service import VADService
+
 from v2m.config import config
 from v2m.core.logging import logger
 import asyncio
@@ -93,7 +93,7 @@ class Container:
     ejecución del programa
 
     attributes:
-        vad_service: servicio de detección de actividad de voz (silero vad)
+
         transcription_service: servicio de transcripción (faster-whisper)
         llm_service: servicio de llm para refinamiento de texto (gemini)
         notification_service: adaptador de notificaciones del sistema
@@ -141,15 +141,13 @@ class Container:
         """
         # --- 1 instanciar servicios (como singletons) ---
         # resolución dinámica desde registries según config.toml
-        self.vad_service = VADService()
+
 
         # --- selección de backend de transcripción según configuración ---
         transcription_backend = config.transcription.backend
         try:
             TranscriptionClass = transcription_registry.get(transcription_backend)
-            self.transcription_service: TranscriptionService = TranscriptionClass(
-                vad_service=self.vad_service
-            )
+            self.transcription_service: TranscriptionService = TranscriptionClass()
             logger.info(f"transcription backend: {transcription_backend}")
         except ProviderNotFoundError as e:
             logger.critical(f"backend de transcripción inválido: {e}")
@@ -236,12 +234,7 @@ class Container:
         except Exception as e:
             logger.warning(f"⚠️ no se pudo precargar whisper: {e}")
 
-        try:
-            # precargar silero vad (más ligero)
-            self.vad_service.load_model(timeout_sec=15.0)
-            logger.info("✅ silero vad precargado correctamente")
-        except Exception as e:
-            logger.warning(f"⚠️ no se pudo precargar vad: {e}")
+
 
     async def wait_for_warmup(self, timeout: float = 30.0) -> bool:
         """

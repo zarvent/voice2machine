@@ -15,14 +15,14 @@ num_workers = 2  # 2 workers suficientes para single stream
 beam_size = 1  # Greedy decode: ~60% más rápido que beam=4
 best_of = 1  # Sin sampling múltiple
 temperature = 0.0
-vad_filter = false  # DEBUGGING: Deshabilitado temporalmente para diagnosticar
+vad_filter = true  # Enabled: uses faster-whisper native VAD
 
 [whisper.vad_parameters]
 # VAD ajustado para NO cortar frases y detectar voces suaves
 threshold = 0.3  # Bajado de 0.5→0.3: más sensible a voces suaves/lejanas
 min_speech_duration_ms = 300  # Subido de 250→300: evitar falsos positivos de ruidos breves
 min_silence_duration_ms = 500  # Subido de 100→500: CRÍTICO - no cortar final de frases
-backend = "onnx"  # ONNX es 3-5x más rápido en CPU que PyTorch
+
 
 # --- TRANSCRIPTION CONFIG (arquitectura model-agnostic) ---
 [transcription]
@@ -39,7 +39,7 @@ num_workers = 2
 beam_size = 1
 best_of = 1
 temperature = 0.0
-vad_filter = false
+vad_filter = true
 
 
 [gemini]

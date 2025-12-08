@@ -31,25 +31,21 @@ from v2m.config import config
 from v2m.domain.errors import RecordingError
 from v2m.core.logging import logger
 from v2m.infrastructure.audio.recorder import AudioRecorder
-from v2m.infrastructure.vad_service import VADService
+
 
 
 class WhisperTranscriptionService(TranscriptionService):
     """
     IMPLEMENTACIÓN DEL `TRANSCRIPTIONSERVICE` QUE USA `FASTER-WHISPER` Y `AUDIORECORDER`
     """
-    def __init__(self, vad_service: Optional[VADService] = None) -> None:
+    def __init__(self) -> None:
         """
         INICIALIZA EL SERVICIO DE TRANSCRIPCIÓN
 
         no carga el modelo de whisper en este punto para acelerar el inicio de la aplicación
-
-        ARGS:
-            vad_service: servicio opcional para truncado de silencios
         """
         self._model: Optional[WhisperModel] = None
         self.recorder = AudioRecorder(device_index=config.whisper.audio_device_index)
-        self.vad_service = vad_service
 
     @property
     def model(self) -> WhisperModel:
@@ -139,19 +135,6 @@ class WhisperTranscriptionService(TranscriptionService):
         if audio_data.size == 0:
             raise RecordingError("no se grabó audio o el buffer está vacío")
 
-        # --- aplicar vad (smart truncation) ---
-        # importante respetar config.whisper.vad_filter para habilitar deshabilitar silero vad
-        if self.vad_service and config.whisper.vad_filter:
-            try:
-                audio_data = self.vad_service.process(audio_data)
-                if audio_data.size == 0:
-                    logger.warning("vad eliminó todo el audio solo silencio detectado")
-                    return ""
-            except Exception as e:
-                logger.error(f"fallo en vad usando audio original {e}")
-        elif not config.whisper.vad_filter:
-            logger.debug("vad deshabilitado por configuración vad_filter=false")
-
         # --- transcripción con whisper ---
         logger.info("transcribiendo audio...")
         whisper_config = config.whisper
@@ -177,8 +160,8 @@ class WhisperTranscriptionService(TranscriptionService):
                 beam_size=whisper_config.beam_size,
                 best_of=whisper_config.best_of,
                 temperature=whisper_config.temperature,
-                # patience removido añade latencia sin beneficio para dictado
-                vad_filter=False,  # silero vad ya procesó el audio
+                vad_filter=whisper_config.vad_filter,
+                vad_parameters=whisper_config.vad_parameters.model_dump() if whisper_config.vad_filter else None,
             )
 
             if lang is None:

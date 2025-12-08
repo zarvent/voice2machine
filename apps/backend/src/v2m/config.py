@@ -120,7 +120,7 @@ class VadParametersConfig(BaseModel):
     threshold: float = 0.3
     min_speech_duration_ms: int = 250
     min_silence_duration_ms: int = 500
-    backend: str = "torch"  # 'onnx' o 'torch'. torch es más pesado pero más robusto históricamente.
+
 
     def __getitem__(self, item):
         return getattr(self, item)
