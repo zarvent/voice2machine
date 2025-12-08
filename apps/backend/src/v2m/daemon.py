@@ -142,6 +142,7 @@ class Daemon:
             length = int.from_bytes(header_data, byteorder="big")
             
             # Validate message size to prevent memory exhaustion and malicious inputs
+            # Note: length < 0 is technically impossible with unsigned int, but checked for defense-in-depth
             if length < 0 or length > MAX_MESSAGE_SIZE:
                 logger.error(f"Invalid message length: {length} bytes (valid range: 0-{MAX_MESSAGE_SIZE})")
                 error_msg = f"ERROR: Invalid message length ({length} bytes, valid range: 0-{MAX_MESSAGE_SIZE})"
