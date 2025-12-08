@@ -38,7 +38,7 @@ def mock_daemon(monkeypatch, tmp_path):
 async def test_large_payload_truncation(mock_daemon):
     """
     Test that large payloads are correctly received with the fix.
-    Verifies the length-prefix framing protocol handles payloads >4KB.
+    Verifies the length-prefix framing protocol handles payloads of 5000 bytes (>4KB).
     """
     daemon, mock_bus = mock_daemon
 

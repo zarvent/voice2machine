@@ -31,10 +31,10 @@ protocolo
     ejemplo::
     
         # Enviar "PING" (4 bytes)
-        \\x00\\x00\\x00\\x04PING
+        \x00\x00\x00\x04PING
         
         # Recibir "PONG" (4 bytes)
-        \\x00\\x00\\x00\\x04PONG
+        \x00\x00\x00\x04PONG
 
     **flujo de comunicación**:
     
