@@ -18,7 +18,7 @@ módulo que define la interfaz para los servicios de transcripción de audio
 
 esta clase abstracta establece el contrato que cualquier servicio de transcripción
 debe seguir la capa de aplicación interactúa con esta interfaz permitiendo
-que la implementación subyacente (ej `whispertranscriptionservice`) pueda ser
+que la implementación subyacente ej `whispertranscriptionservice` pueda ser
 intercambiada sin afectar la lógica de negocio
 """
 

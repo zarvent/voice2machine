@@ -17,12 +17,12 @@
 servicio de notificaciones de escritorio para linux
 
 este módulo implementa un servicio de notificaciones robusto que soporta
-auto-dismiss programático via dbus resolviendo la limitación de unity/gnome
+auto-dismiss programático via dbus resolviendo la limitación de unity o gnome
 que ignora el parámetro expire-time de notify-send
 
 arquitectura:
-    - usa freedesktop notifications spec via gdbus (sin dependencias externas)
-    - thread pool executor singleton para manejar dismissals sin thread leak
+    - usa freedesktop notifications spec via gdbus sin dependencias externas
+    - thread pool executor singleton para manejar cierres sin fugas de hilos
     - fallback automático a notify-send si dbus falla
     - configuración inyectada desde config.toml
 
@@ -32,15 +32,15 @@ example:
         from v2m.infrastructure.notification_service import LinuxNotificationService
 
         service = LinuxNotificationService()
-        service.notify("✅ success", "operación completada")
+        service.notify("✅ éxito", "operación completada")
         # la notificación se cerrará automáticamente después de expire_time_ms
 
-    cleanup al finalizar::
+    limpieza al finalizar::
 
-        service.shutdown()  # espera a que terminen los dismissals pendientes
+        service.shutdown()  # espera a que terminen los cierres pendientes
 
 note:
-    este servicio es thread-safe y puede usarse desde múltiples threads
+    este servicio es seguro para hilos y puede usarse desde múltiples hilos
     simultáneamente sin problemas de concurrencia
 """
 
@@ -69,9 +69,9 @@ class NotificationResult:
     resultado inmutable de enviar una notificación
 
     attributes:
-        success: True si la notificación se envió correctamente
+        success: true si la notificación se envió correctamente
         notification_id: el id asignado por dbus o none si falló
-        error: mensaje de error si success es False
+        error: mensaje de error si success es false
     """
     success: bool
     notification_id: Optional[int] = None
@@ -87,33 +87,33 @@ class LinuxNotificationService(NotificationInterface):
     correcta limpieza al finalizar la aplicación
 
     attributes:
-        expire_time_ms: tiempo en ms antes de auto-cerrar (de config)
-        auto_dismiss: si true fuerza cierre via dbus (de config)
+        expire_time_ms: tiempo en ms antes de auto-cerrar de config
+        auto_dismiss: si true fuerza cierre via dbus de config
 
     class attributes:
         _executor: thread pool compartido entre instancias
-        _instances: weak references a instancias activas para shutdown
-        _lock: mutex para inicialización thread-safe del executor
-        MAX_POOL_SIZE: máximo de threads para dismissals concurrentes
+        _instances: referencias débiles a instancias activas para apagado
+        _lock: mutex para inicialización segura de hilos del executor
+        MAX_POOL_SIZE: máximo de hilos para cierres concurrentes
 
     example:
-        inyección de dependencias en un handler::
+        inyección de dependencias en un manejador::
 
             class MyHandler:
                 def __init__(self, notifier: NotificationInterface):
                     self.notifier = notifier
 
                 def execute(self):
-                    self.notifier.notify("🎤 recording", "grabación iniciada")
+                    self.notifier.notify("🎤 grabando", "grabación iniciada")
     """
 
-    # --- class-level singleton resources ---
+    # --- recursos singleton a nivel de clase ---
     _executor: ClassVar[Optional[ThreadPoolExecutor]] = None
     _instances: ClassVar[WeakSet[LinuxNotificationService]] = WeakSet()
     _lock: ClassVar[threading.Lock] = threading.Lock()
-    MAX_POOL_SIZE: ClassVar[int] = 4  # suficiente para burst de notificaciones
+    MAX_POOL_SIZE: ClassVar[int] = 4  # suficiente para ráfaga de notificaciones
 
-    # --- dbus constants ---
+    # --- constantes dbus ---
     _DBUS_DEST: ClassVar[str] = "org.freedesktop.Notifications"
     _DBUS_PATH: ClassVar[str] = "/org/freedesktop/Notifications"
     _DBUS_IFACE: ClassVar[str] = "org.freedesktop.Notifications"
@@ -135,7 +135,7 @@ class LinuxNotificationService(NotificationInterface):
         self._pending_count: int = 0
         self._pending_lock: threading.Lock = threading.Lock()
 
-        # registrar instancia para cleanup global
+        # registrar instancia para limpieza global
         LinuxNotificationService._instances.add(self)
 
         # inicializar executor singleton si no existe
@@ -144,9 +144,9 @@ class LinuxNotificationService(NotificationInterface):
     @classmethod
     def _ensure_executor(cls) -> None:
         """
-        inicializa el thread pool executor singleton thread-safe
+        inicializa el thread pool executor singleton seguro para hilos
 
-        usa double-checked locking pattern para evitar contención
+        usa patrón double-checked locking para evitar contención
         innecesaria después de la primera inicialización
         """
         if cls._executor is None:
@@ -156,37 +156,37 @@ class LinuxNotificationService(NotificationInterface):
                         max_workers=cls.MAX_POOL_SIZE,
                         thread_name_prefix="v2m-notify-dismiss"
                     )
-                    # registrar cleanup al salir del proceso
+                    # registrar limpieza al salir del proceso
                     atexit.register(cls._shutdown_executor)
-                    logger.debug(f"notification executor initialized (max_workers={cls.MAX_POOL_SIZE})")
+                    logger.debug(f"executor de notificaciones inicializado max_workers={cls.MAX_POOL_SIZE}")
 
     @classmethod
     def _shutdown_executor(cls) -> None:
         """
         cierra el executor limpiamente esperando tareas pendientes
 
-        llamado automáticamente por atexit o manualmente via shutdown()
+        llamado automáticamente por atexit o manualmente via shutdown
         """
         if cls._executor is not None:
-            logger.debug("shutting down notification executor...")
+            logger.debug("cerrando executor de notificaciones...")
             cls._executor.shutdown(wait=True, cancel_futures=False)
             cls._executor = None
-            logger.debug("notification executor shutdown complete")
+            logger.debug("cierre del executor de notificaciones completado")
 
     def notify(self, title: str, message: str) -> None:
         """
         envía una notificación al escritorio con auto-dismiss opcional
 
-        el método es non-blocking: la notificación se envía y el dismiss
-        se programa en background sin bloquear el caller
+        el método es no bloqueante la notificación se envía y el cierre
+        se programa en segundo plano sin bloquear al invocador
 
         args:
-            title: título de la notificación (breve y descriptivo)
-            message: cuerpo del mensaje (max ~100 chars recomendado)
+            title: título de la notificación breve y descriptivo
+            message: cuerpo del mensaje máx 100 caracteres recomendado
 
         note:
-            si auto_dismiss está habilitado y dbus funciona el dismiss
-            se ejecuta después de expire_time_ms en un thread del pool
+            si auto_dismiss está habilitado y dbus funciona el cierre
+            se ejecuta después de expire_time_ms en un hilo del pool
         """
         result = self._send_notification(title, message)
 
@@ -198,18 +198,18 @@ class LinuxNotificationService(NotificationInterface):
 
     def _send_notification(self, title: str, message: str) -> NotificationResult:
         """
-        envía notificación via dbus y retorna el notification id
+        envía notificación via dbus y retorna el id de notificación
 
         usa gdbus para evitar dependencias python adicionales
-        gdbus viene preinstalado en ubuntu/debian/fedora
+        gdbus viene preinstalado en ubuntu debian fedora
 
         args:
             title: título de la notificación
             message: cuerpo del mensaje
 
         returns:
-            NotificationResult con success=True y notification_id si ok
-            NotificationResult con success=False y error si falló
+            notificationresult con success=true y notification_id si ok
+            notificationresult con success=false y error si falló
         """
         try:
             result = subprocess.run(
@@ -236,7 +236,7 @@ class LinuxNotificationService(NotificationInterface):
             if result.returncode != 0:
                 return NotificationResult(
                     success=False,
-                    error=f"gdbus error: {result.stderr.strip()}"
+                    error=f"error de gdbus: {result.stderr.strip()}"
                 )
 
             # parsear id de respuesta: "(uint32 123,)"
@@ -247,13 +247,13 @@ class LinuxNotificationService(NotificationInterface):
             else:
                 return NotificationResult(
                     success=False,
-                    error=f"failed to parse notification id from: {result.stdout}"
+                    error=f"falló al parsear id de notificación de: {result.stdout}"
                 )
 
         except FileNotFoundError:
-            return NotificationResult(success=False, error="gdbus not found")
+            return NotificationResult(success=False, error="gdbus no encontrado")
         except subprocess.TimeoutExpired:
-            return NotificationResult(success=False, error="gdbus timeout")
+            return NotificationResult(success=False, error="tiempo de espera gdbus agotado")
         except Exception as e:
             return NotificationResult(success=False, error=str(e))
 
@@ -265,11 +265,11 @@ class LinuxNotificationService(NotificationInterface):
             notification_id: id de la notificación a cerrar
 
         note:
-            usa el executor singleton para evitar creación de threads
-            por notificación lo que causaría thread leak
+            usa el executor singleton para evitar creación de hilos
+            por notificación lo que causaría fugas de hilos
         """
         if self._executor is None:
-            logger.warning("executor not available, dismiss skipped")
+            logger.warning("executor no disponible cierre omitido")
             return
 
         with self._pending_lock:
@@ -296,7 +296,7 @@ class LinuxNotificationService(NotificationInterface):
                     timeout=1
                 )
             except Exception:
-                pass  # silent fail si la notificación ya fue cerrada
+                pass  # fallo silencioso si la notificación ya fue cerrada
             finally:
                 with self._pending_lock:
                     self._pending_count -= 1
@@ -327,19 +327,19 @@ class LinuxNotificationService(NotificationInterface):
                 timeout=2
             )
         except FileNotFoundError:
-            logger.warning("notify-send not found, notification skipped")
+            logger.warning("notify-send no encontrado notificación omitida")
         except Exception as e:
-            logger.error(f"fallback notification failed: {e}")
+            logger.error(f"notificación de fallback falló: {e}")
 
     @property
     def pending_dismissals(self) -> int:
         """
-        retorna el número de dismissals pendientes en el executor
+        retorna el número de cierres pendientes en el executor
 
-        útil para testing y debugging
+        útil para pruebas y depuración
 
         returns:
-            número de tareas de dismiss aún en cola o ejecutando
+            número de tareas de cierre aún en cola o ejecutando
         """
         with self._pending_lock:
             return self._pending_count
@@ -349,16 +349,16 @@ class LinuxNotificationService(NotificationInterface):
         cierra esta instancia y opcionalmente espera tareas pendientes
 
         args:
-            wait: si True espera a que terminen los dismissals pendientes
-                antes de retornar (default: True)
+            wait: si true espera a que terminen los cierres pendientes
+                antes de retornar default true
 
         note:
-            el executor singleton NO se cierra aquí solo se marca la instancia
+            el executor singleton no se cierra aquí solo se marca la instancia
             como inactiva el executor se cierra en atexit o llamando
-            shutdown_all() explícitamente
+            shutdown_all explícitamente
         """
         if wait:
-            # esperar activamente a que terminen los dismissals de esta instancia
+            # esperar activamente a que terminen los cierres de esta instancia
             while self.pending_dismissals > 0:
                 sleep(0.1)
 
@@ -367,6 +367,6 @@ class LinuxNotificationService(NotificationInterface):
         """
         cierra el executor singleton y todas las instancias
 
-        usar solo al finalizar la aplicación o en tests
+        usar solo al finalizar la aplicación o en pruebas
         """
         cls._shutdown_executor()

@@ -14,7 +14,7 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-protocolo de comunicación inter-procesos (ipc) para voice2machine
+protocolo de comunicación inter-procesos ipc para voice2machine
 
 este módulo define el protocolo de comunicación entre el cliente y el daemon
 utiliza un socket unix para comunicación local eficiente y segura
@@ -23,14 +23,14 @@ protocolo
     la comunicación es síncrona tipo request-response
 
     1 el cliente abre una conexión al socket unix
-    2 envía un comando como texto plano (utf-8)
+    2 envía un comando como texto plano utf-8
     3 el daemon procesa el comando
     4 el daemon responde con un mensaje de estado
     5 la conexión se cierra
 
 formato de comandos
-    - comandos simples ``COMANDO`` (ej ``START_RECORDING``)
-    - comandos con payload ``COMANDO <datos>`` (ej ``PROCESS_TEXT hola mundo``)
+    - comandos simples ``COMANDO`` ej ``START_RECORDING``
+    - comandos con payload ``COMANDO <datos>`` ej ``PROCESS_TEXT hola mundo``
 
 respuestas
     - ``OK`` operación exitosa
@@ -58,7 +58,7 @@ class IPCCommand(str, Enum):
             el daemon comienza a grabar y crea el archivo de bandera
         STOP_RECORDING: detiene la grabación actual y dispara la
             transcripción el resultado se copia al portapapeles
-        PROCESS_TEXT: procesa texto existente con el llm (gemini)
+        PROCESS_TEXT: procesa texto existente con el llm gemini
             requiere un payload con el texto a procesar
             formato ``PROCESS_TEXT <texto>``
         PING: comando de heartbeat para verificar si el daemon está
@@ -71,12 +71,12 @@ class IPCCommand(str, Enum):
 
             message = "START_RECORDING"
             if message == IPCCommand.START_RECORDING:
-                print("Iniciando grabación...")
+                print("iniciando grabación...")
 
         iteración sobre comandos::
 
             for cmd in IPCCommand:
-                print(f"Comando: {cmd.value}")
+                print(f"comando: {cmd.value}")
     """
     START_RECORDING = "START_RECORDING"
     STOP_RECORDING = "STOP_RECORDING"

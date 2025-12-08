@@ -59,33 +59,33 @@ class GeminiLLMService(LLMService):
             raise LLMError("la variable de entorno GEMINI_API_KEY no fue encontrada")
 
         # --- inicialización del cliente de la api ---
-        # la librería de GOOGLE utiliza `GOOGLE_API_KEY` por defecto
+        # la librería de google utiliza `GOOGLE_API_KEY` por defecto
         os.environ["GOOGLE_API_KEY"] = api_key
         self.client = genai.Client(api_key=api_key)
         self.model = gemini_config.model
         self.temperature = gemini_config.temperature
         self.max_tokens = gemini_config.max_tokens
 
-        # cargar system prompt
+        # cargar prompt del sistema
         prompt_path = BASE_DIR / "prompts" / "refine_system.txt"
         try:
             with open(prompt_path, "r", encoding="utf-8") as f:
                 self.system_instruction = f.read()
         except FileNotFoundError:
-            logger.warning("system prompt no encontrado usando default")
+            logger.warning("prompt del sistema no encontrado usando default")
             self.system_instruction = "eres un editor de texto experto"
 
-    # Retry solo para errores transitorios de red/rate-limit
-    # Tiempos reducidos para baja latencia: 0.5s, 1s, 2s (máx 3.5s total)
+    # retry solo para errores transitorios de red rate-limit
+    # tiempos reducidos para baja latencia 0.5s 1s 2s (máx 3.5s total)
     @retry(
         stop=stop_after_attempt(config.gemini.retry_attempts),
         wait=wait_exponential(
-            multiplier=0.5,  # Reducido de 1
-            min=0.5,         # Reducido de 2
-            max=2,           # Reducido de 10
+            multiplier=0.5,  # reducido de 1
+            min=0.5,         # reducido de 2
+            max=2,           # reducido de 10
         ),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError, ConnectionError)),
-        reraise=True,  # Re-lanzar si se agotan los intentos
+        reraise=True,  # re-lanzar si se agotan los intentos
     )
     async def process_text(self, text: str) -> str:
         """
@@ -104,7 +104,7 @@ class GeminiLLMService(LLMService):
             LLMError: si la comunicación con la api falla después de todos los reintentos
         """
         try:
-            logger.info("procesando texto con GEMINI...")
+            logger.info("procesando texto con gemini...")
             generation_config = {
                 "temperature": self.temperature,
                 "max_output_tokens": self.max_tokens,
@@ -124,20 +124,20 @@ class GeminiLLMService(LLMService):
                 contents=contents,
                 config=generation_config
             )
-            logger.info("procesamiento con GEMINI completado")
+            logger.info("procesamiento con gemini completado")
             if response.text:
                 return response.text.strip()
             else:
-                raise LLMError("respuesta vacía de GEMINI")
+                raise LLMError("respuesta vacía de gemini")
         except Exception as e:
             # --- manejo de errores ---
-            # se captura cualquier excepción de la librería de GOOGLE o de red
+            # se captura cualquier excepción de la librería de google o de red
             # y se relanza como un error de dominio para no filtrar detalles
             # de la infraestructura a la capa de aplicación
             error_msg = str(e)
             if "API key not valid" in error_msg:
-                logger.critical("GEMINI_API_KEY invalida o expirada")
-                raise LLMError("API Key de Gemini inválida. Revisa tu archivo .env") from e
+                logger.critical("GEMINI_API_KEY inválida o expirada")
+                raise LLMError("api key de gemini inválida revisa tu archivo .env") from e
 
-            logger.error(f"error procesando texto con GEMINI {e}")
-            raise LLMError("falló el procesamiento de texto con GEMINI") from e
+            logger.error(f"error procesando texto con gemini {e}")
+            raise LLMError("falló el procesamiento de texto con gemini") from e

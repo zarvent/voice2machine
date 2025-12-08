@@ -69,20 +69,20 @@ async def send_command(command: str) -> str:
             - ``UNKNOWN_COMMAND`` comando no reconocido
 
     raises:
-        SystemExit: si el daemon no está corriendo (filenotfounderror)
-            o rechaza la conexión (connectionrefusederror)
+        SystemExit: si el daemon no está corriendo filenotfounderror
+            o rechaza la conexión connectionrefusederror
 
     example
         verificar si el daemon está activo::
 
             response = await send_command("PING")
             if response == "PONG":
-                print("Daemon activo")
+                print("daemon activo")
     """
     try:
         reader, writer = await asyncio.open_unix_connection(SOCKET_PATH)
 
-        # Protocolo de framing: 4 bytes longitud (Big Endian) + Payload
+        # protocolo de framing 4 bytes longitud big endian + payload
         message_bytes = command.encode("utf-8")
         length = len(message_bytes)
         writer.write(length.to_bytes(4, byteorder="big"))
@@ -91,16 +91,16 @@ async def send_command(command: str) -> str:
 
         data = await reader.read(1024)
         response = data.decode()
-        # print(f"Response: {response}")
+        # print(f"response: {response}")
 
         writer.close()
         await writer.wait_closed()
         return response
     except FileNotFoundError:
-        print("Error: Daemon is not running. Start it with 'python -m v2m.daemon'", file=sys.stderr)
+        print("error el daemon no está corriendo inícialo con 'python -m v2m.daemon'", file=sys.stderr)
         sys.exit(1)
     except ConnectionRefusedError:
-        print("Error: Connection refused. Daemon might be dead.", file=sys.stderr)
+        print("error conexión rechazada el daemon podría estar muerto", file=sys.stderr)
         sys.exit(1)
 
 def main() -> None:
@@ -108,14 +108,14 @@ def main() -> None:
     punto de entrada para el cliente de línea de comandos
 
     analiza los argumentos de la línea de comandos construye el mensaje
-    ipc completo (incluyendo payload opcional) y lo envía al daemon
+    ipc completo incluyendo payload opcional y lo envía al daemon
     imprime la respuesta recibida a stdout
 
     argumentos cli
-        command: comando ipc a enviar (requerido) opciones
+        command: comando ipc a enviar requerido opciones
             ``START_RECORDING`` ``STOP_RECORDING`` ``PING``
             ``SHUTDOWN`` ``PROCESS_TEXT``
-        payload: datos adicionales para el comando (opcional)
+        payload: datos adicionales para el comando opcional
             solo aplicable a ``PROCESS_TEXT``
 
     example
@@ -127,9 +127,9 @@ def main() -> None:
 
             python -m v2m.client PROCESS_TEXT "texto a refinar"
     """
-    parser = argparse.ArgumentParser(description="Whisper Dictation Client")
-    parser.add_argument("command", choices=[e.value for e in IPCCommand], help="Command to send to daemon")
-    parser.add_argument("payload", nargs="*", help="Optional payload for the command")
+    parser = argparse.ArgumentParser(description="cliente de dictado whisper")
+    parser.add_argument("command", choices=[e.value for e in IPCCommand], help="comando para enviar al daemon")
+    parser.add_argument("payload", nargs="*", help="carga útil opcional para el comando")
 
     args = parser.parse_args()
 

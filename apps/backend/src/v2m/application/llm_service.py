@@ -14,11 +14,11 @@
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-módulo que define la interfaz para los servicios de modelos de lenguaje grandes (llm)
+módulo que define la interfaz para los servicios de modelos de lenguaje grandes llm
 
 esta clase abstracta define el contrato que cualquier servicio de llm debe
 cumplir para ser utilizado por la aplicación la capa de aplicación depende de
-esta abstracción no de una implementación concreta (como `geminillmservice`)
+esta abstracción no de una implementación concreta como `geminillmservice`
 """
 
 from abc import ABC, abstractmethod

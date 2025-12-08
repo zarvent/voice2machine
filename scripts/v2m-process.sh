@@ -15,59 +15,59 @@
 # You should have received a copy of the GNU General Public License
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 #
-# v2m-process.sh - Script de procesamiento del contenido del portapapeles
+# v2m-process.sh - script para procesar el texto del portapapeles
 #
-# DESCRIPCIÓN:
-#   Este script lee el contenido actual del portapapeles y lo envía
-#   a V2M para procesamiento con Gemini. Es ideal para asignar a
-#   un atajo de teclado para procesamiento rápido.
+# descripción
+#   este script lee lo que tengas copiado en el portapapeles y se lo envía
+#   a v2m para procesarlo con inteligencia artificial es ideal para usarlo
+#   con un atajo de teclado
 #
-# USO:
+# uso
 #   ./scripts/v2m-process.sh
 #
-# FLUJO DE TRABAJO:
-#   1. Lee el contenido del portapapeles con xclip
-#   2. Envía el texto al orquestador de V2M
-#   3. El resultado procesado se copia al portapapeles
-#   4. Muestra notificación de éxito o error
+# cómo funciona
+#   1 lee el contenido del portapapeles
+#   2 envía el texto al sistema principal
+#   3 copia el resultado procesado al portapapeles
+#   4 te avisa si todo salió bien o si hubo un error
 #
-# DEPENDENCIAS:
-#   - xclip: Para acceso al portapapeles
-#   - notify-send: Para notificaciones de escritorio
-#   - Entorno virtual de Python en ./venv
+# dependencias
+#   - xclip para leer el portapapeles
+#   - notify-send para mostrar notificaciones
+#   - entorno virtual de python en ./venv
 #
-# INTEGRACIÓN CON ATAJOS DE TECLADO:
-#   En GNOME:
+# integración con atajos de teclado
+#   en gnome
 #   gsettings set org.gnome.settings-daemon.plugins.media-keys \
 #     custom-keybindings "['/org/gnome/.../custom0/']"
 #   gsettings set ... command "$HOME/v2m/scripts/v2m-process.sh"
 #
-# NOTAS:
-#   - Requiere sesión X11 activa para xclip
-#   - Muestra error si el portapapeles está vacío
+# notas
+#   - necesitas una sesión gráfica para usar el portapapeles
+#   - te avisará si el portapapeles está vacío
 #
-# AUTOR:
-#   Voice2Machine Team
+# autor
+#   equipo voice2machine
 #
-# DESDE:
+# desde
 #   v1.0.0
 #
 
-# --- Configuración ---
+# --- configuración ---
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 NOTIFY_EXPIRE_TIME=3000
 
-# --- Rutas Derivadas ---
+# --- rutas derivadas ---
 VENV_PATH="${PROJECT_DIR}/venv"
 MAIN_SCRIPT="${PROJECT_DIR}/src/v2m/main.py"
 
-# --- Función Principal ---
+# --- función principal ---
 run_orchestrator() {
     local text_to_process=$1
 
     if [ ! -f "${VENV_PATH}/bin/activate" ]; then
-        notify-send --expire-time=${NOTIFY_EXPIRE_TIME} "❌ Error de V2M" "Entorno virtual no encontrado en ${VENV_PATH}"
+        notify-send --expire-time=${NOTIFY_EXPIRE_TIME} "❌ error de v2m" "no encontré el entorno virtual en ${VENV_PATH}"
         exit 1
     fi
 
@@ -76,11 +76,11 @@ run_orchestrator() {
     echo "${text_to_process}" | python3 "${MAIN_SCRIPT}" "process"
 }
 
-# --- Lógica Principal ---
+# --- lógica principal ---
 clipboard_content=$(xclip -o -selection clipboard)
 if [ -n "${clipboard_content}" ]; then
     run_orchestrator "${clipboard_content}"
 else
-    notify-send --expire-time=${NOTIFY_EXPIRE_TIME} "❌ Error" "El portapapeles está vacío."
+    notify-send --expire-time=${NOTIFY_EXPIRE_TIME} "❌ error" "el portapapeles está vacío"
     exit 1
 fi

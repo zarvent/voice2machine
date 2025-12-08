@@ -15,54 +15,54 @@
 # You should have received a copy of the GNU General Public License
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 #
-# v2m-daemon.sh - Script de gestión del daemon Voice2Machine
+# v2m-daemon.sh - script para gestionar el servicio voice2machine
 #
-# DESCRIPCIÓN:
-#   Este script proporciona una interfaz de línea de comandos para
-#   gestionar el daemon de V2M que corre en segundo plano. Permite
-#   iniciar, detener, reiniciar y verificar el estado del daemon.
+# descripción
+#   este script te permite controlar el servicio de v2m que se ejecuta
+#   en segundo plano puedes iniciarlo detenerlo reiniciarlo y
+#   verificar si todo está funcionando bien
 #
-# USO:
+# uso
 #   ./scripts/v2m-daemon.sh [start|stop|restart|status|logs]
 #
-# COMANDOS:
-#   start    - Inicia el daemon en segundo plano
-#   stop     - Detiene el daemon de forma segura
-#   restart  - Reinicia el daemon (stop + start)
-#   status   - Muestra el estado actual y prueba conectividad
-#   logs     - Muestra los logs del daemon
+# comandos
+#   start    - inicia el servicio en segundo plano
+#   stop     - detiene el servicio de forma segura
+#   restart  - reinicia el servicio primero lo detiene y luego lo inicia
+#   status   - te muestra el estado actual y prueba la conexión
+#   logs     - te muestra los registros del servicio
 #
-# ARCHIVOS:
-#   /tmp/v2m_daemon.log  - Archivo de logs del daemon
-#   /tmp/v2m_daemon.pid  - Archivo con el PID del proceso
+# archivos
+#   /tmp/v2m_daemon.log  - archivo donde se guardan los registros
+#   /tmp/v2m_daemon.pid  - archivo que guarda el identificador del proceso
 #
-# VARIABLES DE ENTORNO:
-#   LD_LIBRARY_PATH - Se configura automáticamente para CUDA/cuDNN
-#   PYTHONPATH      - Se configura para incluir src/
+# variables de entorno
+#   LD_LIBRARY_PATH - se configura sola para que funcione con cuda
+#   PYTHONPATH      - se configura para incluir el código fuente
 #
-# DEPENDENCIAS:
-#   - Python 3.12+ con entorno virtual en ./venv
-#   - Librerías NVIDIA en el venv (opcional, para GPU)
+# dependencias
+#   - python 3.12+ con entorno virtual en ./venv
+#   - librerías de nvidia en el entorno virtual opcional para gpu
 #
-# EJEMPLOS:
-#   # Iniciar el daemon
+# ejemplos
+#   # iniciar el servicio
 #   ./scripts/v2m-daemon.sh start
 #
-#   # Ver estado y probar conectividad
+#   # ver cómo está todo y probar la conexión
 #   ./scripts/v2m-daemon.sh status
 #
-#   # Ver logs en tiempo real
+#   # ver qué está pasando en tiempo real
 #   ./scripts/v2m-daemon.sh logs
 #
-# NOTAS:
-#   - El daemon usa un socket Unix para comunicación IPC
-#   - Los logs se rotan automáticamente con cleanup.py
-#   - Si CUDA no está disponible, usa CPU automáticamente
+# notas
+#   - el servicio usa un socket unix para comunicarse
+#   - los registros se limpian solos automáticamente
+#   - si no tienes tarjeta gráfica nvidia usará el procesador automáticamente
 #
-# AUTOR:
-#   Voice2Machine Team
+# autor
+#   equipo voice2machine
 #
-# DESDE:
+# desde
 #   v1.0.0
 #
 
@@ -76,26 +76,27 @@ start_daemon() {
     if [ -f "${PID_FILE}" ]; then
         PID=$(cat "${PID_FILE}")
         if ps -p "${PID}" > /dev/null 2>&1; then
-            echo "❌ Daemon ya está corriendo (PID: ${PID})"
+            echo "❌ el servicio ya está corriendo (pid: ${PID})"
             return 1
         else
-            echo "⚠️  PID file existe pero proceso no está corriendo. Limpiando..."
+            echo "⚠️  encontré un archivo pid pero el proceso no existe así que voy a limpiarlo"
             rm -f "${PID_FILE}"
         fi
     fi
 
-    echo "🚀 Iniciando daemon de v2m..."
+    echo "🚀 iniciando el servicio de v2m..."
 
     cd "${PROJECT_DIR}"
     export PYTHONPATH="${PROJECT_DIR}/src"
 
-    # --- Configurar LD_LIBRARY_PATH para CUDA/cuDNN ---
-    # Buscar librerías nvidia en el venv (necesario para whisper y llama-cpp-python)
+    # --- configurar ld_library_path para cuda y cudnn ---
+    # buscamos las librerías de nvidia en el entorno virtual que son
+    # necesarias para que whisper funcione con la tarjeta gráfica
     VENV_LIB="${PROJECT_DIR}/venv/lib/python3.12/site-packages/nvidia"
     CUDA_PATHS=""
 
     if [ -d "${VENV_LIB}" ]; then
-        # Paquetes nvidia que contienen libs necesarias para CUDA
+        # paquetes de nvidia que contienen las librerías necesarias
         NVIDIA_PACKAGES=(
             "cuda_runtime"
             "cudnn"
@@ -119,12 +120,12 @@ start_daemon() {
         done
     fi
 
-    # Agregar al LD_LIBRARY_PATH existente
+    # agregamos las rutas a la variable de entorno
     if [ -n "${CUDA_PATHS}" ]; then
         export LD_LIBRARY_PATH="${CUDA_PATHS}:${LD_LIBRARY_PATH:-}"
-        echo "🔧 LD_LIBRARY_PATH configurado con librerías NVIDIA del venv"
+        echo "🔧 configuré las librerías de nvidia para usar la tarjeta gráfica"
     else
-        echo "⚠️  No se encontraron librerías NVIDIA en el venv. CUDA podría fallar."
+        echo "⚠️  no encontré las librerías de nvidia así que es posible que no pueda usar la tarjeta gráfica"
     fi
 
     "${VENV_PYTHON}" -m v2m.main --daemon > "${LOG_FILE}" 2>&1 &
@@ -132,14 +133,14 @@ start_daemon() {
     DAEMON_PID=$!
     echo "${DAEMON_PID}" > "${PID_FILE}"
 
-    # Esperar un momento para verificar que arrancó correctamente
+    # esperamos un momento para asegurarnos de que arrancó bien
     sleep 2
 
     if ps -p "${DAEMON_PID}" > /dev/null 2>&1; then
-        echo "✅ Daemon iniciado correctamente (PID: ${DAEMON_PID})"
-        echo "📋 Logs en: ${LOG_FILE}"
+        echo "✅ el servicio arrancó correctamente (pid: ${DAEMON_PID})"
+        echo "📋 puedes ver los registros en: ${LOG_FILE}"
     else
-        echo "❌ El daemon falló al iniciar. Ver logs:"
+        echo "❌ hubo un problema al iniciar el servicio revisa los registros"
         tail -20 "${LOG_FILE}"
         rm -f "${PID_FILE}"
         return 1
@@ -148,74 +149,74 @@ start_daemon() {
 
 stop_daemon() {
     if [ ! -f "${PID_FILE}" ]; then
-        echo "⚠️  No se encontró PID file. Buscando proceso manualmente..."
+        echo "⚠️  no encontré el archivo pid así que buscaré el proceso manualmente"
         PID=$(ps aux | grep "python.*v2m.main --daemon" | grep -v grep | awk '{print $2}' | head -1)
         if [ -z "${PID}" ]; then
-            echo "❌ Daemon no está corriendo"
+            echo "❌ el servicio no está corriendo"
             return 1
         fi
     else
         PID=$(cat "${PID_FILE}")
     fi
 
-    echo "🛑 Deteniendo daemon (PID: ${PID})..."
+    echo "🛑 deteniendo el servicio (pid: ${PID})..."
     kill -TERM "${PID}" 2>/dev/null
 
-    # Esperar hasta 5 segundos para que termine gracefully
+    # esperamos hasta 5 segundos para que termine ordenadamente
     for i in {1..10}; do
         if ! ps -p "${PID}" > /dev/null 2>&1; then
-            echo "✅ Daemon detenido correctamente"
+            echo "✅ servicio detenido correctamente"
             rm -f "${PID_FILE}"
             return 0
         fi
         sleep 0.5
     done
 
-    # Si no terminó, force kill
-    echo "⚠️  Daemon no respondió a SIGTERM, forzando..."
+    # si no terminó lo forzamos
+    echo "⚠️  el servicio no respondió así que lo voy a forzar"
     kill -9 "${PID}" 2>/dev/null
     rm -f "${PID_FILE}"
-    echo "✅ Daemon forzadamente detenido"
+    echo "✅ servicio detenido forzadamente"
 }
 
 status_daemon() {
     if [ -f "${PID_FILE}" ]; then
         PID=$(cat "${PID_FILE}")
         if ps -p "${PID}" > /dev/null 2>&1; then
-            echo "✅ Daemon corriendo (PID: ${PID})"
+            echo "✅ el servicio está corriendo (pid: ${PID})"
 
-            # Mostrar info del proceso
+            # mostramos información del proceso
             ps -p "${PID}" -o pid,ppid,user,%cpu,%mem,etime,cmd
 
-            # Test de ping
+            # prueba de conexión
             echo ""
-            echo "🔍 Probando conectividad..."
+            echo "🔍 probando la conexión..."
             cd "${PROJECT_DIR}"
             export PYTHONPATH="${PROJECT_DIR}/src"
             PING_RESULT=$("${VENV_PYTHON}" -c "import asyncio; from v2m.client import send_command; print(asyncio.run(send_command('PING')))" 2>&1)
 
             if echo "${PING_RESULT}" | grep -q "PONG"; then
-                echo "✅ Daemon respondiendo correctamente"
+                echo "✅ el servicio responde correctamente"
             else
-                echo "⚠️  Daemon no responde a PING:"
+                echo "⚠️  el servicio no responde al ping"
                 echo "${PING_RESULT}"
             fi
 
             return 0
         else
-            echo "❌ PID file existe pero proceso no está corriendo"
+            echo "❌ existe el archivo pid pero el proceso no está corriendo"
             rm -f "${PID_FILE}"
             return 1
         fi
     else
-        echo "❌ Daemon no está corriendo (no se encontró PID file)"
+        echo "❌ el servicio no está corriendo no encontré el archivo pid"
         return 1
     fi
 }
 
 show_logs() {
     if [ ! -f "${LOG_FILE}" ]; then
-        echo "❌ No se encontró archivo de logs: ${LOG_FILE}"
+        echo "❌ no encontré el archivo de registros: ${LOG_FILE}"
         return 1
     fi
 
@@ -226,7 +227,7 @@ show_logs() {
     fi
 }
 
-# --- MAIN ---
+# --- principal ---
 case "${1:-}" in
     start)
         start_daemon
@@ -246,14 +247,14 @@ case "${1:-}" in
         show_logs
         ;;
     *)
-        echo "USO: $0 {start|stop|restart|status|logs}"
+        echo "uso: $0 {start|stop|restart|status|logs}"
         echo ""
-        echo "Comandos:"
-        echo "  start    - Inicia el daemon"
-        echo "  stop     - Detiene el daemon"
-        echo "  restart  - Reinicia el daemon"
-        echo "  status   - Muestra el estado del daemon"
-        echo "  logs     - Muestra los logs del daemon"
+        echo "comandos:"
+        echo "  start    - inicia el servicio"
+        echo "  stop     - detiene el servicio"
+        echo "  restart  - reinicia el servicio"
+        echo "  status   - muestra el estado del servicio"
+        echo "  logs     - muestra los registros del servicio"
         exit 1
         ;;
 esac

@@ -24,7 +24,7 @@ jerarquía de excepciones
     ::
 
         Exception
-        └── ApplicationError (base para todas las excepciones de v2m)
+        └── ApplicationError base para todas las excepciones de v2m
             ├── MicrophoneNotFoundError
             ├── RecordingError
             ├── TranscriptionError
@@ -44,8 +44,8 @@ example
         try:
             transcription = service.transcribe(audio)
         except TranscriptionError as e:
-            logger.error(f"Fallo en transcripción: {e}")
-            notification.notify("❌ Error", "No se pudo transcribir")
+            logger.error(f"fallo en transcripción: {e}")
+            notification.notify("❌ error", "no se pudo transcribir")
 """
 
 class ApplicationError(Exception):
@@ -62,11 +62,11 @@ class ApplicationError(Exception):
             try:
                 await handler.execute(command)
             except ApplicationError as e:
-                # Error conocido de negocio
-                return f"ERROR: {e}"
+                # error conocido de negocio
+                return f"error: {e}"
             except Exception as e:
-                # Error inesperado del sistema
-                logger.critical(f"Error no manejado: {e}")
+                # error inesperado del sistema
+                logger.critical(f"error no manejado: {e}")
                 raise
     """
     pass
@@ -82,7 +82,7 @@ class MicrophoneNotFoundError(ApplicationError):
     causas comunes
         - micrófono usb desconectado
         - permisos insuficientes para acceder al dispositivo de audio
-        - dispositivo de entrada por defecto mal configurado en pulseaudio/alsa
+        - dispositivo de entrada por defecto mal configurado en pulseaudio alsa
         - driver de audio no cargado
 
     solución sugerida
@@ -102,7 +102,7 @@ class RecordingError(ApplicationError):
         - intento de iniciar una grabación cuando ya hay una en progreso
         - intento de detener cuando no hay grabación activa
         - fallo del stream de sounddevice
-        - buffer de audio vacío (grabación de duración cero)
+        - buffer de audio vacío grabación de duración cero
         - permisos de acceso al dispositivo de audio revocados
 
     atributos heredados
@@ -122,8 +122,8 @@ class TranscriptionError(ApplicationError):
         - modelo whisper corrupto o no descargado completamente
         - memoria gpu insuficiente para cargar el modelo
         - formato de audio inválido o corrupto
-        - error de ctranslate2/cuda durante la inferencia
-        - timeout en la transcripción (audio demasiado largo)
+        - error de ctranslate2 cuda durante la inferencia
+        - timeout en la transcripción audio demasiado largo
 
     diagnóstico
         verificar logs para el mensaje de error específico de faster-whisper
@@ -136,13 +136,13 @@ class LLMError(ApplicationError):
     excepción lanzada cuando hay un error en la comunicación con el llm
 
     encapsula errores relacionados con el servicio de modelo de lenguaje
-    (actualmente google gemini) incluyendo problemas de red autenticación
+    actualmente google gemini incluyendo problemas de red autenticación
     y límites de uso
 
     causas comunes
         - api key inválida expirada o sin permisos
         - error de red o timeout en la conexión
-        - rate limiting (demasiadas solicitudes)
+        - rate limiting demasiadas solicitudes
         - respuesta vacía o malformada del servicio
         - servicio de gemini no disponible
 
@@ -151,7 +151,7 @@ class LLMError(ApplicationError):
         original sin refinar al portapapeles
 
     diagnóstico
-        verificar que ``GEMINI_API_KEY`` esté correctamente configurada en
+        verificar que ``gemini_api_key`` esté correctamente configurada en
         el archivo ``.env`` y que la cuenta tenga créditos disponibles
     """
     pass

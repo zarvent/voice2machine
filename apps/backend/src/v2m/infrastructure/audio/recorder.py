@@ -35,7 +35,7 @@ class AudioRecorder:
     - zero-copy slice al detener
     - dtype float32 consistente
     """
-    # Tamaño del chunk en samples (match con sounddevice default ~1024)
+    # tamaño del chunk en samples coincide con sounddevice default ~1024
     CHUNK_SIZE = 1024
 
     def __init__(self, sample_rate: int = 16000, channels: int = 1, max_duration_sec: int = 600, device_index: Optional[int] = None):
@@ -45,7 +45,7 @@ class AudioRecorder:
         args:
             sample_rate: frecuencia de muestreo en hz
             channels: número de canales de audio
-            max_duration_sec: duración máxima de grabación en segundos (default 10 min)
+            max_duration_sec: duración máxima de grabación en segundos default 10 min
             device_index: índice del dispositivo de audio a usar
         """
         self.sample_rate = sample_rate
@@ -55,11 +55,11 @@ class AudioRecorder:
         self._stream: Optional[sd.InputStream] = None
         self._lock = threading.Lock()
 
-        # Buffer pre-allocado para evitar reallocaciones durante grabación
-        # Esto elimina el overhead de np.concatenate (era O(n²), ahora O(1))
+        # buffer pre-allocado para evitar reallocaciones durante grabación
+        # esto elimina el overhead de np.concatenate era O(n²) ahora O(1)
         self.max_samples = max_duration_sec * sample_rate
 
-        # FIX: Support multi-channel buffer
+        # soporte para buffer multicanal
         if self.channels > 1:
             self._buffer: np.ndarray = np.zeros((self.max_samples, self.channels), dtype=np.float32)
         else:
@@ -69,7 +69,7 @@ class AudioRecorder:
 
     def start(self):
         """
-        inicia la grabación de audio en un hilo de fondo (callback)
+        inicia la grabación de audio en un hilo de fondo callback
 
         raises:
             RecordingError: si la grabación ya está en progreso o falla al iniciar el stream
@@ -78,7 +78,7 @@ class AudioRecorder:
             raise RecordingError("grabación ya en progreso")
 
         self._recording = True
-        self._write_pos = 0  # Reset buffer position
+        self._write_pos = 0  # reiniciar posición del buffer
 
         def callback(indata: np.ndarray, frames: int, time, status):
             if status:
@@ -88,20 +88,20 @@ class AudioRecorder:
                 if not self._recording:
                     return
 
-                # Calcular cuántos samples podemos escribir
+                # calcular cuántos samples podemos escribir
                 samples_to_write = min(frames, self.max_samples - self._write_pos)
 
                 if samples_to_write > 0:
-                    # Zero-copy write al buffer pre-allocado (flatten inline)
+                    # escritura zero-copy al buffer pre-allocado flatten inline
                     end_pos = self._write_pos + samples_to_write
 
                     if self.channels > 1:
                         self._buffer[self._write_pos:end_pos, :] = indata[:samples_to_write, :]
                     else:
-                        # indata is (frames, 1) or (frames, channels), we want 1D for mono buffer
-                        # if indata has more columns but we want mono, we take channel 0.
-                        # if indata is (N, 1), we flatten it or slice.
-                        # indata[:samples_to_write, 0] gives 1D slice.
+                        # indata es frames 1 o frames channels queremos 1d para buffer mono
+                        # si indata tiene más columnas pero queremos mono tomamos el canal 0
+                        # si indata es n 1 lo aplanamos o cortamos
+                        # indata[:samples_to_write 0] da un corte 1d
                         self._buffer[self._write_pos:end_pos] = indata[:samples_to_write, 0]
 
                     self._write_pos = end_pos
@@ -113,7 +113,7 @@ class AudioRecorder:
                 callback=callback,
                 dtype="float32",
                 device=self.device_index,
-                blocksize=self.CHUNK_SIZE  # Consistente para menor latencia
+                blocksize=self.CHUNK_SIZE  # consistente para menor latencia
             )
             self._stream.start()
             logger.info("grabación de audio iniciada")
@@ -132,8 +132,8 @@ class AudioRecorder:
             save_path: ruta opcional para guardar el audio como archivo wav
 
         returns:
-            el audio grabado como un array de numpy (float32)
-            nota: retorna una copia del buffer para evitar corrupción de datos
+            el audio grabado como un array de numpy float32
+            nota retorna una copia del buffer para evitar corrupción de datos
 
         raises:
             RecordingError: si no hay una grabación en curso
@@ -157,26 +157,26 @@ class AudioRecorder:
                  return np.array([], dtype=np.float32).reshape(0, self.channels)
             return np.array([], dtype=np.float32)
 
-        # Zero-copy slice - retorna vista del buffer, no copia
-        # IMPORTANTE: el caller debe procesar antes de la próxima grabación
-        # FIX: Retornamos una copia para evitar corrupción de datos si se reinicia la grabación
+        # zero-copy slice retorna vista del buffer no copia
+        # importante el caller debe procesar antes de la próxima grabación
+        # retornamos una copia para evitar corrupción de datos si se reinicia la grabación
         if self.channels > 1:
             audio = self._buffer[:recorded_samples, :].copy()
         else:
             audio = self._buffer[:recorded_samples].copy()
 
         if save_path:
-            # convertir float32 a int16 para wav (esto sí hace copia)
+            # convertir float32 a int16 para wav esto sí hace copia
             audio_int16 = (audio * 32767).astype(np.int16)
             with wave.open(str(save_path), 'wb') as wf:
                 wf.setnchannels(self.channels)
                 wf.setsampwidth(2)  # 16 bit
                 wf.setframerate(self.sample_rate)
-                # If channels > 1, audio is 2D (samples, channels).
-                # wave.writeframes expects interleaved bytes.
-                # tobytes() on C-contiguous 2D array gives row-major bytes:
-                # row0_col0, row0_col1, row1_col0, row1_col1...
-                # This is exactly what interleaved PCM expects (L, R, L, R...).
+                # si channels > 1 audio es 2d samples channels
+                # wave.writeframes espera bytes intercalados
+                # tobytes en array 2d c-contiguous da bytes row-major
+                # row0_col0 row0_col1 row1_col0 row1_col1...
+                # esto es exactamente lo que pcm intercalado espera l r l r...
                 wf.writeframes(audio_int16.tobytes())
 
         return audio
