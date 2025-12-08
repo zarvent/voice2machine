@@ -89,6 +89,41 @@ if [ ! -f "${MAIN_SCRIPT}" ]; then
      exit 1
 fi
 
+# --- Función para notificaciones con auto-dismiss via DBUS ---
+# Replica el comportamiento de LinuxNotificationService de Python
+# Resuelve el bug de Unity/GNOME que ignora --expire-time de notify-send
+auto_dismiss_notify() {
+    local title="$1"
+    local message="$2"
+    local expire_time="${3:-3000}"  # default 3 segundos
+
+    # Enviar notificación via DBUS y capturar el ID
+    local notify_output
+    notify_output=$(gdbus call --session \
+        --dest org.freedesktop.Notifications \
+        --object-path /org/freedesktop/Notifications \
+        --method org.freedesktop.Notifications.Notify \
+        "v2m" 0 "" "$title" "$message" "[]" "{}" "$expire_time" 2>/dev/null)
+
+    # Extraer notification_id de salida: "(uint32 123,)"
+    if [[ $notify_output =~ uint32\ ([0-9]+) ]]; then
+        local notification_id="${BASH_REMATCH[1]}"
+
+        # Programar cierre automático en background
+        (
+            sleep $(awk "BEGIN {print $expire_time/1000}")
+            gdbus call --session \
+                --dest org.freedesktop.Notifications \
+                --object-path /org/freedesktop/Notifications \
+                --method org.freedesktop.Notifications.CloseNotification \
+                "$notification_id" &>/dev/null
+        ) &
+    else
+        # Fallback a notify-send si DBUS falla
+        notify-send --expire-time="$expire_time" "$title" "$message" 2>/dev/null || true
+    fi
+}
+
 # --- Función para enviar comando al daemon ---
 send_to_daemon() {
     local text_to_process="$1"
@@ -119,8 +154,8 @@ send_to_daemon() {
 clipboard_content=$(xclip -o -selection clipboard 2>/dev/null || true)
 
 if [ -n "${clipboard_content}" ]; then
-    # Notificar inicio del procesamiento
-    notify-send --expire-time=1000 "🧠 Procesando..." "Refinando texto con LLM..."
+    # Notificar inicio del procesamiento (se auto-elimina en 1 segundo)
+    auto_dismiss_notify "🧠 Procesando..." "Refinando texto con LLM..." 1000
 
     # Enviar al daemon para procesamiento
     if ! send_to_daemon "${clipboard_content}"; then
