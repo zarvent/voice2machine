@@ -330,6 +330,37 @@ class LLMConfig(BaseModel):
     def __getitem__(self, item):
         return getattr(self, item)
 
+
+class TranscriptionConfig(BaseModel):
+    """
+    configuración del servicio de transcripción con selector de backend
+
+    permite elegir entre diferentes implementaciones de transcripción
+    el backend se selecciona mediante la opción ``backend``
+
+    attributes:
+        backend: selector del backend a usar
+            - "whisper": faster-whisper (default, GPU acelerado)
+            - futuro: "vosk", "speechbrain", "custom"
+            por defecto "whisper"
+        whisper: configuración específica para el backend whisper
+
+    example:
+        configuración en config.toml::
+
+            [transcription]
+            backend = "whisper"
+
+            [transcription.whisper]
+            model = "large-v3-turbo"
+            device = "cuda"
+    """
+    backend: str = Field(default="whisper")
+    whisper: WhisperConfig = Field(default_factory=WhisperConfig)
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
 class Settings(BaseSettings):
     """
     clase principal de configuración que agrupa todas las secciones
@@ -357,10 +388,11 @@ class Settings(BaseSettings):
         global ``config`` exportada por este módulo
     """
     paths: PathsConfig = Field(default_factory=PathsConfig)
-    whisper: WhisperConfig = Field(default_factory=WhisperConfig)
+    whisper: WhisperConfig = Field(default_factory=WhisperConfig)  # DEPRECATED: use transcription.whisper
     gemini: GeminiConfig = Field(default_factory=GeminiConfig)
     notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
 
     model_config = SettingsConfigDict(
         env_file=".env",

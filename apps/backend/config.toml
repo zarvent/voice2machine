@@ -24,6 +24,24 @@ min_speech_duration_ms = 300  # Subido de 250→300: evitar falsos positivos de 
 min_silence_duration_ms = 500  # Subido de 100→500: CRÍTICO - no cortar final de frases
 backend = "onnx"  # ONNX es 3-5x más rápido en CPU que PyTorch
 
+# --- TRANSCRIPTION CONFIG (arquitectura model-agnostic) ---
+[transcription]
+backend = "whisper"  # selector de backend: "whisper", futuro: "vosk", "custom"
+
+# Configuración específica de whisper (alias de [whisper] para backwards compat)
+[transcription.whisper]
+model = "large-v3-turbo"
+language = "auto"
+device = "cuda"
+compute_type = "float16"
+device_index = 0
+num_workers = 2
+beam_size = 1
+best_of = 1
+temperature = 0.0
+vad_filter = false
+
+
 [gemini]
 model = "models/gemini-1.5-flash-latest"
 temperature = 0.3

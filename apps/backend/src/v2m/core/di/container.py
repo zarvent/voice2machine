@@ -59,20 +59,30 @@ example
 
 from v2m.core.cqrs.command_bus import CommandBus
 from v2m.application.command_handlers import StartRecordingHandler, StopRecordingHandler, ProcessTextHandler
-from v2m.infrastructure.whisper_transcription_service import WhisperTranscriptionService
-from v2m.infrastructure.gemini_llm_service import GeminiLLMService
-from v2m.infrastructure.local_llm_service import LocalLLMService
 from v2m.infrastructure.linux_adapters import LinuxClipboardAdapter
 from v2m.infrastructure.notification_service import LinuxNotificationService
 from v2m.application.transcription_service import TranscriptionService
 from v2m.application.llm_service import LLMService
 from v2m.core.interfaces import NotificationInterface, ClipboardInterface
+from v2m.core.providers import llm_registry, transcription_registry, ProviderNotFoundError
 
 from v2m.infrastructure.vad_service import VADService
 from v2m.config import config
 from v2m.core.logging import logger
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+
+# --- AUTO-REGISTRO DE PROVIDERS ---
+# los imports fuerzan el registro en los registries globales
+# esto permite que el container resuelva providers dinámicamente desde config
+from v2m.infrastructure.whisper_transcription_service import WhisperTranscriptionService
+from v2m.infrastructure.gemini_llm_service import GeminiLLMService
+from v2m.infrastructure.local_llm_service import LocalLLMService
+
+# registrar providers explícitamente (más claro que auto-registro vía decorador)
+transcription_registry.register("whisper", WhisperTranscriptionService)
+llm_registry.register("local", LocalLLMService)
+llm_registry.register("gemini", GeminiLLMService)
 
 class Container:
     """
@@ -130,10 +140,20 @@ class Container:
             se cargará de forma lazy en el primer uso
         """
         # --- 1 instanciar servicios (como singletons) ---
-        # aquí se decide qué implementación concreta usar para cada interfaz
-        # si quisiéramos cambiar de GEMINI a OPENAI solo cambiaríamos esta línea
+        # resolución dinámica desde registries según config.toml
         self.vad_service = VADService()
-        self.transcription_service: TranscriptionService = WhisperTranscriptionService(vad_service=self.vad_service)
+
+        # --- selección de backend de transcripción según configuración ---
+        transcription_backend = config.transcription.backend
+        try:
+            TranscriptionClass = transcription_registry.get(transcription_backend)
+            self.transcription_service: TranscriptionService = TranscriptionClass(
+                vad_service=self.vad_service
+            )
+            logger.info(f"transcription backend: {transcription_backend}")
+        except ProviderNotFoundError as e:
+            logger.critical(f"backend de transcripción inválido: {e}")
+            raise
 
         # threadpoolexecutor para warmup - libera el gil mejor que threading.thread
         # porque permite que el event loop siga procesando durante la carga
@@ -141,12 +161,14 @@ class Container:
         self._warmup_future = self._warmup_executor.submit(self._preload_models)
 
         # --- selección de backend LLM según configuración ---
-        if config.llm.backend == "local":
-            self.llm_service: LLMService = LocalLLMService()
-            logger.info("LLM backend: local (llama.cpp)")
-        else:
-            self.llm_service: LLMService = GeminiLLMService()
-            logger.info("LLM backend: gemini (cloud)")
+        llm_backend = config.llm.backend
+        try:
+            LLMClass = llm_registry.get(llm_backend)
+            self.llm_service: LLMService = LLMClass()
+            logger.info(f"llm backend: {llm_backend}")
+        except ProviderNotFoundError as e:
+            logger.critical(f"backend llm inválido: {e}")
+            raise
 
         # adaptadores de sistema
         self.notification_service: NotificationInterface = LinuxNotificationService()

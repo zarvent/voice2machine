@@ -33,6 +33,7 @@ from v2m.core.logging import logger
 from v2m.infrastructure.audio.recorder import AudioRecorder
 from v2m.infrastructure.vad_service import VADService
 
+
 class WhisperTranscriptionService(TranscriptionService):
     """
     implementación del `transcriptionservice` que usa `faster-whisper` y `audiorecorder`
