@@ -84,6 +84,10 @@ class IPCCommand(str, Enum):
     PING = "PING"
     SHUTDOWN = "SHUTDOWN"
     GET_STATUS = "GET_STATUS"
+    UPDATE_CONFIG = "UPDATE_CONFIG"
+    GET_CONFIG = "GET_CONFIG"
+    PAUSE_DAEMON = "PAUSE_DAEMON"
+    RESUME_DAEMON = "RESUME_DAEMON"
 
 
 # =============================================================================

@@ -140,6 +140,50 @@ async fn process_text(text: String) -> Result<String, String> {
     extract_result(response)
 }
 
+/// pausa el daemon
+#[tauri::command]
+async fn pause_daemon() -> Result<String, String> {
+    let request = IPCRequest {
+        cmd: "PAUSE_DAEMON".to_string(),
+        data: None,
+    };
+    let response = send_json_request(request).await?;
+    extract_result(response)
+}
+
+/// reanuda el daemon
+#[tauri::command]
+async fn resume_daemon() -> Result<String, String> {
+    let request = IPCRequest {
+        cmd: "RESUME_DAEMON".to_string(),
+        data: None,
+    };
+    let response = send_json_request(request).await?;
+    extract_result(response)
+}
+
+/// actualiza configuración del sistema
+#[tauri::command]
+async fn update_config(updates: serde_json::Value) -> Result<String, String> {
+    let request = IPCRequest {
+        cmd: "UPDATE_CONFIG".to_string(),
+        data: Some(json!({"updates": updates})),
+    };
+    let response = send_json_request(request).await?;
+    extract_result(response)
+}
+
+/// obtiene configuración actual
+#[tauri::command]
+async fn get_config() -> Result<String, String> {
+    let request = IPCRequest {
+        cmd: "GET_CONFIG".to_string(),
+        data: None,
+    };
+    let response = send_json_request(request).await?;
+    extract_result(response)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -149,7 +193,11 @@ pub fn run() {
             start_recording,
             stop_recording,
             ping,
-            process_text
+            process_text,
+            pause_daemon,
+            resume_daemon,
+            update_config,
+            get_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

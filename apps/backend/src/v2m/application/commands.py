@@ -55,3 +55,22 @@ class ProcessTextCommand(Command):
             text: el texto que será enviado al servicio de llm para su refinamiento
         """
         self.text = text
+
+class UpdateConfigCommand(Command):
+    """
+    COMANDO PARA ACTUALIZAR LA CONFIGURACIÓN DEL SISTEMA
+    """
+    def __init__(self, updates: dict) -> None:
+        self.updates = updates
+
+class GetConfigCommand(Command):
+    """COMANDO PARA OBTENER LA CONFIGURACIÓN ACTUAL"""
+    pass
+
+class PauseDaemonCommand(Command):
+    """COMANDO PARA PAUSAR EL DAEMON"""
+    pass
+
+class ResumeDaemonCommand(Command):
+    """COMANDO PARA REANUDAR EL DAEMON"""
+    pass

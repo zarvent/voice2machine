@@ -31,9 +31,18 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Type
 from v2m.core.cqrs.command import Command
 from v2m.core.cqrs.command_handler import CommandHandler
-from v2m.application.commands import StartRecordingCommand, StopRecordingCommand, ProcessTextCommand
+from v2m.application.commands import (
+    StartRecordingCommand,
+    StopRecordingCommand,
+    ProcessTextCommand,
+    UpdateConfigCommand,
+    GetConfigCommand,
+    PauseDaemonCommand,
+    ResumeDaemonCommand
+)
 from v2m.application.transcription_service import TranscriptionService
 from v2m.application.llm_service import LLMService
+from v2m.application.config_manager import ConfigManager
 from v2m.core.interfaces import NotificationInterface, ClipboardInterface
 from v2m.config import config
 
@@ -211,3 +220,63 @@ class ProcessTextHandler(CommandHandler):
             el tipo de comando que este handler puede manejar
         """
         return ProcessTextCommand
+
+
+class UpdateConfigHandler(CommandHandler):
+    """
+    MANEJADOR PARA `UPDATECONFIGCOMMAND`.
+    """
+    def __init__(self, config_manager: ConfigManager, notification_service: NotificationInterface) -> None:
+        self.config_manager = config_manager
+        self.notification_service = notification_service
+
+    async def handle(self, command: UpdateConfigCommand) -> dict:
+        self.config_manager.update_config(command.updates)
+        self.notification_service.notify("⚙️ v2m config", "configuración actualizada")
+        # Por ahora, los cambios requieren reinicio para efecto completo en algunos subsistemas
+        # pero config.toml ya está guardado.
+        return {"status": "ok", "message": "config updated, restart may be required"}
+
+    def listen_to(self) -> Type[Command]:
+        return UpdateConfigCommand
+
+
+class GetConfigHandler(CommandHandler):
+    """
+    MANEJADOR PARA `GETCONFIGCOMMAND`.
+    """
+    def __init__(self, config_manager: ConfigManager) -> None:
+        self.config_manager = config_manager
+
+    async def handle(self, command: GetConfigCommand) -> dict:
+        return self.config_manager.load_config()
+
+    def listen_to(self) -> Type[Command]:
+        return GetConfigCommand
+
+
+class PauseDaemonHandler(CommandHandler):
+    """MANEJADOR PARA PAUSAR EL DAEMON"""
+    def __init__(self, notification_service: NotificationInterface) -> None:
+        self.notification_service = notification_service
+
+    async def handle(self, command: PauseDaemonCommand) -> str:
+        # La lógica de estado real se maneja en el Daemon, este handler es para efectos secundarios
+        self.notification_service.notify("⏸️ v2m pausa", "daemon pausado")
+        return "PAUSED"
+
+    def listen_to(self) -> Type[Command]:
+        return PauseDaemonCommand
+
+
+class ResumeDaemonHandler(CommandHandler):
+    """MANEJADOR PARA REANUDAR EL DAEMON"""
+    def __init__(self, notification_service: NotificationInterface) -> None:
+        self.notification_service = notification_service
+
+    async def handle(self, command: ResumeDaemonCommand) -> str:
+        self.notification_service.notify("▶️ v2m resume", "daemon reanudado")
+        return "RUNNING"
+
+    def listen_to(self) -> Type[Command]:
+        return ResumeDaemonCommand

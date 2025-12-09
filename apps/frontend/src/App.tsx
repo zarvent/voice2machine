@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { Dashboard } from "./components/Dashboard";
+import { Settings } from "./components/Settings";
 import "./App.css";
 
 // =============================================================================
@@ -10,7 +12,7 @@ const STATUS_POLL_INTERVAL_MS = 500;  // intervalo de polling al daemon
 // =============================================================================
 // TIPOS
 // =============================================================================
-type Status = "idle" | "recording" | "transcribing" | "processing" | "error" | "disconnected";
+type Status = "idle" | "recording" | "transcribing" | "processing" | "paused" | "error" | "disconnected";
 
 // Respuesta JSON del backend Rust (ya parseada de IPCResponse)
 interface DaemonData {
@@ -18,6 +20,7 @@ interface DaemonData {
   transcription?: string;   // de STOP_RECORDING
   refined_text?: string;    // de PROCESS_TEXT
   message?: string;         // de PING, START_RECORDING
+  telemetry?: any;          // Telemetría del sistema
 }
 
 // =============================================================================
@@ -51,6 +54,34 @@ const SparklesIcon = () => (
   </svg>
 );
 
+const SettingsIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+  </svg>
+);
+
+const PauseIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="6" y="4" width="4" height="16"></rect>
+    <rect x="14" y="4" width="4" height="16"></rect>
+  </svg>
+);
+
+const PlayIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+  </svg>
+);
+
+const ChartIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="20" x2="18" y2="10"></line>
+    <line x1="12" y1="20" x2="12" y2="4"></line>
+    <line x1="6" y1="20" x2="6" y2="14"></line>
+  </svg>
+);
+
 // =============================================================================
 // HELPER: parsear JSON response del backend Rust
 // =============================================================================
@@ -71,6 +102,9 @@ function App() {
   const [transcription, setTranscription] = useState("");
   const [lastCopied, setLastCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [telemetry, setTelemetry] = useState<any>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
   const pollRef = useRef<number | null>(null);
 
   // Polling robusto con parsing JSON
@@ -83,14 +117,36 @@ function App() {
       const data = parseBackendResponse(response);
 
       // Parsear estado estructurado (no basado en .includes())
-      const newStatus: Status = data.state === "recording" ? "recording" : "idle";
+      let newStatus: Status;
 
-      setStatus(prev => prev !== newStatus ? newStatus : prev);
+      if (data.state === "recording") newStatus = "recording";
+      else if (data.state === "paused") newStatus = "paused";
+      else newStatus = "idle";
+
+      // Preservar estados optimistas
+      if (status === "transcribing" || status === "processing") {
+          // Solo si el daemon ya terminó (pasó a idle), limpiamos
+          // si sigue grabando, esperamos
+      } else {
+          setStatus(prev => {
+             // Si el frontend está en transcribing/processing, no sobreescribir con 'idle' inmediatamente
+             if ((prev === "transcribing" || prev === "processing") && newStatus === "idle") {
+                 // Dejar que el handler de stop maneje la transición, o timeout
+                 return prev;
+             }
+             return prev !== newStatus ? newStatus : prev;
+          });
+      }
+
+      if (data.telemetry) {
+        setTelemetry(data.telemetry);
+      }
+
       if (errorMessage) setErrorMessage(""); // Clear error on successful connection
     } catch (e) {
       setStatus("disconnected");
     }
-  }, [errorMessage]);
+  }, [errorMessage, status]);
 
   useEffect(() => {
     pollStatus(); // Initial fetch
@@ -99,6 +155,8 @@ function App() {
   }, [pollStatus]);
 
   const handleRecord = async () => {
+    if (status === "paused") return;
+
     if (status === "recording") {
       setStatus("transcribing"); // Optimistic update
       try {
@@ -111,7 +169,7 @@ function App() {
         } else {
           // Sin transcripción = error (voz no detectada)
           setErrorMessage("No se detectó voz en el audio");
-          setStatus("error");
+          setStatus("error"); // Vuelve a error, el siguiente poll lo pondrá en idle
         }
       } catch (e) {
         // Error del backend viene como string de Rust
@@ -156,6 +214,20 @@ function App() {
     }
   };
 
+  const togglePause = async () => {
+    try {
+        if (status === "paused") {
+            await invoke("resume_daemon");
+            setStatus("idle");
+        } else {
+            await invoke("pause_daemon");
+            setStatus("paused");
+        }
+    } catch (e) {
+        setErrorMessage(String(e));
+    }
+  };
+
   // Status text mapping
   const getStatusLabel = (s: Status) => {
     switch (s) {
@@ -165,6 +237,7 @@ function App() {
       case "processing": return "Refinando con IA...";
       case "disconnected": return "Daemon desconectado";
       case "error": return "Error";
+      case "paused": return "Pausado (Ahorro)";
     }
   };
 
@@ -174,9 +247,25 @@ function App() {
         <div className="brand">
           <MicIcon /> voice2machine
         </div>
-        <div className="status-badge" data-status={status} role="status" aria-live="polite">
-          <div className="status-dot" aria-hidden="true"></div>
-          {getStatusLabel(status)}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+                onClick={() => setShowDashboard(!showDashboard)}
+                className={`icon-btn ${showDashboard ? 'active' : ''}`}
+                title="Métricas del Sistema"
+            >
+                <ChartIcon />
+            </button>
+            <button
+                onClick={() => setShowSettings(true)}
+                className="icon-btn"
+                title="Configuración"
+            >
+                <SettingsIcon />
+            </button>
+            <div className="status-badge" data-status={status} role="status" aria-live="polite">
+              <div className="status-dot" aria-hidden="true"></div>
+              {getStatusLabel(status)}
+            </div>
         </div>
       </header>
 
@@ -185,6 +274,10 @@ function App() {
           {errorMessage}
         </div>
       )}
+
+      <Dashboard visible={showDashboard} telemetry={telemetry} />
+
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
 
       <div className="control-surface">
         <div className="mic-button-wrapper">
@@ -197,7 +290,7 @@ function App() {
           <button
             className={`mic-button ${status === "recording" ? "recording" : ""}`}
             onClick={handleRecord}
-            disabled={status === "transcribing" || status === "processing" || status === "disconnected"}
+            disabled={status === "transcribing" || status === "processing" || status === "disconnected" || status === "paused"}
             aria-label={status === "recording" ? "Detener grabación" : "Iniciar grabación"}
           >
             {status === "recording" ? <StopIcon /> : <MicIcon />}
@@ -209,9 +302,10 @@ function App() {
         <textarea
           value={transcription}
           onChange={(e) => setTranscription(e.target.value)}
-          placeholder="Habla o pega texto aquí..."
+          placeholder={status === "paused" ? "Sistema en pausa..." : "Habla o pega texto aquí..."}
           spellCheck={false}
           aria-label="Texto transcrito"
+          disabled={status === "paused"}
         />
       </div>
 
@@ -231,6 +325,15 @@ function App() {
           aria-label="Refinar texto con inteligencia artificial"
         >
           <SparklesIcon /> Refinar IA
+        </button>
+        <button
+            className="btn-secondary"
+            onClick={togglePause}
+            disabled={status === "disconnected"}
+            title={status === "paused" ? "Reanudar sistema" : "Pausar sistema para ahorrar energía"}
+        >
+            {status === "paused" ? <PlayIcon /> : <PauseIcon />}
+             {status === "paused" ? "Reanudar" : "Pausar"}
         </button>
       </div>
     </main>
