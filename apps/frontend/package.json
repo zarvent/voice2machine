@@ -1,5 +1,7 @@
 {
-  "name": "frontend",
+  "name": "v2m-frontend",
+  "description": "GUI para voice2machine - Control visual del daemon de transcripción",
+  "author": "Cesar Sebastian",
   "private": true,
   "version": "0.1.0",
   "type": "module",

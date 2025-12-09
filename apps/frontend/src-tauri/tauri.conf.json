@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "frontend",
+  "productName": "voice2machine",
   "version": "0.1.0",
-  "identifier": "com.zarvent.frontend",
+  "identifier": "com.voice2machine.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,9 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "frontend",
-        "width": 800,
-        "height": 600
+        "title": "voice2machine",
+        "width": 420,
+        "height": 640
       }
     ],
     "security": {

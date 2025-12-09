@@ -1,14 +1,20 @@
 /* SOTA Design System 2025: Brutalism meets Glassmorphism */
 :root {
   /* HSL Color Space for precise control */
-  --hue-primary: 0;      /* Dark Theme Base */
-  --hue-accent: 142;     /* Green (Voice Active) */
-  --hue-warning: 10;     /* Red (Recording) */
-  --hue-info: 217;       /* Blue (Processing) */
+  --hue-primary: 0;
+  /* Dark Theme Base */
+  --hue-accent: 142;
+  /* Green (Voice Active) */
+  --hue-warning: 10;
+  /* Red (Recording) */
+  --hue-info: 217;
+  /* Blue (Processing) */
 
   /* Semantic Colors */
-  --bg-app: #09090b; /* Zinc-950 - Ultra Dark */
-  --bg-surface: rgba(24, 24, 27, 0.6); /* Zinc-900 with Alpha */
+  --bg-app: #09090b;
+  /* Zinc-950 - Ultra Dark */
+  --bg-surface: rgba(24, 24, 27, 0.6);
+  /* Zinc-900 with Alpha */
   --bg-surface-hover: rgba(39, 39, 42, 0.8);
 
   --border-subtle: rgba(255, 255, 255, 0.08);
@@ -33,7 +39,8 @@ body {
   color: var(--text-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  overflow: hidden; /* App feel */
+  overflow: hidden;
+  /* App feel */
 }
 
 /* Main Layout */
@@ -88,12 +95,55 @@ header {
 }
 
 /* Active States */
-.status-badge[data-status="recording"] { border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.1); }
-.status-badge[data-status="recording"] .status-dot { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
+.status-badge[data-status="recording"] {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.status-badge[data-status="recording"] .status-dot {
+  background-color: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
 
 .status-badge[data-status="transcribing"] .status-dot,
-.status-badge[data-status="processing"] .status-dot { background-color: #3b82f6; animation: blink 1s infinite; }
-.status-badge[data-status="idle"] .status-dot { background-color: #22c55e; }
+.status-badge[data-status="processing"] .status-dot {
+  background-color: #3b82f6;
+  animation: blink 1s infinite;
+}
+
+.status-badge[data-status="idle"] .status-dot {
+  background-color: #22c55e;
+}
+
+.status-badge[data-status="error"] {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.status-badge[data-status="error"] .status-dot {
+  background-color: #ef4444;
+}
+
+.status-badge[data-status="disconnected"] {
+  border-color: rgba(161, 161, 170, 0.4);
+}
+
+.status-badge[data-status="disconnected"] .status-dot {
+  background-color: #71717a;
+  animation: blink 2s infinite;
+}
+
+/* Error Banner */
+.error-banner {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
 
 
 /* Main Action Area */
@@ -132,7 +182,7 @@ header {
   justify-content: center;
   align-items: center;
   font-size: 1.5rem;
-  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
 .mic-button:hover {
@@ -163,8 +213,13 @@ header {
   opacity: 0;
 }
 
-.ripple:nth-child(2) { animation-delay: 0.5s; }
-.ripple:nth-child(3) { animation-delay: 1s; }
+.ripple:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.ripple:nth-child(3) {
+  animation-delay: 1s;
+}
 
 
 /* Transcription Area */
@@ -239,17 +294,43 @@ textarea::placeholder {
 
 /* Animations */
 @keyframes ripple {
-  0% { transform: scale(0.8); opacity: 1; }
-  100% { transform: scale(2); opacity: 0; }
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-active); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-active);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
