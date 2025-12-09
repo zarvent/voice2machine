@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChartIcon, SettingsIcon, MicIcon } from "../assets/Icons";
+import { ChartIcon, SettingsIcon, MicIcon, GithubIcon } from "../assets/Icons";
 import { Status } from "../hooks/useBackend";
 
 interface HeaderProps {
@@ -35,6 +35,15 @@ export const Header = React.memo(({ status, showDashboard, onToggleDashboard, on
                 >
                     <ChartIcon />
                 </button>
+                <a
+                    href="https://github.com/zarvent/voice2machine"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="icon-btn github-link"
+                    title="Ver en GitHub"
+                >
+                    <GithubIcon />
+                </a>
                 <button
                     onClick={onOpenSettings}
                     className="icon-btn"
