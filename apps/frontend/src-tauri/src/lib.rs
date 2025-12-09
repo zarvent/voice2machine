@@ -21,11 +21,16 @@ async fn send_command(command: String) -> Result<String, String> {
     stream.write_all(&len).await.map_err(|e| e.to_string())?;
     stream.write_all(payload).await.map_err(|e| e.to_string())?;
 
-    // 3. leer respuesta
-    let mut buf = [0u8; 1024];
-    let n = stream.read(&mut buf).await.map_err(|e| e.to_string())?;
+    // 3. leer respuesta (expandido a 16KB para transcripciones largas)
+    let mut response_buf = Vec::new();
+    let mut buf = [0u8; 4096];
+    loop {
+        let n = stream.read(&mut buf).await.map_err(|e| e.to_string())?;
+        if n == 0 { break; }
+        response_buf.extend_from_slice(&buf[..n]);
+    }
 
-    let response = String::from_utf8_lossy(&buf[..n]).to_string();
+    let response = String::from_utf8_lossy(&response_buf).to_string();
     Ok(response)
 }
 

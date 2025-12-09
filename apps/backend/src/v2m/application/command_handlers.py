@@ -106,7 +106,7 @@ class StopRecordingHandler(CommandHandler):
         self.notification_service = notification_service
         self.clipboard_service = clipboard_service
 
-    async def handle(self, command: StopRecordingCommand) -> None:
+    async def handle(self, command: StopRecordingCommand) -> str | None:
         """
         EJECUTA LA LÓGICA PARA DETENER LA GRABACIÓN Y TRANSCRIBIR
 
@@ -115,6 +115,9 @@ class StopRecordingHandler(CommandHandler):
 
         ARGS:
             command: el comando que activa este handler
+
+        RETURNS:
+            el texto transcrito o None si no se detectó voz
         """
         # borrar bandera de grabación para que el script bash sepa que ya paramos
         if config.paths.recording_flag.exists():
@@ -132,11 +135,12 @@ class StopRecordingHandler(CommandHandler):
         # si la transcripción está vacía no tiene sentido copiarla
         if not transcription.strip():
             self.notification_service.notify("❌ whisper", "no se detectó voz en el audio")
-            return
+            return None
 
         self.clipboard_service.copy(transcription)
         preview = transcription[:80] # se muestra una vista previa para no saturar la notificación
         self.notification_service.notify(f"✅ whisper - copiado", f"{preview}...")
+        return transcription
 
     def listen_to(self) -> Type[Command]:
         """
@@ -167,12 +171,15 @@ class ProcessTextHandler(CommandHandler):
         self.notification_service = notification_service
         self.clipboard_service = clipboard_service
 
-    async def handle(self, command: ProcessTextCommand) -> None:
+    async def handle(self, command: ProcessTextCommand) -> str | None:
         """
         EJECUTA LA LÓGICA PARA PROCESAR EL TEXTO CON EL LLM
 
         ARGS:
             command: el comando que contiene el texto a procesar
+
+        RETURNS:
+            el texto refinado o None si hubo error
         """
         try:
             # asumimos que llm_service.process_text será async pronto
@@ -186,6 +193,7 @@ class ProcessTextHandler(CommandHandler):
             self.clipboard_service.copy(refined_text)
             backend_name = config.llm.backend  # "local" o "gemini"
             self.notification_service.notify(f"✅ {backend_name} - copiado", f"{refined_text[:80]}...")
+            return refined_text
 
         except Exception as e:
             # fallback si falla el llm copiamos el texto original
@@ -193,6 +201,7 @@ class ProcessTextHandler(CommandHandler):
             self.notification_service.notify(f"⚠️ {backend_name} falló", "usando texto original...")
             self.clipboard_service.copy(command.text)
             self.notification_service.notify("✅ whisper - copiado (crudo)", f"{command.text[:80]}...")
+            return command.text
 
     def listen_to(self) -> Type[Command]:
         """

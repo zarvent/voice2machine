@@ -83,5 +83,6 @@ class IPCCommand(str, Enum):
     PROCESS_TEXT = "PROCESS_TEXT"
     PING = "PING"
     SHUTDOWN = "SHUTDOWN"
+    GET_STATUS = "GET_STATUS"
 
 SOCKET_PATH = "/tmp/v2m.sock"

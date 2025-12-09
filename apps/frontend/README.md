@@ -14,7 +14,7 @@ GUI de escritorio para **voice2machine** construida con Tauri 2.0 + React 19.
 # instalar dependencias
 npm install
 
-# iniciar en modo desarrollo (requiere daemon corriendo)
+    # iniciar en modo desarrollo (requiere daemon corriendo)
 npm run tauri dev
 ```
 

@@ -158,19 +158,32 @@ class Daemon:
                 await self.command_bus.dispatch(StartRecordingCommand())
 
             elif message == IPCCommand.STOP_RECORDING:
-                await self.command_bus.dispatch(StopRecordingCommand())
+                result = await self.command_bus.dispatch(StopRecordingCommand())
+                if result:
+                    response = result  # retornar transcripción al cliente
+                else:
+                    response = "ERROR: no se detectó voz en el audio"
 
             elif message.startswith(IPCCommand.PROCESS_TEXT):
                 # extraer payload
                 parts = message.split(" ", 1)
                 if len(parts) > 1:
                     text = parts[1]
-                    await self.command_bus.dispatch(ProcessTextCommand(text))
+                    result = await self.command_bus.dispatch(ProcessTextCommand(text))
+                    if result:
+                        response = result  # retornar texto refinado al cliente
                 else:
                     response = "ERROR: falta el texto en el payload"
 
             elif message == IPCCommand.PING:
                 response = "PONG"
+
+            elif message == IPCCommand.GET_STATUS:
+                # determinar estado basado en flag de grabación
+                if config.paths.recording_flag.exists():
+                    response = "STATUS:recording"
+                else:
+                    response = "STATUS:idle"
 
             elif message == IPCCommand.SHUTDOWN:
                 self.running = False
