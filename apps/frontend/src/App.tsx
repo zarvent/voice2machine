@@ -2,7 +2,27 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
-// SVG Icons as components for cleaner JSX
+// =============================================================================
+// CONSTANTES
+// =============================================================================
+const STATUS_POLL_INTERVAL_MS = 500;  // intervalo de polling al daemon
+
+// =============================================================================
+// TIPOS
+// =============================================================================
+type Status = "idle" | "recording" | "transcribing" | "processing" | "error" | "disconnected";
+
+// Respuesta JSON del backend Rust (ya parseada de IPCResponse)
+interface DaemonData {
+  state?: string;           // de GET_STATUS
+  transcription?: string;   // de STOP_RECORDING
+  refined_text?: string;    // de PROCESS_TEXT
+  message?: string;         // de PING, START_RECORDING
+}
+
+// =============================================================================
+// SVG ICONS
+// =============================================================================
 const MicIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
@@ -31,8 +51,21 @@ const SparklesIcon = () => (
   </svg>
 );
 
-type Status = "idle" | "recording" | "transcribing" | "processing" | "error" | "disconnected";
+// =============================================================================
+// HELPER: parsear JSON response del backend Rust
+// =============================================================================
+function parseBackendResponse(jsonString: string): DaemonData {
+  try {
+    return JSON.parse(jsonString) as DaemonData;
+  } catch {
+    // Si no es JSON válido, retornar objeto vacío
+    return {};
+  }
+}
 
+// =============================================================================
+// COMPONENTE PRINCIPAL
+// =============================================================================
 function App() {
   const [status, setStatus] = useState<Status>("disconnected");
   const [transcription, setTranscription] = useState("");
@@ -40,16 +73,17 @@ function App() {
   const [errorMessage, setErrorMessage] = useState("");
   const pollRef = useRef<number | null>(null);
 
-  // Optimized polling
+  // Polling robusto con parsing JSON
+  // NOTA: 'transcribing' y 'processing' son estados optimistas de UI.
+  // El daemon solo reporta 'recording' | 'idle'. Si un cliente externo
+  // (hotkey, script bash) cambia el estado, habrá lag de hasta 500ms.
   const pollStatus = useCallback(async () => {
     try {
       const response = await invoke<string>("get_status");
-      // Map daemon response strings to our app state
-      const newStatus: Status =
-        response.includes("recording") ? "recording" :
-          response.includes("transcribing") ? "transcribing" :
-            response.includes("processing") ? "processing" :
-              "idle";
+      const data = parseBackendResponse(response);
+
+      // Parsear estado estructurado (no basado en .includes())
+      const newStatus: Status = data.state === "recording" ? "recording" : "idle";
 
       setStatus(prev => prev !== newStatus ? newStatus : prev);
       if (errorMessage) setErrorMessage(""); // Clear error on successful connection
@@ -60,7 +94,7 @@ function App() {
 
   useEffect(() => {
     pollStatus(); // Initial fetch
-    pollRef.current = window.setInterval(pollStatus, 500);
+    pollRef.current = window.setInterval(pollStatus, STATUS_POLL_INTERVAL_MS);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [pollStatus]);
 
@@ -69,13 +103,18 @@ function App() {
       setStatus("transcribing"); // Optimistic update
       try {
         const result = await invoke<string>("stop_recording");
-        if (result.startsWith("ERROR")) {
-          setErrorMessage(result);
-          setStatus("error");
+        const data = parseBackendResponse(result);
+
+        if (data.transcription) {
+          setTranscription(data.transcription);
+          setStatus("idle");
         } else {
-          setTranscription(result);
+          // Sin transcripción = error (voz no detectada)
+          setErrorMessage("No se detectó voz en el audio");
+          setStatus("error");
         }
       } catch (e) {
+        // Error del backend viene como string de Rust
         setErrorMessage(String(e));
         setStatus("error");
       }
@@ -101,12 +140,15 @@ function App() {
     setStatus("processing");
     try {
       const result = await invoke<string>("process_text", { text: transcription });
-      if (result.startsWith("ERROR")) {
-        setErrorMessage(result);
-        setStatus("error");
-      } else {
-        setTranscription(result);
+      const data = parseBackendResponse(result);
+
+      if (data.refined_text) {
+        setTranscription(data.refined_text);
         setStatus("idle");
+      } else {
+        // Fallback: usar respuesta raw si no tiene estructura esperada
+        setErrorMessage("Respuesta inesperada del LLM");
+        setStatus("error");
       }
     } catch (e) {
       setErrorMessage(String(e));

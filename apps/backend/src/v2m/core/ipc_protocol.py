@@ -85,4 +85,110 @@ class IPCCommand(str, Enum):
     SHUTDOWN = "SHUTDOWN"
     GET_STATUS = "GET_STATUS"
 
+
+# =============================================================================
+# PROTOCOLO JSON SEGURO (v2.0)
+# =============================================================================
+# migración desde texto plano a JSON para prevenir command injection
+# ver: RFC-003, PR #22 review feedback
+# =============================================================================
+
+import json
+from dataclasses import dataclass, field, asdict
+from typing import Any, Optional
+
+# límite de payload para prevenir DoS / OOM
+MAX_PAYLOAD_SIZE = 1024 * 1024  # 1MB
+
+
+@dataclass
+class IPCRequest:
+    """
+    MENSAJE DE REQUEST DEL CLIENTE AL DAEMON (JSON)
+
+    encapsula el comando y sus datos en un objeto estructurado
+    eliminando vulnerabilidades de command injection
+
+    ATTRIBUTES:
+        cmd: nombre del comando (ej: "PROCESS_TEXT", "START_RECORDING")
+        data: payload opcional con datos del comando
+
+    EXAMPLE:
+        request simple::
+
+            req = IPCRequest(cmd="START_RECORDING")
+            json_str = req.to_json()
+            # '{"cmd": "START_RECORDING", "data": null}'
+
+        request con payload::
+
+            req = IPCRequest(cmd="PROCESS_TEXT", data={"text": "hola mundo"})
+            json_str = req.to_json()
+            # '{"cmd": "PROCESS_TEXT", "data": {"text": "hola mundo"}}'
+    """
+    cmd: str
+    data: Optional[dict[str, Any]] = None
+
+    def to_json(self) -> str:
+        """serializa el request a JSON string"""
+        return json.dumps(asdict(self), ensure_ascii=False)
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "IPCRequest":
+        """
+        deserializa un JSON string a IPCRequest
+
+        RAISES:
+            json.JSONDecodeError: si el JSON es inválido
+            KeyError: si falta el campo 'cmd'
+        """
+        obj = json.loads(json_str)
+        return cls(cmd=obj["cmd"], data=obj.get("data"))
+
+
+@dataclass
+class IPCResponse:
+    """
+    MENSAJE DE RESPONSE DEL DAEMON AL CLIENTE (JSON)
+
+    proporciona respuestas estructuradas con status explícito
+    eliminando parsing frágil basado en prefijos de string
+
+    ATTRIBUTES:
+        status: "success" o "error"
+        data: payload de datos en caso de éxito (opcional)
+        error: mensaje de error en caso de fallo (opcional)
+
+    EXAMPLE:
+        response exitoso::
+
+            resp = IPCResponse(status="success", data={"result": "texto transcrito"})
+            json_str = resp.to_json()
+            # '{"status": "success", "data": {"result": "texto transcrito"}, "error": null}'
+
+        response de error::
+
+            resp = IPCResponse(status="error", error="no se detectó voz")
+            json_str = resp.to_json()
+            # '{"status": "error", "data": null, "error": "no se detectó voz"}'
+    """
+    status: str  # "success" | "error"
+    data: Optional[dict[str, Any]] = None
+    error: Optional[str] = None
+
+    def to_json(self) -> str:
+        """serializa el response a JSON string"""
+        return json.dumps(asdict(self), ensure_ascii=False)
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "IPCResponse":
+        """deserializa un JSON string a IPCResponse"""
+        obj = json.loads(json_str)
+        return cls(
+            status=obj["status"],
+            data=obj.get("data"),
+            error=obj.get("error")
+        )
+
+
 SOCKET_PATH = "/tmp/v2m.sock"

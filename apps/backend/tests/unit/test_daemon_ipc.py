@@ -3,16 +3,19 @@ import asyncio
 import struct
 import pytest
 import sys
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 from v2m.daemon import Daemon
 from v2m.client import send_command, SOCKET_PATH
+from v2m.core.ipc_protocol import IPCRequest
 
 @pytest.fixture
 def mock_daemon(monkeypatch, tmp_path):
-    # Mock socket path
+    # Mock socket path in all modules that import it
     socket_path = tmp_path / "v2m.sock"
     monkeypatch.setattr("v2m.daemon.SOCKET_PATH", str(socket_path))
     monkeypatch.setattr("v2m.client.SOCKET_PATH", str(socket_path))
+    monkeypatch.setattr("v2m.core.ipc_protocol.SOCKET_PATH", str(socket_path))
 
     # Mock container and command bus
     mock_bus = AsyncMock()
@@ -38,8 +41,12 @@ def mock_daemon(monkeypatch, tmp_path):
 async def test_large_payload_truncation(mock_daemon):
     """
     Test that large payloads are correctly received with the fix.
+    Uses JSON protocol v2.0 (IPCRequest format).
     """
     daemon, mock_bus = mock_daemon
+
+    # Configure mock to return a result (so daemon sends valid JSON response)
+    mock_bus.dispatch.return_value = "texto refinado de prueba"
 
     # Start server in background task
     server_task = asyncio.create_task(daemon.start_server())
@@ -49,10 +56,9 @@ async def test_large_payload_truncation(mock_daemon):
 
     # Create a large payload > 4096 bytes
     large_text = "A" * 5000
-    command = f"PROCESS_TEXT {large_text}"
 
-    # Send command
-    response = await send_command(command)
+    # Use JSON protocol v2.0
+    response = await send_command("PROCESS_TEXT", {"text": large_text})
 
     # Stop server
     daemon.stop()
@@ -68,6 +74,46 @@ async def test_large_payload_truncation(mock_daemon):
     cmd_obj = args[0]
 
     # Check if text is fully received
-    # The command parser splits "PROCESS_TEXT <text>"
-    # so cmd_obj.text should be the payload
+    # The command parser now extracts text from data.text (JSON)
     assert len(cmd_obj.text) == 5000, f"Payload truncated! Expected 5000, got {len(cmd_obj.text)}"
+
+
+@pytest.mark.asyncio
+async def test_command_injection_prevention(mock_daemon):
+    """
+    Test that command injection via newlines is prevented by JSON protocol.
+    Malicious input like "text\\nSTOP_RECORDING" should be treated as data, not commands.
+    """
+    daemon, mock_bus = mock_daemon
+
+    # Configure mock to return a result
+    mock_bus.dispatch.return_value = "texto procesado"
+
+    # Start server
+    server_task = asyncio.create_task(daemon.start_server())
+    await asyncio.sleep(0.1)
+
+    # Malicious payload with embedded command
+    malicious_text = "hola\nSTOP_RECORDING\nadios"
+
+    # Use JSON protocol v2.0
+    response = await send_command("PROCESS_TEXT", {"text": malicious_text})
+
+    # Stop server
+    daemon.stop()
+    server_task.cancel()
+    try:
+        await server_task
+    except asyncio.CancelledError:
+        pass
+
+    # Verify only ONE command was dispatched (PROCESS_TEXT)
+    # NOT two commands (PROCESS_TEXT + STOP_RECORDING)
+    assert mock_bus.dispatch.call_count == 1, \
+        f"Command injection! Expected 1 dispatch, got {mock_bus.dispatch.call_count}"
+
+    # Verify the text contains the newlines as data
+    args, _ = mock_bus.dispatch.call_args
+    cmd_obj = args[0]
+    assert "\n" in cmd_obj.text, "Newlines should be preserved as data"
+    assert cmd_obj.text == malicious_text, "Text should match exactly"
