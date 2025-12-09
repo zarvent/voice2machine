@@ -1,6 +1,0 @@
-{"asctime": "2025-11-19 08:45:28,346", "name": "whisper_dictation", "levelname": "INFO", "message": "Starting Whisper Dictation Daemon..."}
-{"asctime": "2025-11-19 08:45:28,348", "name": "whisper_dictation", "levelname": "INFO", "message": "Daemon listening on /tmp/whisper_dictation.sock"}
-{"asctime": "2025-11-19 08:45:54,832", "name": "whisper_dictation", "levelname": "INFO", "message": "Received IPC message: PING"}
-{"asctime": "2025-11-19 08:47:27,596", "name": "whisper_dictation", "levelname": "INFO", "message": "Signal received, shutting down..."}
-{"asctime": "2025-11-19 08:47:27,596", "name": "whisper_dictation", "levelname": "INFO", "message": "Stopping daemon..."}
-{"asctime": "2025-11-19 08:47:27,596", "name": "whisper_dictation", "levelname": "INFO", "message": "Stopping daemon..."}

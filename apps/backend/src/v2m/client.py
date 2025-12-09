@@ -20,8 +20,9 @@ este módulo proporciona funcionalidades para enviar comandos al daemon
 de voice2machine a través de un socket unix es la forma principal de
 interactuar con el servicio desde scripts externos o la terminal
 
-el cliente establece una conexión efímera con el socket del daemon
-envía el comando y espera una respuesta antes de cerrar la conexión
+PROTOCOLO V2.0 (JSON)
+    request:  {"cmd": "COMMAND", "data": {...}}
+    response: {"status": "success|error", "data": {...}, "error": "..."}
 
 EJEMPLO
     uso desde línea de comandos::
@@ -29,6 +30,7 @@ EJEMPLO
         python -m v2m.client START_RECORDING
         python -m v2m.client STOP_RECORDING
         python -m v2m.client PING
+        python -m v2m.client PROCESS_TEXT "texto a refinar"
 
     uso programático::
 
@@ -36,7 +38,7 @@ EJEMPLO
         from v2m.client import send_command
 
         response = asyncio.run(send_command("PING"))
-        print(response)  # "PONG"
+        print(response)  # IPCResponse(status='success', data={'message': 'PONG'})
 
 NOTE
     el daemon debe estar ejecutándose antes de enviar comandos
@@ -46,56 +48,62 @@ NOTE
 import asyncio
 import sys
 import argparse
-from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand
+from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand, IPCRequest, IPCResponse
 
-async def send_command(command: str) -> str:
+
+async def send_command(cmd: str, data: dict = None) -> IPCResponse:
     """
-    ENVÍA UN COMANDO AL DAEMON A TRAVÉS DE UN SOCKET UNIX
+    ENVÍA UN COMANDO AL DAEMON A TRAVÉS DE UN SOCKET UNIX (PROTOCOLO JSON V2.0)
 
     establece una conexión asíncrona con el socket del daemon envía el
-    comando codificado en utf-8 y espera una respuesta la conexión se
-    cierra automáticamente después de recibir la respuesta
+    comando como JSON estructurado y espera una respuesta JSON
 
     ARGS:
-        command: el comando a enviar debe ser uno de los valores definidos
-            en ``IPCCommand`` (ej ``START_RECORDING`` ``STOP_RECORDING``
-            ``PING`` ``SHUTDOWN`` ``PROCESS_TEXT <texto>``)
+        cmd: nombre del comando (ej "START_RECORDING", "PROCESS_TEXT")
+        data: payload opcional con datos del comando
 
     RETURNS:
-        la respuesta del daemon como cadena de texto respuestas típicas
-            - ``OK`` comando ejecutado exitosamente
-            - ``PONG`` respuesta al comando ping
-            - ``ERROR: <mensaje>`` ocurrió un error
-            - ``UNKNOWN_COMMAND`` comando no reconocido
+        IPCResponse con status, data y/o error
 
     RAISES:
         SystemExit: si el daemon no está corriendo filenotfounderror
             o rechaza la conexión connectionrefusederror
 
-    EXAMPLE
+    EXAMPLE:
         verificar si el daemon está activo::
 
             response = await send_command("PING")
-            if response == "PONG":
+            if response.status == "success":
                 print("daemon activo")
+
+        procesar texto::
+
+            response = await send_command("PROCESS_TEXT", {"text": "hola mundo"})
+            if response.status == "success":
+                print(response.data["refined_text"])
     """
     try:
         reader, writer = await asyncio.open_unix_connection(SOCKET_PATH)
 
+        # construir request JSON
+        request = IPCRequest(cmd=cmd, data=data)
+        message_bytes = request.to_json().encode("utf-8")
+
         # protocolo de framing 4 bytes longitud big endian + payload
-        message_bytes = command.encode("utf-8")
         length = len(message_bytes)
         writer.write(length.to_bytes(4, byteorder="big"))
         writer.write(message_bytes)
         await writer.drain()
 
-        data = await reader.read(1024)
-        response = data.decode()
-        # print(f"response: {response}")
+        # leer respuesta (buffer más grande para transcripciones largas)
+        response_data = await reader.read(1024 * 1024)  # 1MB max
+        response_json = response_data.decode()
 
         writer.close()
         await writer.wait_closed()
-        return response
+
+        return IPCResponse.from_json(response_json)
+
     except FileNotFoundError:
         print("error el daemon no está corriendo inícialo con 'python -m v2m.daemon'", file=sys.stderr)
         sys.exit(1)
@@ -103,20 +111,19 @@ async def send_command(command: str) -> str:
         print("error conexión rechazada el daemon podría estar muerto", file=sys.stderr)
         sys.exit(1)
 
+
 def main() -> None:
     """
     PUNTO DE ENTRADA PARA EL CLIENTE DE LÍNEA DE COMANDOS
 
     analiza los argumentos de la línea de comandos construye el mensaje
-    ipc completo incluyendo payload opcional y lo envía al daemon
-    imprime la respuesta recibida a stdout
+    JSON estructurado y lo envía al daemon imprime la respuesta como JSON
 
     ARGUMENTOS CLI
         command: comando ipc a enviar requerido opciones
             ``START_RECORDING`` ``STOP_RECORDING`` ``PING``
-            ``SHUTDOWN`` ``PROCESS_TEXT``
-        payload: datos adicionales para el comando opcional
-            solo aplicable a ``PROCESS_TEXT``
+            ``SHUTDOWN`` ``PROCESS_TEXT`` ``GET_STATUS``
+        payload: texto opcional para PROCESS_TEXT
 
     EXAMPLE
         iniciar grabación::
@@ -126,19 +133,44 @@ def main() -> None:
         procesar texto::
 
             python -m v2m.client PROCESS_TEXT "texto a refinar"
+
+        ver estado::
+
+            python -m v2m.client GET_STATUS
     """
-    parser = argparse.ArgumentParser(description="cliente de dictado whisper")
+    parser = argparse.ArgumentParser(description="cliente de dictado whisper (protocolo JSON v2.0)")
     parser.add_argument("command", choices=[e.value for e in IPCCommand], help="comando para enviar al daemon")
-    parser.add_argument("payload", nargs="*", help="carga útil opcional para el comando")
+    parser.add_argument("payload", nargs="*", help="texto opcional para PROCESS_TEXT")
 
     args = parser.parse_args()
 
-    full_command = args.command
-    if args.payload:
-        full_command += " " + " ".join(args.payload)
+    # construir data según el comando
+    data = None
+    if args.command == IPCCommand.PROCESS_TEXT and args.payload:
+        data = {"text": " ".join(args.payload)}
 
-    response = asyncio.run(send_command(full_command))
-    print(response)
+    response = asyncio.run(send_command(args.command, data))
+
+    # output legible
+    if response.status == "success":
+        if response.data:
+            # mostrar el valor más relevante
+            if "transcription" in response.data:
+                print(response.data["transcription"])
+            elif "refined_text" in response.data:
+                print(response.data["refined_text"])
+            elif "state" in response.data:
+                print(f"STATUS: {response.data['state']}")
+            elif "message" in response.data:
+                print(response.data["message"])
+            else:
+                print(response.to_json())
+        else:
+            print("OK")
+    else:
+        print(f"ERROR: {response.error}", file=sys.stderr)
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

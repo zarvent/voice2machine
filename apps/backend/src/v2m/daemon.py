@@ -56,7 +56,14 @@ from pathlib import Path
 from typing import Callable, Dict
 
 from v2m.core.logging import logger
-from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand
+from v2m.core.ipc_protocol import (
+    SOCKET_PATH,
+    IPCCommand,
+    IPCRequest,
+    IPCResponse,
+    MAX_PAYLOAD_SIZE
+)
+import json
 from v2m.core.di.container import container
 from v2m.application.commands import StartRecordingCommand, StopRecordingCommand, ProcessTextCommand
 from v2m.config import config
@@ -120,6 +127,10 @@ class Daemon:
         lee el mensaje del socket lo decodifica ejecuta el comando correspondiente
         y envía una respuesta al cliente
 
+        PROTOCOLO V2.0 (JSON)
+            request:  {"cmd": "COMMAND", "data": {...}}
+            response: {"status": "success|error", "data": {...}, "error": "..."}
+
         ARGS:
             reader: flujo de lectura asíncrono para recibir datos del cliente
             writer: flujo de escritura asíncrono para enviar respuestas al cliente
@@ -127,19 +138,35 @@ class Daemon:
         COMANDOS SOPORTADOS
             - ``START_RECORDING`` inicia la grabación de audio
             - ``STOP_RECORDING`` detiene y transcribe el audio
-            - ``PROCESS_TEXT <texto>`` refina el texto con llm
+            - ``PROCESS_TEXT`` refina el texto con llm (data.text requerido)
             - ``PING`` verifica que el daemon esté activo responde pong
+            - ``GET_STATUS`` retorna estado actual (recording|idle)
             - ``SHUTDOWN`` detiene el daemon de forma ordenada
 
         NOTE
             los errores durante el procesamiento de comandos son capturados
-            y devueltos como respuesta ``ERROR: <mensaje>`` sin terminar
-            la conexión del daemon
+            y devueltos como respuesta estructurada sin terminar la conexión
         """
+        response: IPCResponse
+        cmd_name = "unknown"
+
         try:
             # protocolo de framing 4 bytes longitud big endian + payload
             header_data = await reader.readexactly(4)
             length = int.from_bytes(header_data, byteorder="big")
+
+            # SECURITY FIX: validar tamaño antes de leer (previene DoS/OOM)
+            if length > MAX_PAYLOAD_SIZE:
+                logger.warning(f"payload rechazado: {length} bytes > {MAX_PAYLOAD_SIZE} límite")
+                response = IPCResponse(
+                    status="error",
+                    error=f"payload excede límite de {MAX_PAYLOAD_SIZE // (1024*1024)}MB"
+                )
+                writer.write(response.to_json().encode())
+                await writer.drain()
+                writer.close()
+                return
+
             payload_data = await reader.readexactly(length)
             message = payload_data.decode("utf-8").strip()
         except asyncio.IncompleteReadError:
@@ -149,46 +176,70 @@ class Daemon:
             logger.error(f"error leyendo mensaje ipc: {e}")
             return
 
-        logger.info(f"mensaje ipc recibido: {message}")
+        logger.info(f"mensaje ipc recibido: {message[:200]}...")  # truncar log
 
-        response = "OK"
+        # parsear JSON (protocolo v2.0)
+        try:
+            req = IPCRequest.from_json(message)
+            cmd_name = req.cmd
+            data = req.data or {}
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.warning(f"json inválido, rechazando: {e}")
+            response = IPCResponse(
+                status="error",
+                error=f"formato JSON inválido: {str(e)}"
+            )
+            writer.write(response.to_json().encode())
+            await writer.drain()
+            writer.close()
+            return
 
         try:
-            if message == IPCCommand.START_RECORDING:
+            if cmd_name == IPCCommand.START_RECORDING:
                 await self.command_bus.dispatch(StartRecordingCommand())
+                response = IPCResponse(status="success", data={"message": "grabación iniciada"})
 
-            elif message == IPCCommand.STOP_RECORDING:
-                await self.command_bus.dispatch(StopRecordingCommand())
-
-            elif message.startswith(IPCCommand.PROCESS_TEXT):
-                # extraer payload
-                parts = message.split(" ", 1)
-                if len(parts) > 1:
-                    text = parts[1]
-                    await self.command_bus.dispatch(ProcessTextCommand(text))
+            elif cmd_name == IPCCommand.STOP_RECORDING:
+                result = await self.command_bus.dispatch(StopRecordingCommand())
+                if result:
+                    response = IPCResponse(status="success", data={"transcription": result})
                 else:
-                    response = "ERROR: falta el texto en el payload"
+                    response = IPCResponse(status="error", error="no se detectó voz en el audio")
 
-            elif message == IPCCommand.PING:
-                response = "PONG"
+            elif cmd_name == IPCCommand.PROCESS_TEXT:
+                # SECURITY FIX: texto viene encapsulado en data, no concatenado
+                text = data.get("text")
+                if not text:
+                    response = IPCResponse(status="error", error="falta data.text en el payload")
+                else:
+                    result = await self.command_bus.dispatch(ProcessTextCommand(text))
+                    # ProcessTextCommand siempre retorna str (fix gemini: eliminamos if redundante)
+                    response = IPCResponse(status="success", data={"refined_text": result})
 
-            elif message == IPCCommand.SHUTDOWN:
+            elif cmd_name == IPCCommand.PING:
+                response = IPCResponse(status="success", data={"message": "PONG"})
+
+            elif cmd_name == IPCCommand.GET_STATUS:
+                state = "recording" if config.paths.recording_flag.exists() else "idle"
+                response = IPCResponse(status="success", data={"state": state})
+
+            elif cmd_name == IPCCommand.SHUTDOWN:
                 self.running = False
-                response = "SHUTTING_DOWN"
+                response = IPCResponse(status="success", data={"message": "SHUTTING_DOWN"})
 
             else:
-                logger.warning(f"comando desconocido: {message}")
-                response = "UNKNOWN_COMMAND"
+                logger.warning(f"comando desconocido: {cmd_name}")
+                response = IPCResponse(status="error", error=f"comando desconocido: {cmd_name}")
 
         except Exception as e:
-            logger.error(f"error manejando comando {message}: {e}")
-            response = f"ERROR: {str(e)}"
+            logger.error(f"error manejando comando {cmd_name}: {e}")
+            response = IPCResponse(status="error", error=str(e))
 
-        writer.write(response.encode())
+        writer.write(response.to_json().encode())
         await writer.drain()
         writer.close()
 
-        if message == IPCCommand.SHUTDOWN:
+        if cmd_name == IPCCommand.SHUTDOWN:
             self.stop()
 
     async def start_server(self) -> None:
