@@ -2,151 +2,159 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
+// SVG Icons as components for cleaner JSX
+const MicIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="23" />
+    <line x1="8" y1="23" x2="16" y2="23" />
+  </svg>
+);
+
+const StopIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <rect x="6" y="6" width="12" height="12" rx="2" />
+  </svg>
+);
+
+const CopyIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+);
+
+const SparklesIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+  </svg>
+);
+
 type Status = "idle" | "recording" | "transcribing" | "processing" | "error" | "disconnected";
 
 function App() {
   const [status, setStatus] = useState<Status>("disconnected");
   const [transcription, setTranscription] = useState("");
-  const [error, setError] = useState("");
+  const [lastCopied, setLastCopied] = useState(false);
   const pollRef = useRef<number | null>(null);
 
-  // polling para sincronizar estado con atajos de teclado
+  // Optimized polling
   const pollStatus = useCallback(async () => {
     try {
       const response = await invoke<string>("get_status");
-      if (response.includes("recording")) {
-        setStatus("recording");
-      } else if (response.includes("transcribing")) {
-        setStatus("transcribing");
-      } else if (response.includes("processing")) {
-        setStatus("processing");
-      } else {
-        setStatus("idle");
-      }
-      setError("");
+      // Map daemon response strings to our app state
+      const newStatus: Status =
+        response.includes("recording") ? "recording" :
+          response.includes("transcribing") ? "transcribing" :
+            response.includes("processing") ? "processing" :
+              "idle";
+
+      setStatus(prev => prev !== newStatus ? newStatus : prev);
     } catch (e) {
       setStatus("disconnected");
-      setError("daemon no conectado");
     }
   }, []);
 
   useEffect(() => {
-    pollStatus();
+    pollStatus(); // Initial fetch
     pollRef.current = window.setInterval(pollStatus, 500);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [pollStatus]);
 
   const handleRecord = async () => {
-    try {
-      if (status === "recording") {
-        setStatus("transcribing");
+    if (status === "recording") {
+      setStatus("transcribing"); // Optimistic update
+      try {
         const result = await invoke<string>("stop_recording");
-        if (result.startsWith("ERROR")) {
-          setError(result);
-        } else {
-          setTranscription(result);
-        }
-        setStatus("idle");
-      } else {
+        if (!result.startsWith("ERROR")) setTranscription(result);
+      } catch (e) { console.error(e); }
+    } else {
+      try {
         await invoke<string>("start_recording");
-        setStatus("recording");
-      }
-    } catch (e) {
-      setError(String(e));
-      setStatus("error");
+        setStatus("recording"); // Optimistic update
+      } catch (e) { console.error(e); }
     }
   };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(transcription);
+    setLastCopied(true);
+    setTimeout(() => setLastCopied(false), 2000);
   };
 
   const handleRefine = async () => {
-    if (!transcription) return;
+    if (!transcription || status !== "idle") return;
+    setStatus("processing");
     try {
-      setStatus("processing");
       const result = await invoke<string>("process_text", { text: transcription });
-      if (!result.startsWith("ERROR")) {
-        setTranscription(result);
-      }
+      if (!result.startsWith("ERROR")) setTranscription(result);
       setStatus("idle");
     } catch (e) {
-      setError(String(e));
-      setStatus("error");
+      console.error(e);
+      setStatus("idle");
     }
   };
 
-  const handlePing = async () => {
-    try {
-      const result = await invoke<string>("ping");
-      setError(result === "PONG" ? "" : result);
-      if (result === "PONG") setStatus("idle");
-    } catch (e) {
-      setError(String(e));
-      setStatus("disconnected");
+  // Status text mapping
+  const getStatusLabel = (s: Status) => {
+    switch (s) {
+      case "idle": return "Ready";
+      case "recording": return "Listening...";
+      case "transcribing": return "Transcribing...";
+      case "processing": return "Refining AI...";
+      case "disconnected": return "Daemon Offline";
+      case "error": return "Error";
     }
-  };
-
-  const statusText: Record<Status, string> = {
-    idle: "● Listo",
-    recording: "● Grabando...",
-    transcribing: "◐ Transcribiendo...",
-    processing: "◐ Procesando LLM...",
-    error: "● Error",
-    disconnected: "○ Desconectado",
-  };
-
-  const statusColor: Record<Status, string> = {
-    idle: "#22c55e",
-    recording: "#ef4444",
-    transcribing: "#f59e0b",
-    processing: "#3b82f6",
-    error: "#ef4444",
-    disconnected: "#6b7280",
   };
 
   return (
-    <main className="container">
-      <h1>🎤 voice2machine</h1>
+    <main className="app-container">
+      <header>
+        <div className="brand">
+          <MicIcon /> voice2machine
+        </div>
+        <div className="status-badge" data-status={status}>
+          <div className="status-dot"></div>
+          {getStatusLabel(status)}
+        </div>
+      </header>
 
-      <button
-        className={`record-btn ${status === "recording" ? "recording" : ""}`}
-        onClick={handleRecord}
-        disabled={status === "transcribing" || status === "processing" || status === "disconnected"}
-      >
-        {status === "recording" ? "⏹ DETENER" : "● GRABAR"}
-      </button>
+      <div className="control-surface">
+        <div className="mic-button-wrapper">
+          {status === "recording" && (
+            <>
+              <div className="ripple"></div>
+              <div className="ripple"></div>
+            </>
+          )}
+          <button
+            className={`mic-button ${status === "recording" ? "recording" : ""}`}
+            onClick={handleRecord}
+            disabled={status === "transcribing" || status === "processing" || status === "disconnected"}
+          >
+            {status === "recording" ? <StopIcon /> : <MicIcon />}
+          </button>
+        </div>
+      </div>
 
-      <div className="transcription-box">
+      <div className="transcription-card">
         <textarea
           value={transcription}
           onChange={(e) => setTranscription(e.target.value)}
-          placeholder="La transcripción aparecerá aquí..."
-          rows={6}
+          placeholder="Speak or paste text here..."
+          spellCheck={false}
         />
       </div>
 
-      <div className="actions">
-        <button onClick={handleCopy} disabled={!transcription}>
-          📋 Copiar
+      <div className="action-bar">
+        <button className="btn-secondary" onClick={handleCopy} disabled={!transcription}>
+          <CopyIcon /> {lastCopied ? "Copied!" : "Copy Text"}
         </button>
-        <button onClick={handleRefine} disabled={!transcription || status !== "idle"}>
-          ✨ Refinar LLM
+        <button className="btn-secondary" onClick={handleRefine} disabled={!transcription || status !== "idle"}>
+          <SparklesIcon /> AI Refine
         </button>
       </div>
-
-      <div className="status-bar">
-        <span style={{ color: statusColor[status] }}>{statusText[status]}</span>
-        {status === "disconnected" && (
-          <button className="retry-btn" onClick={handlePing}>
-            Reintentar
-          </button>
-        )}
-      </div>
-
-      {error && <p className="error">{error}</p>}
     </main>
   );
 }

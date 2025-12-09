@@ -1,181 +1,255 @@
+/* SOTA Design System 2025: Brutalism meets Glassmorphism */
 :root {
-  --bg-primary: #0f0f0f;
-  --bg-secondary: #1a1a1a;
-  --bg-tertiary: #252525;
-  --text-primary: #f6f6f6;
-  --text-secondary: #a0a0a0;
-  --accent: #22c55e;
-  --accent-red: #ef4444;
-  --accent-blue: #3b82f6;
-  --accent-amber: #f59e0b;
+  /* HSL Color Space for precise control */
+  --hue-primary: 0;      /* Dark Theme Base */
+  --hue-accent: 142;     /* Green (Voice Active) */
+  --hue-warning: 10;     /* Red (Recording) */
+  --hue-info: 217;       /* Blue (Processing) */
 
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 16px;
-  line-height: 1.5;
-  color: var(--text-primary);
-  background-color: var(--bg-primary);
+  /* Semantic Colors */
+  --bg-app: #09090b; /* Zinc-950 - Ultra Dark */
+  --bg-surface: rgba(24, 24, 27, 0.6); /* Zinc-900 with Alpha */
+  --bg-surface-hover: rgba(39, 39, 42, 0.8);
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-active: rgba(255, 255, 255, 0.2);
+
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+
+  --accent-glow: 0 0 20px rgba(34, 197, 94, 0.2);
+  --recording-glow: 0 0 30px rgba(239, 68, 68, 0.3);
+
+  /* Typography */
+  --font-sans: "Inter", -apple-system, system-ui, sans-serif;
+
+  /* Motion */
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-* {
-  box-sizing: border-box;
+body {
   margin: 0;
-  padding: 0;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden; /* App feel */
 }
 
-.container {
-  min-height: 100vh;
-  padding: 2rem;
+/* Main Layout */
+.app-container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  max-width: 480px;
-  margin: 0 auto;
+  height: 100vh;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background: radial-gradient(circle at 50% -20%, #1a1a1a 0%, var(--bg-app) 50%);
 }
 
-h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  text-align: center;
-  margin-bottom: 0.5rem;
-}
-
-/* record button */
-.record-btn {
-  width: 100%;
-  padding: 1.25rem 2rem;
-  font-size: 1.125rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent) 0%, #16a34a 100%);
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.25);
-}
-
-.record-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.35);
-}
-
-.record-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.record-btn.recording {
-  background: linear-gradient(135deg, var(--accent-red) 0%, #dc2626 100%);
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.record-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-/* transcription box */
-.transcription-box {
-  width: 100%;
-}
-
-.transcription-box textarea {
-  width: 100%;
-  min-height: 180px;
-  padding: 1rem;
-  font-size: 0.95rem;
-  font-family: inherit;
-  line-height: 1.6;
-  color: var(--text-primary);
-  background: var(--bg-secondary);
-  border: 1px solid var(--bg-tertiary);
-  border-radius: 12px;
-  resize: vertical;
-  transition: border-color 0.2s ease;
-}
-
-.transcription-box textarea:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.transcription-box textarea::placeholder {
-  color: var(--text-secondary);
-}
-
-/* action buttons */
-.actions {
+/* Header */
+header {
   display: flex;
-  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
 }
 
-.actions button {
+.brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+  background: linear-gradient(to right, #fff, #a1a1aa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-secondary);
+  transition: background-color 0.3s ease;
+}
+
+/* Active States */
+.status-badge[data-status="recording"] { border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.1); }
+.status-badge[data-status="recording"] .status-dot { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
+
+.status-badge[data-status="transcribing"] .status-dot,
+.status-badge[data-status="processing"] .status-dot { background-color: #3b82f6; animation: blink 1s infinite; }
+.status-badge[data-status="idle"] .status-dot { background-color: #22c55e; }
+
+
+/* Main Action Area */
+.control-surface {
   flex: 1;
-  padding: 0.75rem 1rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  border: 1px solid var(--bg-tertiary);
-  border-radius: 8px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  position: relative;
 }
 
-.actions button:hover:not(:disabled) {
-  background: var(--bg-tertiary);
-  border-color: var(--accent);
-}
-
-.actions button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* status bar */
-.status-bar {
+/* The Big button */
+.mic-button-wrapper {
+  position: relative;
+  width: 120px;
+  height: 120px;
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1rem;
-  padding: 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  background: var(--bg-secondary);
-  border-radius: 8px;
 }
 
-.retry-btn {
-  padding: 0.25rem 0.75rem;
-  font-size: 0.75rem;
-  border: 1px solid var(--bg-tertiary);
-  border-radius: 4px;
+.mic-button {
+  width: 80px;
+  height: 80px;
+  border-radius: 40px;
+  border: none;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-active);
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.4s var(--ease-spring);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.5rem;
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+}
+
+.mic-button:hover {
+  transform: scale(1.05);
+  background: var(--bg-surface-hover);
+  border-color: #fff;
+}
+
+.mic-button:active {
+  transform: scale(0.95);
+}
+
+.mic-button.recording {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: white;
+  box-shadow: var(--recording-glow);
+}
+
+/* Ripple Effect for Recording */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  width: 100%;
+  height: 100%;
+  animation: ripple 2s infinite linear;
+  opacity: 0;
+}
+
+.ripple:nth-child(2) { animation-delay: 0.5s; }
+.ripple:nth-child(3) { animation-delay: 1s; }
+
+
+/* Transcription Area */
+.transcription-card {
+  width: 100%;
+  flex: 1;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 1rem;
+  transition: border-color 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.transcription-card:focus-within {
+  border-color: var(--border-active);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+textarea {
+  width: 100%;
+  height: 100%;
   background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  font-family: var(--font-sans);
+}
+
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* Action Bar */
+.action-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
 }
 
-.retry-btn:hover {
-  background: var(--bg-tertiary);
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-surface);
   color: var(--text-primary);
+  border-color: var(--border-active);
 }
 
-/* error */
-.error {
-  padding: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--accent-red);
-  background: rgba(239, 68, 68, 0.1);
-  border-radius: 8px;
-  text-align: center;
+.btn-secondary:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: transparent;
 }
+
+/* Animations */
+@keyframes ripple {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-active); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
