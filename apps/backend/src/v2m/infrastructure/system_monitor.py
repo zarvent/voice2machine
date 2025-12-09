@@ -40,11 +40,16 @@ class SystemMonitor:
         logger.info("system monitor initialized", extra={"gpu_available": self._gpu_available})
 
     def _check_gpu_availability(self) -> bool:
-        """Verifica si hay una GPU NVIDIA disponible via torch o pynvml (simulado por ahora)."""
-        # Nota: Por simplicidad y evitar dependencias pesadas en tiempo de importación,
-        # usaremos la presencia de drivers o checkeo simple.
-        # En el futuro esto puede usar pynvml o torch.cuda.is_available()
-        return False  # TODO: Implementar chequeo real de GPU
+        """Verifica si hay una GPU NVIDIA disponible via torch.cuda."""
+        try:
+            import torch
+            return torch.cuda.is_available()
+        except ImportError:
+            logger.warning("torch not available, GPU monitoring disabled")
+            return False
+        except Exception as e:
+            logger.warning(f"failed to check GPU availability: {e}")
+            return False
 
     def get_system_metrics(self) -> Dict[str, Any]:
         """
@@ -80,13 +85,30 @@ class SystemMonitor:
 
     def _get_gpu_usage(self) -> Dict[str, Any]:
         """
-        Retorna uso de GPU.
+        Retorna uso real de GPU usando torch.cuda.
 
-        TODO: Implementar integración con nvidia-smi o torch.
+        Returns:
+            Dict con métricas de GPU: name, vram_used_mb, vram_total_mb, temp_c
         """
-        return {
-            "name": "N/A",
-            "vram_used_mb": 0,
-            "vram_total_mb": 0,
-            "temp_c": 0
-        }
+        try:
+            import torch
+
+            if not torch.cuda.is_available():
+                return {"name": "N/A", "vram_used_mb": 0, "vram_total_mb": 0, "temp_c": 0}
+
+            device = torch.cuda.current_device()
+            props = torch.cuda.get_device_properties(device)
+
+            # VRAM metrics en MB
+            vram_reserved = torch.cuda.memory_reserved(device) / (1024 ** 2)
+            vram_total = props.total_memory / (1024 ** 2)
+
+            return {
+                "name": props.name,
+                "vram_used_mb": round(vram_reserved, 2),
+                "vram_total_mb": round(vram_total, 2),
+                "temp_c": 0  # torch no expone temperatura, requiere pynvml
+            }
+        except Exception as e:
+            logger.error(f"failed to get GPU metrics: {e}", exc_info=True)
+            return {"name": "Error", "vram_used_mb": 0, "vram_total_mb": 0, "temp_c": 0}

@@ -1,8 +1,9 @@
 
 import React from 'react';
+import styles from './Dashboard.module.css';
 
 interface MetricCardProps {
-  title: String;
+  title: string;
   value: string | number;
   unit?: string;
   icon?: React.ReactNode;
@@ -19,22 +20,13 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, unit, icon, statu
   };
 
   return (
-    <div className="metric-card" style={{
-      background: 'rgba(255, 255, 255, 0.05)',
-      borderRadius: '8px',
-      padding: '12px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '4px',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      backdropFilter: 'blur(4px)'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+    <div className={styles.metricCard}>
+      <div className={styles.metricHeader}>
         {icon}
         <span>{title}</span>
       </div>
-      <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: getStatusColor() }}>
-        {value}<span style={{ fontSize: '0.8rem', marginLeft: '2px', opacity: 0.7 }}>{unit}</span>
+      <div className={styles.metricValue} style={{ color: getStatusColor() }}>
+        {value}<span className={styles.metricUnit}>{unit}</span>
       </div>
     </div>
   );
@@ -64,13 +56,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ telemetry, visible }) => {
   if (!visible || !telemetry) return null;
 
   return (
-    <div className="dashboard-grid" style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-      gap: '12px',
-      margin: '20px 0',
-      animation: 'fadeIn 0.3s ease'
-    }}>
+    <div className={styles.dashboardGrid}>
       <MetricCard
         title="RAM System"
         value={telemetry.ram.used_gb}

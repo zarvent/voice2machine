@@ -40,9 +40,10 @@ class ConfigManager:
     def __init__(self, config_path: str = "config.toml") -> None:
         self.config_path = Path(config_path)
         if not self.config_path.is_absolute():
-            # Asumimos path relativo a apps/backend si no es absoluto
-            # Esto puede necesitar ajuste según donde se corra el daemon
-            self.config_path = Path.cwd() / config_path
+            # Resolve path relative to apps/backend directory (4 levels up from this file)
+            # This ensures the daemon works regardless of the current working directory
+            module_dir = Path(__file__).parent.parent.parent.parent
+            self.config_path = module_dir / config_path
 
         logger.info("config manager initialized", extra={"path": str(self.config_path)})
 
@@ -61,12 +62,30 @@ class ConfigManager:
 
         Args:
             new_config: Diccionario parcial o completo con nuevas configuraciones.
+
+        Raises:
+            ValueError: Si new_config no es un diccionario válido.
+            Exception: Si falla la serialización TOML o escritura del archivo.
         """
+        # Validar estructura básica antes de procesar
+        if not isinstance(new_config, dict):
+            raise ValueError("Config updates must be a dictionary")
+
         try:
             current_config = self.load_config()
 
+            # Backup del config actual para rollback en caso de error
+            backup_config = current_config.copy()
+
             # Merge recursivo simple para no borrar secciones enteras si solo se manda una clave
             self._deep_update(current_config, new_config)
+
+            # Validar que el resultado sea TOML serializable antes de escribir
+            try:
+                toml.dumps(current_config)
+            except Exception as e:
+                logger.error("updated config is not valid TOML, rolling back", exc_info=True)
+                raise ValueError(f"Invalid TOML structure after merge: {e}")
 
             with open(self.config_path, "w") as f:
                 toml.dump(current_config, f)

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import styles from './Settings.module.css';
 
 interface SettingsProps {
   onClose: () => void;
@@ -15,18 +16,18 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   useEffect(() => {
     // Cargar config real al montar
     const loadConfig = async () => {
-        try {
-            const res = await invoke<string>('get_config');
-            const data = JSON.parse(res);
-            const config = data.config || {};
+      try {
+        const res = await invoke<string>('get_config');
+        const data = JSON.parse(res);
+        const config = data.config || {};
 
-            if (config.whisper?.model) setModel(config.whisper.model);
-            if (config.llm?.backend) setBackend(config.llm.backend);
-        } catch (e) {
-            console.error("Error loading config:", e);
-        } finally {
-            setLoading(false);
-        }
+        if (config.whisper?.model) setModel(config.whisper.model);
+        if (config.llm?.backend) setBackend(config.llm.backend);
+      } catch (e) {
+        console.error("Error loading config:", e);
+      } finally {
+        setLoading(false);
+      }
     };
     loadConfig();
   }, []);
@@ -57,32 +58,16 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   if (loading) return null; // O un spinner
 
   return (
-    <div className="settings-overlay" style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.8)',
-      backdropFilter: 'blur(8px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000
-    }}>
-      <div className="settings-modal" style={{
-        background: '#1a1a1a',
-        padding: '24px',
-        borderRadius: '12px',
-        width: '90%',
-        maxWidth: '400px',
-        border: '1px solid #333'
-      }}>
-        <h2 style={{ marginTop: 0 }}>Configuración</h2>
+    <div className={styles.overlay}>
+      <div className={styles.modal}>
+        <h2>Configuración</h2>
 
-        <div className="form-group" style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', color: '#aaa' }}>Whisper Model</label>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Whisper Model</label>
           <select
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', background: '#333', color: '#fff', border: 'none' }}
+            className={styles.select}
           >
             <option value="tiny">Tiny (Fastest)</option>
             <option value="base">Base</option>
@@ -92,29 +77,29 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
           </select>
         </div>
 
-        <div className="form-group" style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', color: '#aaa' }}>LLM Backend</label>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>LLM Backend</label>
           <select
             value={backend}
             onChange={(e) => setBackend(e.target.value)}
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', background: '#333', color: '#fff', border: 'none' }}
+            className={styles.select}
           >
             <option value="local">Local (Private)</option>
             <option value="gemini">Google Gemini (Cloud)</option>
           </select>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+        <div className={styles.buttonGroup}>
           <button
             onClick={onClose}
-            style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #444', background: 'transparent', color: '#fff', cursor: 'pointer' }}
+            className={styles.buttonCancel}
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}
+            className={styles.buttonSave}
           >
             {saving ? 'Guardando...' : 'Guardar Cambios'}
           </button>
