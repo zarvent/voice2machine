@@ -2,35 +2,41 @@
 :root {
   /* HSL Color Space for precise control */
   --hue-primary: 0;
-  /* Dark Theme Base */
-  --hue-accent: 142;
-  /* Green (Voice Active) */
-  --hue-warning: 10;
-  /* Red (Recording) */
-  --hue-info: 217;
-  /* Blue (Processing) */
+  --hue-accent: 217;
+  /* Blue for primary actions/active states */
+  --hue-success: 142;
+  --hue-warning: 35;
+  --hue-error: 0;
 
-  /* Semantic Colors */
-  --bg-app: #09090b;
-  /* Zinc-950 - Ultra Dark */
-  --bg-surface: rgba(24, 24, 27, 0.6);
-  /* Zinc-900 with Alpha */
-  --bg-surface-hover: rgba(39, 39, 42, 0.8);
+  /* Premium Dark Theme */
+  --bg-app: #050505;
+  /* Deeper black */
+  --bg-surface: rgba(20, 20, 20, 0.7);
+  --bg-surface-hover: rgba(40, 40, 40, 0.6);
+  --bg-card: rgba(30, 30, 30, 0.4);
 
   --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-active: rgba(255, 255, 255, 0.2);
+  --border-active: rgba(255, 255, 255, 0.15);
+  --border-highlight: rgba(255, 255, 255, 0.3);
 
-  --text-primary: #fafafa;
+  --text-primary: #ededed;
   --text-secondary: #a1a1aa;
+  --text-muted: #52525b;
 
-  --accent-glow: 0 0 20px rgba(34, 197, 94, 0.2);
-  --recording-glow: 0 0 30px rgba(239, 68, 68, 0.3);
+  --accent-color: hsl(var(--hue-accent), 90%, 60%);
+  --success-color: hsl(var(--hue-success), 70%, 50%);
+  --error-color: hsl(var(--hue-error), 75%, 60%);
+
+  --glow-recording: 0 0 30px rgba(220, 38, 38, 0.4);
+  --glow-accent: 0 0 20px rgba(59, 130, 246, 0.3);
 
   /* Typography */
   --font-sans: "Inter", -apple-system, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 
   /* Motion */
   --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body {
@@ -40,7 +46,6 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
-  /* App feel */
 }
 
 /* Main Layout */
@@ -50,7 +55,22 @@ body {
   height: 100vh;
   padding: 1.5rem;
   box-sizing: border-box;
-  background: radial-gradient(circle at 50% -20%, #1a1a1a 0%, var(--bg-app) 50%);
+  background: radial-gradient(circle at 50% -20%, #1a1a1a 0%, var(--bg-app) 60%);
+  /* Noise Texture Overlay for premium feel */
+  position: relative;
+}
+
+.app-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
 /* Header */
@@ -59,45 +79,49 @@ header {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+  z-index: 10;
 }
 
 .brand {
   font-weight: 700;
   font-size: 1.1rem;
   letter-spacing: -0.02em;
-  background: linear-gradient(to right, #fff, #a1a1aa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  opacity: 0.9;
 }
 
 .status-badge {
   font-size: 0.75rem;
-  padding: 0.25rem 0.75rem;
+  padding: 4px 10px;
   border-radius: 999px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
   backdrop-filter: blur(8px);
-  transition: all 0.3s ease;
+  transition: all 0.3s var(--ease-smooth);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
 }
 
 .status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: var(--text-secondary);
-  transition: background-color 0.3s ease;
+  background-color: var(--text-muted);
+  transition: background-color 0.3s var(--ease-smooth);
 }
 
-/* Active States */
+/* Status States */
 .status-badge[data-status="recording"] {
-  border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.1);
+  color: #fca5a5;
 }
 
 .status-badge[data-status="recording"] .status-dot {
@@ -107,42 +131,59 @@ header {
 
 .status-badge[data-status="transcribing"] .status-dot,
 .status-badge[data-status="processing"] .status-dot {
-  background-color: #3b82f6;
+  background-color: var(--accent-color);
   animation: blink 1s infinite;
 }
 
 .status-badge[data-status="idle"] .status-dot {
-  background-color: #22c55e;
-}
-
-.status-badge[data-status="error"] {
-  border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.1);
-}
-
-.status-badge[data-status="error"] .status-dot {
-  background-color: #ef4444;
+  background-color: var(--success-color);
 }
 
 .status-badge[data-status="disconnected"] {
-  border-color: rgba(161, 161, 170, 0.4);
+  opacity: 0.6;
 }
 
 .status-badge[data-status="disconnected"] .status-dot {
-  background-color: #71717a;
-  animation: blink 2s infinite;
+  background-color: #52525b;
 }
+
+/* Icons Button */
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover,
+.icon-btn.active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.icon-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 
 /* Error Banner */
 .error-banner {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.2);
   color: #fca5a5;
   padding: 0.75rem 1rem;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 0.85rem;
   margin-bottom: 1rem;
   text-align: center;
+  backdrop-filter: blur(4px);
+  z-index: 10;
 }
 
 
@@ -155,13 +196,14 @@ header {
   align-items: center;
   gap: 2rem;
   position: relative;
+  z-index: 5;
 }
 
-/* The Big button */
-.mic-button-wrapper {
+/* Mic Button & Waves */
+.mic-button-container {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 140px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -172,53 +214,70 @@ header {
   height: 80px;
   border-radius: 40px;
   border: none;
-  background: var(--bg-surface);
+  background: linear-gradient(135deg, rgba(40, 40, 40, 0.9), rgba(20, 20, 20, 0.95));
   color: var(--text-primary);
   border: 1px solid var(--border-active);
   cursor: pointer;
-  z-index: 10;
+  z-index: 20;
   transition: all 0.4s var(--ease-spring);
   display: flex;
   justify-content: center;
   align-items: center;
   font-size: 1.5rem;
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.1);
 }
 
-.mic-button:hover {
+.mic-button:hover:not(:disabled) {
   transform: scale(1.05);
-  background: var(--bg-surface-hover);
-  border-color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, rgba(50, 50, 50, 0.9), rgba(30, 30, 30, 0.95));
 }
 
-.mic-button:active {
+.mic-button:active:not(:disabled) {
   transform: scale(0.95);
 }
 
+.mic-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .mic-button.recording {
-  background: #ef4444;
+  background: #dc2626;
+  /* solid red base */
   border-color: #ef4444;
   color: white;
-  box-shadow: var(--recording-glow);
+  box-shadow: var(--glow-recording);
 }
 
-/* Ripple Effect for Recording */
-.ripple {
+/* Wave Animations */
+.wave-ring {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.2);
   width: 100%;
   height: 100%;
-  animation: ripple 2s infinite linear;
   opacity: 0;
+  z-index: 10;
 }
 
-.ripple:nth-child(2) {
-  animation-delay: 0.5s;
+.ring-1 {
+  animation: wave 2s infinite linear;
 }
 
-.ripple:nth-child(3) {
-  animation-delay: 1s;
+.ring-2 {
+  animation: wave 2s infinite linear;
+  animation-delay: 0.6s;
+}
+
+.ring-3 {
+  animation: wave 2s infinite linear;
+  animation-delay: 1.2s;
 }
 
 
@@ -226,18 +285,24 @@ header {
 .transcription-card {
   width: 100%;
   flex: 1;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
-  padding: 1rem;
-  transition: border-color 0.3s ease;
+  padding: 1.25rem;
+  transition: all 0.3s var(--ease-smooth);
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 5;
 }
 
 .transcription-card:focus-within {
-  border-color: var(--border-active);
-  background: rgba(0, 0, 0, 0.3);
+  border-color: var(--border-highlight);
+  background: rgba(30, 30, 30, 0.6);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
 }
 
 textarea {
@@ -246,42 +311,46 @@ textarea {
   background: transparent;
   border: none;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 1.1rem;
   line-height: 1.6;
   resize: none;
   outline: none;
   font-family: var(--font-sans);
+  font-weight: 400;
 }
 
 textarea::placeholder {
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.15);
+  font-weight: 300;
 }
 
 /* Action Bar */
 .action-bar {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  z-index: 5;
 }
 
 .btn-secondary {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   padding: 12px;
-  border-radius: 12px;
+  border-radius: 10px;
   font-weight: 500;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 8px;
+  font-family: var(--font-sans);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--bg-surface);
+  background: var(--bg-surface-hover);
   color: var(--text-primary);
   border-color: var(--border-active);
 }
@@ -292,16 +361,21 @@ textarea::placeholder {
   border-color: transparent;
 }
 
-/* Animations */
-@keyframes ripple {
+
+/* Animations Keyframes */
+@keyframes wave {
   0% {
-    transform: scale(0.8);
-    opacity: 1;
+    width: 80px;
+    height: 80px;
+    opacity: 0.5;
+    border-width: 2px;
   }
 
   100% {
-    transform: scale(2);
+    width: 200px;
+    height: 200px;
     opacity: 0;
+    border-width: 0px;
   }
 }
 
@@ -327,10 +401,10 @@ textarea::placeholder {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-active);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.2);
 }
