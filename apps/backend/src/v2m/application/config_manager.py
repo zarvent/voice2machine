@@ -61,12 +61,28 @@ class ConfigManager:
 
         Args:
             new_config: Diccionario parcial o completo con nuevas configuraciones.
+        
+        Raises:
+            ValueError: Si new_config no es un diccionario válido o contiene tipos inválidos.
         """
+        if not isinstance(new_config, dict):
+            raise ValueError("new_config must be a dictionary")
+        
+        if not new_config:
+            logger.warning("attempted to update config with empty dict, skipping")
+            return
+        
         try:
             current_config = self.load_config()
 
             # Merge recursivo simple para no borrar secciones enteras si solo se manda una clave
             self._deep_update(current_config, new_config)
+            
+            # Validar que el config resultante sea serializable a TOML antes de escribir
+            try:
+                toml.dumps(current_config)
+            except Exception as e:
+                raise ValueError(f"merged config is not valid TOML: {e}")
 
             with open(self.config_path, "w") as f:
                 toml.dump(current_config, f)

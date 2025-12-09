@@ -146,7 +146,7 @@ function App() {
     } catch (e) {
       setStatus("disconnected");
     }
-  }, [errorMessage, status]);
+  }, [status]); // REMOVED errorMessage from dependencies to prevent interval recreation
 
   useEffect(() => {
     pollStatus(); // Initial fetch
@@ -252,6 +252,7 @@ function App() {
                 onClick={() => setShowDashboard(!showDashboard)}
                 className={`icon-btn ${showDashboard ? 'active' : ''}`}
                 title="Métricas del Sistema"
+                aria-label={showDashboard ? "Ocultar métricas del sistema" : "Mostrar métricas del sistema"}
             >
                 <ChartIcon />
             </button>
@@ -259,6 +260,7 @@ function App() {
                 onClick={() => setShowSettings(true)}
                 className="icon-btn"
                 title="Configuración"
+                aria-label="Abrir configuración del sistema"
             >
                 <SettingsIcon />
             </button>

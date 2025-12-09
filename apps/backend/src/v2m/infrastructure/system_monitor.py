@@ -40,11 +40,21 @@ class SystemMonitor:
         logger.info("system monitor initialized", extra={"gpu_available": self._gpu_available})
 
     def _check_gpu_availability(self) -> bool:
-        """Verifica si hay una GPU NVIDIA disponible via torch o pynvml (simulado por ahora)."""
+        """
+        Verifica si hay una GPU NVIDIA disponible via torch o pynvml.
+        
+        TODO: Implementar detección real de GPU usando uno de estos métodos:
+        1. torch.cuda.is_available() si torch está instalado
+        2. pynvml.nvmlInit() para acceso directo a nvidia-smi
+        3. subprocess para ejecutar nvidia-smi y parsear salida
+        
+        Returns:
+            bool: True si GPU disponible, False de lo contrario
+        """
         # Nota: Por simplicidad y evitar dependencias pesadas en tiempo de importación,
         # usaremos la presencia de drivers o checkeo simple.
         # En el futuro esto puede usar pynvml o torch.cuda.is_available()
-        return False  # TODO: Implementar chequeo real de GPU
+        return False  # Placeholder: siempre retorna False hasta implementación completa
 
     def get_system_metrics(self) -> Dict[str, Any]:
         """
