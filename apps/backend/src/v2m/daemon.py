@@ -65,8 +65,17 @@ from v2m.core.ipc_protocol import (
 )
 import json
 from v2m.core.di.container import container
-from v2m.application.commands import StartRecordingCommand, StopRecordingCommand, ProcessTextCommand
+from v2m.application.commands import (
+    StartRecordingCommand,
+    StopRecordingCommand,
+    ProcessTextCommand,
+    UpdateConfigCommand,
+    GetConfigCommand,
+    PauseDaemonCommand,
+    ResumeDaemonCommand
+)
 from v2m.config import config
+from v2m.infrastructure.system_monitor import SystemMonitor
 
 class Daemon:
     """
@@ -118,6 +127,10 @@ class Daemon:
 
         # registrar limpieza automática al terminar proceso
         atexit.register(self._cleanup_resources)
+
+        # monitor de sistema
+        self.system_monitor = SystemMonitor()
+        self.paused = False
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """
@@ -196,32 +209,70 @@ class Daemon:
 
         try:
             if cmd_name == IPCCommand.START_RECORDING:
-                await self.command_bus.dispatch(StartRecordingCommand())
-                response = IPCResponse(status="success", data={"message": "grabación iniciada"})
+                if self.paused:
+                     response = IPCResponse(status="error", error="el daemon está pausado")
+                else:
+                    await self.command_bus.dispatch(StartRecordingCommand())
+                    response = IPCResponse(status="success", data={"message": "grabación iniciada"})
 
             elif cmd_name == IPCCommand.STOP_RECORDING:
-                result = await self.command_bus.dispatch(StopRecordingCommand())
-                if result:
-                    response = IPCResponse(status="success", data={"transcription": result})
+                if self.paused:
+                     response = IPCResponse(status="error", error="el daemon está pausado")
                 else:
-                    response = IPCResponse(status="error", error="no se detectó voz en el audio")
+                    result = await self.command_bus.dispatch(StopRecordingCommand())
+                    if result:
+                        response = IPCResponse(status="success", data={"transcription": result})
+                    else:
+                        response = IPCResponse(status="error", error="no se detectó voz en el audio")
 
             elif cmd_name == IPCCommand.PROCESS_TEXT:
-                # SECURITY FIX: texto viene encapsulado en data, no concatenado
-                text = data.get("text")
-                if not text:
-                    response = IPCResponse(status="error", error="falta data.text en el payload")
+                if self.paused:
+                     response = IPCResponse(status="error", error="el daemon está pausado")
                 else:
-                    result = await self.command_bus.dispatch(ProcessTextCommand(text))
-                    # ProcessTextCommand siempre retorna str (fix gemini: eliminamos if redundante)
-                    response = IPCResponse(status="success", data={"refined_text": result})
+                    # SECURITY FIX: texto viene encapsulado en data, no concatenado
+                    text = data.get("text")
+                    if not text:
+                        response = IPCResponse(status="error", error="falta data.text en el payload")
+                    else:
+                        result = await self.command_bus.dispatch(ProcessTextCommand(text))
+                        # ProcessTextCommand siempre retorna str (fix gemini: eliminamos if redundante)
+                        response = IPCResponse(status="success", data={"refined_text": result})
+
+            elif cmd_name == IPCCommand.UPDATE_CONFIG:
+                updates = data.get("updates")
+                if not updates:
+                     response = IPCResponse(status="error", error="falta data.updates en el payload")
+                else:
+                    result = await self.command_bus.dispatch(UpdateConfigCommand(updates))
+                    response = IPCResponse(status="success", data=result)
+
+            elif cmd_name == IPCCommand.GET_CONFIG:
+                result = await self.command_bus.dispatch(GetConfigCommand())
+                response = IPCResponse(status="success", data={"config": result})
+
+            elif cmd_name == IPCCommand.PAUSE_DAEMON:
+                await self.command_bus.dispatch(PauseDaemonCommand())
+                self.paused = True
+                response = IPCResponse(status="success", data={"state": "paused"})
+
+            elif cmd_name == IPCCommand.RESUME_DAEMON:
+                await self.command_bus.dispatch(ResumeDaemonCommand())
+                self.paused = False
+                response = IPCResponse(status="success", data={"state": "running"})
 
             elif cmd_name == IPCCommand.PING:
                 response = IPCResponse(status="success", data={"message": "PONG"})
 
             elif cmd_name == IPCCommand.GET_STATUS:
-                state = "recording" if config.paths.recording_flag.exists() else "idle"
-                response = IPCResponse(status="success", data={"state": state})
+                state = "paused" if self.paused else ("recording" if config.paths.recording_flag.exists() else "idle")
+
+                # Enriquecer respuesta con telemetría
+                metrics = self.system_monitor.get_system_metrics()
+
+                response = IPCResponse(status="success", data={
+                    "state": state,
+                    "telemetry": metrics
+                })
 
             elif cmd_name == IPCCommand.SHUTDOWN:
                 self.running = False
