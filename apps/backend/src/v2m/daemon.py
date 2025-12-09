@@ -251,13 +251,13 @@ class Daemon:
                 response = IPCResponse(status="success", data={"config": result})
 
             elif cmd_name == IPCCommand.PAUSE_DAEMON:
+                self.paused = True  # Set state BEFORE dispatching to avoid race condition
                 await self.command_bus.dispatch(PauseDaemonCommand())
-                self.paused = True
                 response = IPCResponse(status="success", data={"state": "paused"})
 
             elif cmd_name == IPCCommand.RESUME_DAEMON:
+                self.paused = False  # Set state BEFORE dispatching to avoid race condition
                 await self.command_bus.dispatch(ResumeDaemonCommand())
-                self.paused = False
                 response = IPCResponse(status="success", data={"state": "running"})
 
             elif cmd_name == IPCCommand.PING:

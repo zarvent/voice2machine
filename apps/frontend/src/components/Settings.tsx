@@ -50,6 +50,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
 
     } catch (error) {
       console.error('Failed to update config:', error);
+      alert(`Error al guardar configuración: ${error}`);
       setSaving(false);
     }
   };
