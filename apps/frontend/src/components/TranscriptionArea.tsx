@@ -1,6 +1,6 @@
 import React from 'react';
 import { CopyIcon, SparklesIcon, PauseIcon, PlayIcon } from "../assets/Icons";
-import { Status } from "../hooks/useBackend";
+import { Status } from "../types";
 
 interface TranscriptionAreaProps {
     transcription: string;
@@ -22,45 +22,41 @@ export const TranscriptionArea = React.memo(({
     onTogglePause
 }: TranscriptionAreaProps) => {
     return (
-        <>
-            <div className="transcription-card">
-                <textarea
-                    value={transcription}
-                    onChange={(e) => onTranscriptionChange(e.target.value)}
-                    placeholder={status === "paused" ? "Sistema en pausa..." : "Habla o pega texto aquí..."}
-                    spellCheck={false}
-                    aria-label="Texto transcrito"
-                    disabled={status === "paused"}
-                />
-            </div>
-
+        <div className="transcription-panel">
             <div className="action-bar">
                 <button
                     className="btn-secondary"
                     onClick={onCopy}
                     disabled={!transcription}
-                    aria-label={lastCopied ? "Texto copiado" : "Copiar texto al portapapeles"}
                 >
-                    <CopyIcon /> {lastCopied ? "¡Copiado!" : "Copiar"}
+                    <CopyIcon /> {lastCopied ? "Copied" : "Copy Text"}
                 </button>
                 <button
                     className="btn-secondary"
                     onClick={onRefine}
                     disabled={!transcription || status !== "idle"}
-                    aria-label="Refinar texto con inteligencia artificial"
+                    title="Refine with LLM"
                 >
-                    <SparklesIcon /> Refinar IA
+                    <SparklesIcon /> AI Refine
                 </button>
                 <button
                     className="btn-secondary"
                     onClick={onTogglePause}
                     disabled={status === "disconnected"}
-                    title={status === "paused" ? "Reanudar sistema" : "Pausar sistema para ahorrar energía"}
                 >
                     {status === "paused" ? <PlayIcon /> : <PauseIcon />}
-                    {status === "paused" ? "Reanudar" : "Pausar"}
+                    {status === "paused" ? "Resume" : "Pause System"}
                 </button>
             </div>
-        </>
+
+            <textarea
+                className="editor"
+                value={transcription}
+                onChange={(e) => onTranscriptionChange(e.target.value)}
+                placeholder={status === "paused" ? "System paused..." : "Start speaking..."}
+                spellCheck={false}
+                disabled={status === "paused"}
+            />
+        </div>
     );
 });

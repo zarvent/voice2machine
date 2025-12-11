@@ -1,60 +1,59 @@
 import React from 'react';
-import { ChartIcon, SettingsIcon, MicIcon, GithubIcon } from "../assets/Icons";
-import { Status } from "../hooks/useBackend";
+import { ChartIcon, SettingsIcon, GithubIcon } from "../assets/Icons";
+import { ConnectionIndicator } from "./ConnectionIndicator";
 
 interface HeaderProps {
-    status: Status;
+    isConnected: boolean;
+    lastPingTime: number | null;
     showDashboard: boolean;
     onToggleDashboard: () => void;
     onOpenSettings: () => void;
 }
 
-export const Header = React.memo(({ status, showDashboard, onToggleDashboard, onOpenSettings }: HeaderProps) => {
-    const getStatusLabel = (s: Status) => {
-        switch (s) {
-            case "idle": return "Listo";
-            case "recording": return "Grabando...";
-            case "transcribing": return "Transcribiendo...";
-            case "processing": return "Refinando con IA...";
-            case "disconnected": return "Daemon desconectado";
-            case "error": return "Error";
-            case "paused": return "Pausado (Ahorro)";
-        }
-    };
-
+export const Header = React.memo(({
+    isConnected,
+    lastPingTime,
+    showDashboard,
+    onToggleDashboard,
+    onOpenSettings
+}: HeaderProps) => {
     return (
         <header>
             <div className="brand">
-                <MicIcon /> voice2machine
+                <div style={{ width: 16, height: 16, background: 'var(--fg-primary)', borderRadius: 4 }}></div>
+                voice2machine
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button
-                    onClick={onToggleDashboard}
-                    className={`icon-btn ${showDashboard ? 'active' : ''}`}
-                    title="Métricas del Sistema"
-                >
-                    <ChartIcon />
-                </button>
+
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <ConnectionIndicator isConnected={isConnected} lastPingTime={lastPingTime} />
+
+                <div style={{ width: 1, height: 24, background: 'var(--border-subtle)', margin: '0 8px' }}></div>
+
                 <a
                     href="https://github.com/zarvent/voice2machine"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="icon-btn github-link"
-                    title="Ver en GitHub"
+                    className="btn-icon"
+                    title="Code on GitHub"
                 >
                     <GithubIcon />
                 </a>
+
+                <button
+                    onClick={onToggleDashboard}
+                    className={`btn-icon ${showDashboard ? 'active' : ''}`}
+                    title="System Metrics"
+                >
+                    <ChartIcon />
+                </button>
+
                 <button
                     onClick={onOpenSettings}
-                    className="icon-btn"
-                    title="Configuración"
+                    className="btn-icon"
+                    title="Settings"
                 >
                     <SettingsIcon />
                 </button>
-                <div className="status-badge" data-status={status} role="status" aria-live="polite">
-                    <div className="status-dot" aria-hidden="true"></div>
-                    {getStatusLabel(status)}
-                </div>
             </div>
         </header>
     );

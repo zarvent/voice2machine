@@ -1,40 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-
-// Tipos compartidos
-export type Status = "idle" | "recording" | "transcribing" | "processing" | "paused" | "error" | "disconnected";
-
-export interface TelemetryData {
-    ram: { used_gb: number; total_gb: number; percent: number; };
-    cpu: { percent: number; };
-    gpu?: { vram_used_mb: number; temp_c: number; };
-}
-
-interface DaemonData {
-    state?: string;
-    transcription?: string;
-    refined_text?: string;
-    message?: string;
-    telemetry?: TelemetryData;
-}
-
-interface BackendState {
-    status: Status;
-    transcription: string;
-    telemetry: TelemetryData | null;
-    errorMessage: string;
-}
-
-interface BackendActions {
-    startRecording: () => Promise<void>;
-    stopRecording: () => Promise<void>;
-    processText: () => Promise<void>;
-    togglePause: () => Promise<void>;
-    setTranscription: (text: string) => void;
-    clearError: () => void;
-}
+import {
+    BackendState,
+    BackendActions,
+    Status,
+    TelemetryData,
+    DaemonResponse,
+    HistoryItem
+} from '../types';
 
 const STATUS_POLL_INTERVAL_MS = 500;
+const HISTORY_STORAGE_KEY = 'v2m_history_v1';
+const MAX_HISTORY_ITEMS = 50;
 
 export function useBackend(): [BackendState, BackendActions] {
     // State
@@ -42,6 +19,39 @@ export function useBackend(): [BackendState, BackendActions] {
     const [transcription, setTranscription] = useState("");
     const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
     const [errorMessage, setErrorMessage] = useState("");
+    const [isConnected, setIsConnected] = useState(false);
+    const [lastPingTime, setLastPingTime] = useState<number | null>(null);
+    const [history, setHistory] = useState<HistoryItem[]>([]);
+
+    // Load history on mount
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
+            if (saved) {
+                setHistory(JSON.parse(saved));
+            }
+        } catch (e) {
+            console.error("Failed to load history", e);
+        }
+    }, []);
+
+    // Save history helper
+    const addToHistory = (text: string, source: "recording" | "refinement") => {
+        if (!text.trim()) return;
+
+        const newItem: HistoryItem = {
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
+            text,
+            source
+        };
+
+        setHistory(prev => {
+            const newHistory = [newItem, ...prev].slice(0, MAX_HISTORY_ITEMS);
+            localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(newHistory));
+            return newHistory;
+        });
+    };
 
     const statusRef = useRef<Status>(status);
     const errorRef = useRef<string>(errorMessage);
@@ -51,14 +61,17 @@ export function useBackend(): [BackendState, BackendActions] {
     useEffect(() => { errorRef.current = errorMessage; }, [errorMessage]);
 
     // Helper: Parse JSON safely
-    const parseResponse = (json: string): DaemonData => {
+    const parseResponse = (json: string): DaemonResponse => {
         try { return JSON.parse(json); } catch { return {}; }
     };
 
-    // Polling Logic - Stable, no dependencies that change frequently
+    // Polling Logic
     const pollStatus = useCallback(async () => {
         try {
             const response = await invoke<string>("get_status");
+            setIsConnected(true);
+            setLastPingTime(Date.now());
+
             const data = parseResponse(response);
 
             // Actualizar telemetría siempre
@@ -68,29 +81,35 @@ export function useBackend(): [BackendState, BackendActions] {
             let daemonStatus: Status = "idle";
             if (data.state === "recording") daemonStatus = "recording";
             else if (data.state === "paused") daemonStatus = "paused";
-            else daemonStatus = "idle";
+            else daemonStatus = "idle"; // Default fallback
 
             const currentStatus = statusRef.current;
 
-            // Lógica de preservación de estado optimista
+            // Lógica de preservación de estado optimista para transiciones UI -> Backend
             if ((currentStatus === "transcribing" || currentStatus === "processing") && daemonStatus === "idle") {
-                return; // Esperar
+                return; // Esperar a que la acción termine explícitamente y cambie el estado
             }
 
-            // Updates
+            // Updates state only if changed
             setStatus(prev => {
                 if ((prev === "transcribing" || prev === "processing") && daemonStatus === "idle") return prev;
                 if (daemonStatus === "recording") return "recording";
                 if (daemonStatus === "paused") return "paused";
+
+                // Si estábamos desconectados y volvemos, pasamos a idle (o lo que diga el daemon)
+                if (prev === "disconnected") return daemonStatus;
+
                 return prev !== daemonStatus ? daemonStatus : prev;
             });
 
-            if (errorRef.current && statusRef.current !== "error") setErrorMessage("");
+            // Auto-clear error if connected and healthy (optional policy)
+            if (errorRef.current && statusRef.current === "disconnected") setErrorMessage("");
 
         } catch (e) {
+            setIsConnected(false);
             setStatus("disconnected");
         }
-    }, []); // Empty dependency array = stable function
+    }, []);
 
     useEffect(() => {
         pollStatus(); // Initial fetch
@@ -118,6 +137,7 @@ export function useBackend(): [BackendState, BackendActions] {
 
             if (data.transcription) {
                 setTranscription(data.transcription);
+                addToHistory(data.transcription, "recording");
                 setStatus("idle");
             } else {
                 setErrorMessage("No se detectó voz en el audio");
@@ -138,6 +158,7 @@ export function useBackend(): [BackendState, BackendActions] {
 
             if (data.refined_text) {
                 setTranscription(data.refined_text);
+                addToHistory(data.refined_text, "refinement");
                 setStatus("idle");
             } else {
                 setErrorMessage("Respuesta inesperada del LLM");
@@ -165,8 +186,29 @@ export function useBackend(): [BackendState, BackendActions] {
 
     const clearError = () => setErrorMessage("");
 
-    return [
-        { status, transcription, telemetry, errorMessage },
-        { startRecording, stopRecording, processText, togglePause, setTranscription, clearError }
-    ];
+    const retryConnection = async () => {
+        await pollStatus();
+    };
+
+    const state: BackendState = {
+        status,
+        transcription,
+        telemetry,
+        errorMessage,
+        isConnected,
+        lastPingTime,
+        history
+    };
+
+    const actions: BackendActions = {
+        startRecording,
+        stopRecording,
+        processText,
+        togglePause,
+        setTranscription,
+        clearError,
+        retryConnection
+    };
+
+    return [state, actions];
 }
