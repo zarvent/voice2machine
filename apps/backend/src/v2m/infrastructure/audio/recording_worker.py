@@ -21,16 +21,16 @@ separado aislando la captura de audio del proceso principal de la aplicación
 esto ayuda a evitar problemas de bloqueo por el gil y mejora la estabilidad
 """
 
+import argparse
+import signal
 import sys
 import time
-import signal
-import argparse
 from pathlib import Path
+
 # añadir src a la ruta para permitir importaciones
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from v2m.infrastructure.audio.recorder import AudioRecorder
-from v2m.config import config
 
 # configurar el manejo de señales
 stop_requested = False
@@ -68,7 +68,8 @@ def main():
         time.sleep(0.1)
 
     print("deteniendo la grabación...", flush=True)
-    recorder.stop(save_path=Path(args.output))
+    # optimización: return_data=False evita copia innecesaria del buffer
+    recorder.stop(save_path=Path(args.output), return_data=False)
     print(f"guardado en {args.output}", flush=True)
 
 if __name__ == "__main__":
