@@ -13,14 +13,16 @@
 # You should have received a copy of the GNU General Public License
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
-import sounddevice as sd
-import numpy as np
 import threading
 import wave
 from pathlib import Path
-from typing import Optional
+
+import numpy as np
+import sounddevice as sd
+
 from v2m.core.logging import logger
 from v2m.domain.errors import RecordingError
+
 
 class AudioRecorder:
     """
@@ -38,7 +40,7 @@ class AudioRecorder:
     # tamaño del chunk en samples coincide con sounddevice default ~1024
     CHUNK_SIZE = 1024
 
-    def __init__(self, sample_rate: int = 16000, channels: int = 1, max_duration_sec: int = 600, device_index: Optional[int] = None):
+    def __init__(self, sample_rate: int = 16000, channels: int = 1, max_duration_sec: int = 600, device_index: int | None = None):
         """
         INICIALIZA EL GRABADOR DE AUDIO CON BUFFER PRE-ALLOCADO
 
@@ -52,7 +54,7 @@ class AudioRecorder:
         self.channels = channels
         self.device_index = device_index
         self._recording = False
-        self._stream: Optional[sd.InputStream] = None
+        self._stream: sd.InputStream | None = None
         self._lock = threading.Lock()
 
         # buffer pre-allocado para evitar reallocaciones durante grabación
@@ -124,12 +126,14 @@ class AudioRecorder:
                 self._stream = None
             raise RecordingError(f"falló al iniciar la grabación {e}") from e
 
-    def stop(self, save_path: Optional[Path] = None) -> np.ndarray:
+    def stop(self, save_path: Path | None = None, return_data: bool = True) -> np.ndarray:
         """
         DETIENE LA GRABACIÓN Y DEVUELVE EL AUDIO CAPTURADO
 
         ARGS:
             save_path: ruta opcional para guardar el audio como archivo wav
+            return_data: si es True retorna una copia del audio grabado default True
+                         si es False retorna un array vacío ahorrando memoria
 
         RETURNS:
             el audio grabado como un array de numpy float32
@@ -157,17 +161,16 @@ class AudioRecorder:
                  return np.array([], dtype=np.float32).reshape(0, self.channels)
             return np.array([], dtype=np.float32)
 
-        # zero-copy slice retorna vista del buffer no copia
-        # importante el caller debe procesar antes de la próxima grabación
-        # retornamos una copia para evitar corrupción de datos si se reinicia la grabación
+        # usar vista (view) del buffer para operaciones intermedias sin copia
         if self.channels > 1:
-            audio = self._buffer[:recorded_samples, :].copy()
+            audio_view = self._buffer[:recorded_samples, :]
         else:
-            audio = self._buffer[:recorded_samples].copy()
+            audio_view = self._buffer[:recorded_samples]
 
         if save_path:
-            # convertir float32 a int16 para wav esto sí hace copia
-            audio_int16 = (audio * 32767).astype(np.int16)
+            # convertir float32 a int16 para wav usando la vista para evitar copia intermedia
+            # OPTIMIZACIÓN: usamos audio_view directamente como fuente
+            audio_int16 = (audio_view * 32767).astype(np.int16)
             with wave.open(str(save_path), 'wb') as wf:
                 wf.setnchannels(self.channels)
                 wf.setsampwidth(2)  # 16 bit
@@ -179,4 +182,12 @@ class AudioRecorder:
                 # esto es exactamente lo que pcm intercalado espera l r l r...
                 wf.writeframes(audio_int16.tobytes())
 
-        return audio
+        if not return_data:
+             if self.channels > 1:
+                 return np.array([], dtype=np.float32).reshape(0, self.channels)
+             return np.array([], dtype=np.float32)
+
+        # zero-copy slice retorna vista del buffer no copia
+        # importante el caller debe procesar antes de la próxima grabación
+        # retornamos una copia para evitar corrupción de datos si se reinicia la grabación
+        return audio_view.copy()
