@@ -1,213 +1,217 @@
-// voice2machine tauri frontend
-// comunicación con daemon python via socket unix
-// PROTOCOLO V2.0 (JSON) - previene command injection
+// Aprende más sobre comandos de Tauri en https://tauri.app/v1/guides/features/command
 
-use tokio::net::UnixStream;
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
-use serde::{Serialize, Deserialize};
-use serde_json::json;
-use std::process::Command;
-use tauri::api::path::resolve_path;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::io::{Read, Write};
+use std::os::unix::net::UnixStream;
+use std::process::Command as SysCommand;
+use tauri::path::BaseDirectory;
 use tauri::Manager;
 
-const SOCKET_PATH: &str = "/tmp/v2m.sock";
-const MAX_RESPONSE_SIZE: usize = 1024 * 1024; // 1MB límite (previene DoS/OOM)
+// --- CONSTANTES DE SEGURIDAD (SEIKETSU/SAFETY) ---
 
-/// Request estructurado para el daemon (JSON)
+/// Ruta al socket Unix del daemon Python.
+const DAEMON_SOCKET_PATH: &str = "/tmp/v2m.sock";
+
+/// Tamaño máximo de respuesta permitido (1MB) para prevenir ataques de memoria (DoS).
+const MAX_RESPONSE_SIZE: usize = 1024 * 1024;
+
+/// Timeout de lectura para evitar bloqueos infinitos (en segundos).
+const READ_TIMEOUT_SECS: u64 = 5;
+
+// --- ESTRUCTURAS DE DATOS ---
+
+/// Estructura para enviarle comandos al daemon.
+/// Sigue el protocolo JSON-IPC v2.0.
 #[derive(Serialize)]
-struct IPCRequest {
-    cmd: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    data: Option<serde_json::Value>,
+struct IpcCommand {
+    /// Nombre del comando (ej: "GET_STATUS")
+    command: String,
+    /// Datos opcionales (payload)
+    data: Option<Value>,
 }
 
-/// Response estructurada del daemon (JSON)
+/// Respuesta estandarizada del daemon.
 #[derive(Deserialize, Debug)]
-struct IPCResponse {
+struct DaemonResponse {
+    /// Estado de la operación ("success" o "error")
+    #[allow(dead_code)]
     status: String,
-    data: Option<serde_json::Value>,
-    error: Option<String>,
+    /// Mensaje descriptivo o datos de retorno
+    data: Option<Value>,
+    /// Mensaje de error si status == "error"
+    message: Option<String>,
 }
 
-/// envía comando estructurado al daemon v2m via socket unix
-/// protocolo: 4 bytes length (big-endian) + JSON payload
-async fn send_json_request(request: IPCRequest) -> Result<IPCResponse, String> {
-    // 1. conectar al socket
-    let mut stream = UnixStream::connect(SOCKET_PATH).await
-        .map_err(|e| format!("daemon no corre: {}", e))?;
+// --- FUNCIONES CORE ---
 
-    // 2. serializar request a JSON
-    let payload = serde_json::to_string(&request)
-        .map_err(|e| format!("error serializando JSON: {}", e))?;
-    let payload_bytes = payload.as_bytes();
-    let len = (payload_bytes.len() as u32).to_be_bytes(); // big endian
+/// Envía una solicitud JSON al daemon Python a través de un socket Unix.
+///
+/// # Argumentos
+/// * `command` - El comando a ejecutar (ej: "START_RECORDING").
+/// * `data` - Payload opcional en formato JSON.
+///
+/// # Retorno
+/// Retorna `Result<Value, String>` con la respuesta del daemon o un error descriptivo.
+///
+/// # Seguridad
+/// Implementa framing (4 bytes length header) y límites de tamaño de respuesta.
+fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String> {
+    // 1. Conexión al Socket
+    // Intentamos conectar al archivo del socket Unix.
+    let mut stream = UnixStream::connect(DAEMON_SOCKET_PATH)
+        .map_err(|e| format!("No se pudo conectar al daemon (¿está corriendo?): {}", e))?;
 
-    // 3. enviar con framing (4 bytes length + payload)
-    stream.write_all(&len).await.map_err(|e| e.to_string())?;
-    stream.write_all(payload_bytes).await.map_err(|e| e.to_string())?;
+    // Configurar timeouts para evitar que la UI se congele si el backend muere.
+    stream
+        .set_read_timeout(Some(std::time::Duration::from_secs(READ_TIMEOUT_SECS)))
+        .map_err(|e| format!("Falló al setear timeout: {}", e))?;
 
-    // 4. leer respuesta con límite de seguridad (previene OOM)
-    let mut response_buf = Vec::new();
-    let mut buf = [0u8; 4096];
-    loop {
-        let n = stream.read(&mut buf).await.map_err(|e| e.to_string())?;
-        if n == 0 { break; }
+    // 2. Preparación del Payload
+    let request = IpcCommand {
+        command: command.to_string(),
+        data,
+    };
+    let json_payload = serde_json::to_string(&request)
+        .map_err(|e| format!("Error serializando JSON: {}", e))?;
 
-        // SECURITY FIX: verificar límite antes de extender
-        if response_buf.len() + n > MAX_RESPONSE_SIZE {
-            return Err(format!(
-                "respuesta excede el límite de {}MB",
-                MAX_RESPONSE_SIZE / (1024 * 1024)
-            ));
-        }
+    let payload_bytes = json_payload.as_bytes();
+    let payload_len = payload_bytes.len() as u32;
 
-        response_buf.extend_from_slice(&buf[..n]);
+    // 3. Envío con Framing (Length-Prefix)
+    // Primero enviamos 4 bytes indicando el tamaño del mensaje.
+    // Esto asegura que el backend sepa exactamente cuánto leer.
+    stream
+        .write_all(&payload_len.to_be_bytes())
+        .map_err(|e| format!("Error escribiendo header: {}", e))?;
+
+    // Luego enviamos el cuerpo del mensaje.
+    stream
+        .write_all(payload_bytes)
+        .map_err(|e| format!("Error escribiendo payload: {}", e))?;
+
+    // 4. Lectura de Respuesta
+    // Leemos los primeros 4 bytes para saber el tamaño de la respuesta.
+    let mut len_buf = [0u8; 4];
+    stream
+        .read_exact(&mut len_buf)
+        .map_err(|e| format!("Error leyendo header de respuesta (¿backend caído?): {}", e))?;
+
+    let response_len = u32::from_be_bytes(len_buf) as usize;
+
+    // CHECK DE SEGURIDAD: Validar que el tamaño no exceda el límite.
+    if response_len > MAX_RESPONSE_SIZE {
+        return Err(format!(
+            "La respuesta del daemon excede el límite de seguridad ({} MB)",
+            MAX_RESPONSE_SIZE / (1024 * 1024)
+        ));
     }
 
-    // 5. parsear JSON response
-    let response_json = String::from_utf8(response_buf)
-        .map_err(|e| format!("respuesta no es UTF-8 válido: {}", e))?;
+    // Leemos el payload exacto
+    let mut response_buf = vec![0u8; response_len];
+    stream
+        .read_exact(&mut response_buf)
+        .map_err(|e| format!("Error leyendo cuerpo de respuesta: {}", e))?;
 
-    let response: IPCResponse = serde_json::from_str(&response_json)
-        .map_err(|e| format!("JSON inválido del daemon: {}", e))?;
+    // 5. Deserialización
+    let response_str = String::from_utf8(response_buf)
+        .map_err(|e| format!("Respuesta invalida UTF-8: {}", e))?;
 
-    Ok(response)
-}
+    let response: DaemonResponse = serde_json::from_str(&response_str)
+        .map_err(|e| format!("Daemon retornó JSON inválido: {}", e))?;
 
-/// Helper para extraer resultado de IPCResponse
-fn extract_result(response: IPCResponse) -> Result<String, String> {
-    if response.status == "error" {
-        return Err(response.error.unwrap_or_else(|| "error desconocido".to_string()));
-    }
-
-    // serializar data como JSON string para el frontend
-    match response.data {
-        Some(data) => Ok(serde_json::to_string(&data).unwrap_or_else(|_| "{}".to_string())),
-        None => Ok("{}".to_string()),
+    // Verificar estado lógico
+    if response.status == "success" {
+        Ok(response.data.unwrap_or(Value::Null))
+    } else {
+        Err(response.message.unwrap_or_else(|| "Error desconocido del daemon".to_string()))
     }
 }
 
-/// obtiene estado actual del daemon
+// --- COMANDOS TAURI (EXPOSED TO FRONTEND) ---
+
+/// Comando: Obtener estado actual del sistema.
 #[tauri::command]
-async fn get_status() -> Result<String, String> {
-    let request = IPCRequest {
-        cmd: "GET_STATUS".to_string(),
-        data: None,
-    };
-    let response = send_json_request(request).await?;
-    extract_result(response)
+fn get_status() -> Result<String, String> {
+    let res = send_json_request("GET_STATUS", None)?;
+    // Retornamos el JSON como string para que el frontend lo parsee tipado
+    Ok(res.to_string())
 }
 
-/// inicia grabación de audio
+/// Comando: START_RECORDING
 #[tauri::command]
-async fn start_recording() -> Result<String, String> {
-    let request = IPCRequest {
-        cmd: "START_RECORDING".to_string(),
-        data: None,
-    };
-    let response = send_json_request(request).await?;
-    extract_result(response)
+fn start_recording() -> Result<String, String> {
+    send_json_request("START_RECORDING", None).map(|v| v.to_string())
 }
 
-/// detiene grabación y transcribe
+/// Comando: STOP_RECORDING
 #[tauri::command]
-async fn stop_recording() -> Result<String, String> {
-    let request = IPCRequest {
-        cmd: "STOP_RECORDING".to_string(),
-        data: None,
-    };
-    let response = send_json_request(request).await?;
-    extract_result(response)
+fn stop_recording() -> Result<String, String> {
+    send_json_request("STOP_RECORDING", None).map(|v| v.to_string())
 }
 
-/// verifica si daemon está activo
+/// Comando: PING (Verificar conectividad)
 #[tauri::command]
-async fn ping() -> Result<String, String> {
-    let request = IPCRequest {
-        cmd: "PING".to_string(),
-        data: None,
-    };
-    let response = send_json_request(request).await?;
-    extract_result(response)
+fn ping() -> Result<String, String> {
+    send_json_request("PING", None).map(|v| v.to_string())
 }
 
-/// procesa texto con LLM
-/// SECURITY FIX: texto encapsulado en JSON, no concatenado (previene command injection)
+/// Comando: PROCESS_TEXT (Refinar texto con LLM)
 #[tauri::command]
-async fn process_text(text: String) -> Result<String, String> {
-    let request = IPCRequest {
-        cmd: "PROCESS_TEXT".to_string(),
-        data: Some(json!({"text": text})),
-    };
-    let response = send_json_request(request).await?;
-    extract_result(response)
+fn process_text(text: String) -> Result<String, String> {
+    let data = json!({ "text": text });
+    send_json_request("PROCESS_TEXT", Some(data)).map(|v| v.to_string())
 }
 
-/// pausa el daemon
+/// Comando: PAUSE_DAEMON
 #[tauri::command]
-async fn pause_daemon() -> Result<String, String> {
-    let request = IPCRequest {
-        cmd: "PAUSE_DAEMON".to_string(),
-        data: None,
-    };
-    let response = send_json_request(request).await?;
-    extract_result(response)
+fn pause_daemon() -> Result<String, String> {
+    send_json_request("PAUSE_DAEMON", None).map(|v| v.to_string())
 }
 
-/// reanuda el daemon
+/// Comando: RESUME_DAEMON
 #[tauri::command]
-async fn resume_daemon() -> Result<String, String> {
-    let request = IPCRequest {
-        cmd: "RESUME_DAEMON".to_string(),
-        data: None,
-    };
-    let response = send_json_request(request).await?;
-    extract_result(response)
+fn resume_daemon() -> Result<String, String> {
+    send_json_request("RESUME_DAEMON", None).map(|v| v.to_string())
 }
 
-/// actualiza configuración del sistema
+/// Comando: UPDATE_CONFIG
 #[tauri::command]
-async fn update_config(updates: serde_json::Value) -> Result<String, String> {
-    let request = IPCRequest {
-        cmd: "UPDATE_CONFIG".to_string(),
-        data: Some(json!({"updates": updates})),
-    };
-    let response = send_json_request(request).await?;
-    extract_result(response)
+fn update_config(updates: Value) -> Result<String, String> {
+    send_json_request("UPDATE_CONFIG", Some(updates)).map(|v| v.to_string())
 }
 
-/// obtiene configuración actual
+/// Comando: GET_CONFIG
 #[tauri::command]
-async fn get_config() -> Result<String, String> {
-    let request = IPCRequest {
-        cmd: "GET_CONFIG".to_string(),
-        data: None,
-    };
-    let response = send_json_request(request).await?;
-    extract_result(response)
+fn get_config() -> Result<String, String> {
+    send_json_request("GET_CONFIG", None).map(|v| v.to_string())
 }
 
-/// reinicia el daemon usando el script v2m-daemon.sh
+/// Comando: RESTART_DAEMON (Ejecuta script externo)
 #[tauri::command]
 async fn restart_daemon(app: tauri::AppHandle) -> Result<String, String> {
     let script_path = app.path()
-        .resolve("scripts/v2m-daemon.sh", tauri::path::BaseDirectory::Resource)
-        .map_err(|e| format!("error resolviendo ruta: {}", e))?;
+        .resolve("scripts/v2m-daemon.sh", BaseDirectory::Resource)
+        .map_err(|e| format!("Error resolviendo ruta del script: {}", e))?;
 
-    let output = Command::new("bash")
+    // Nota: SysCommand es std::process::Command
+    let output = SysCommand::new("bash")
         .arg(script_path)
         .arg("restart")
         .output()
-        .map_err(|e| format!("error ejecutando script: {}", e))?;
+        .map_err(|e| format!("Error ejecutando script de reinicio: {}", e))?;
 
     if output.status.success() {
-        Ok("daemon reiniciado".to_string())
+        Ok("Daemon reiniciado correctamente".to_string())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("fallo al reiniciar daemon: {}", stderr))
+        Err(format!("Fallo al reiniciar daemon: {}", stderr))
     }
 }
 
+// --- ENTRY POINT ---
+
+/// Configuración inicial de la aplicación Tauri.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()

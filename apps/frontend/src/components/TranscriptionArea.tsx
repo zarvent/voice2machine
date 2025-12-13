@@ -12,6 +12,10 @@ interface TranscriptionAreaProps {
     onTogglePause: () => void;
 }
 
+/**
+ * Panel principal de visualización y edición de la transcripción.
+ * Contiene el área de texto y la barra de acciones (copiar, refinar, pausar).
+ */
 export const TranscriptionArea = React.memo(({
     transcription,
     status,
@@ -23,39 +27,45 @@ export const TranscriptionArea = React.memo(({
 }: TranscriptionAreaProps) => {
     return (
         <div className="transcription-panel">
-            <div className="action-bar">
+            {/* Barra de herramientas superior */}
+            <div className="action-bar" role="toolbar" aria-label="Editor controls">
                 <button
                     className="btn-secondary"
                     onClick={onCopy}
                     disabled={!transcription}
+                    aria-label="Copiar texto al portapapeles"
                 >
-                    <CopyIcon /> {lastCopied ? "Copied" : "Copy Text"}
+                    <CopyIcon /> {lastCopied ? "Copiado" : "Copiar"}
                 </button>
                 <button
                     className="btn-secondary"
                     onClick={onRefine}
                     disabled={!transcription || status !== "idle"}
-                    title="Refine with LLM"
+                    title="Refinar gramática y estilo con IA"
+                    aria-label="Refinar con Inteligencia Artificial"
                 >
-                    <SparklesIcon /> AI Refine
+                    <SparklesIcon /> Mejorar con IA
                 </button>
                 <button
                     className="btn-secondary"
                     onClick={onTogglePause}
                     disabled={status === "disconnected"}
+                    aria-pressed={status === "paused"}
                 >
                     {status === "paused" ? <PlayIcon /> : <PauseIcon />}
-                    {status === "paused" ? "Resume" : "Pause System"}
+                    {status === "paused" ? "Reanudar" : "Pausar Sistema"}
                 </button>
             </div>
 
+            {/* Área de texto editable */}
             <textarea
                 className="editor"
                 value={transcription}
                 onChange={(e) => onTranscriptionChange(e.target.value)}
-                placeholder={status === "paused" ? "System paused..." : "Start speaking..."}
+                placeholder={status === "paused" ? "Sistema pausado..." : "Empieza a hablar para transcribir..."}
                 spellCheck={false}
                 disabled={status === "paused"}
+                aria-label="Texto transcrito"
             />
         </div>
     );

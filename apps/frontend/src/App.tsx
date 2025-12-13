@@ -5,20 +5,33 @@ import { Header } from "./components/Header";
 import { MicControl } from "./components/MicControl";
 import { TranscriptionArea } from "./components/TranscriptionArea";
 import { useBackend } from "./hooks/useBackend";
+import { COPY_FEEDBACK_DURATION_MS } from "./constants";
 import "./App.css";
 
+/**
+ * COMPONENTE RAÍZ DE LA APLICACIÓN
+ * Orquesta el estado global, el layout principal y la integración de componentes.
+ */
 function App() {
+  // Hook personalizado de lógica de negocio (Backend IPC)
   const [backendState, actions] = useBackend();
-  const { status, transcription, telemetry, errorMessage, isConnected, lastPingTime } = backendState;
+  const { status, transcription, telemetry, errorMessage, isConnected, lastPingTime, history } = backendState;
 
+  // Estado UI local
   const [showSettings, setShowSettings] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(true); // Default open for control remote feel? Or closed? Let's default true but collapsible
+  const [showDashboard, setShowDashboard] = useState(true);
   const [lastCopied, setLastCopied] = useState(false);
 
+  /** Maneja el copiado al portapapeles con feedback visual */
   const handleCopy = () => {
     navigator.clipboard.writeText(transcription);
     setLastCopied(true);
-    setTimeout(() => setLastCopied(false), 2000);
+    setTimeout(() => setLastCopied(false), COPY_FEEDBACK_DURATION_MS);
+  };
+
+  /** Maneja doble click o enter en histórico */
+  const restoreHistoryItem = (text: string) => {
+    actions.setTranscription(text);
   };
 
   return (
@@ -32,9 +45,8 @@ function App() {
       />
 
       <div className="workspace">
-        {/* Main Transcription Area */}
-        <div style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
-
+        {/* --- ÁREA PRINCIPAL DE TRABAJO --- */}
+        <div className="app-main-content">
           <TranscriptionArea
             transcription={transcription}
             status={status}
@@ -45,7 +57,6 @@ function App() {
             onTogglePause={actions.togglePause}
           />
 
-          {/* Floating Mic Control */}
           <MicControl
             status={status}
             onToggleRecord={() => {
@@ -54,26 +65,14 @@ function App() {
             }}
           />
 
-          {/* Error Toast (could be a proper Toast component if multiple) */}
+          {/* Notificación de error flotante */}
           {status === "error" && errorMessage && (
-            <div
-              className="error-banner"
-              role="alert"
-              aria-live="assertive"
-              style={{
-                position: 'absolute',
-                top: 20,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: 'auto',
-                minWidth: 300
-              }}
-            >
+            <div className="error-banner error-toast-container" role="alert" aria-live="assertive">
               {errorMessage}
               <button
                 onClick={actions.clearError}
-                aria-label="Close error message"
-                style={{ background: 'none', border: 'none', color: 'inherit', marginLeft: 10, cursor: 'pointer' }}
+                className="btn-close-error"
+                aria-label="Cerrar mensaje de error"
               >
                 ✕
               </button>
@@ -81,50 +80,54 @@ function App() {
           )}
         </div>
 
-        {/* Sidebar for Dashboard (Desktop) */}
+        {/* --- BARRA LATERAL (DASHBOARD) --- */}
         {showDashboard && (
-          <div style={{ borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-panel)', overflowY: 'auto' }}>
-            <div style={{ padding: '20px', fontSize: '12px', fontWeight: 600, color: 'var(--fg-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              System Metrics
+          <aside className="sidebar-dashboard">
+            <div className="sidebar-header">
+              Métricas del Sistema
             </div>
+
             <Dashboard visible={true} telemetry={telemetry} />
 
-            {/* Botón de Reinicio */}
-            <div style={{ padding: '0 20px 20px' }}>
-                <button
-                    onClick={actions.restartDaemon}
-                    disabled={status === 'restarting'}
-                    className="button-secondary"
-                    style={{ width: '100%' }}
-                >
-                    {status === 'restarting' ? 'Reiniciando...' : 'Reiniciar Daemon'}
-                </button>
+            <div className="sidebar-section">
+              <button
+                onClick={actions.restartDaemon}
+                disabled={status === 'restarting'}
+                className="button-secondary"
+                style={{ width: '100%' }} // Mantener width aquí o mover a clase btn-full
+              >
+                {status === 'restarting' ? 'Reiniciando...' : 'Reiniciar Daemon'}
+              </button>
             </div>
 
-            {/* Future: History List here */}
-            {backendState.history && backendState.history.length > 0 && (
-              <div style={{ padding: '20px', borderTop: '1px solid var(--border-subtle)' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--fg-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
-                  History
+            {history && history.length > 0 && (
+              <div className="history-section-container">
+                <div className="history-title">
+                  Historial
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {backendState.history.map(item => (
+                <div className="history-list">
+                  {history.map(item => (
                     <div
                       key={item.id}
                       role="button"
                       tabIndex={0}
-                      style={{ fontSize: 13, padding: 8, background: 'var(--bg-surface)', borderRadius: 4, cursor: 'pointer' }}
-                      onClick={() => actions.setTranscription(item.text)}
-                      onKeyDown={(e) => e.key === 'Enter' && actions.setTranscription(item.text)}
+                      className="history-item"
+                      onClick={() => restoreHistoryItem(item.text)}
+                      onKeyDown={(e) => e.key === 'Enter' && restoreHistoryItem(item.text)}
+                      title="Click para restaurar"
                     >
-                      <div style={{ color: 'var(--fg-secondary)', fontSize: 11 }}>{new Date(item.timestamp).toLocaleTimeString()}</div>
-                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.text}</div>
+                      <div className="history-time">
+                        {new Date(item.timestamp).toLocaleTimeString()}
+                      </div>
+                      <div className="history-text">
+                        {item.text}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-          </div>
+          </aside>
         )}
       </div>
 

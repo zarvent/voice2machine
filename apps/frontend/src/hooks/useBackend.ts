@@ -8,13 +8,22 @@ import {
     DaemonResponse,
     HistoryItem
 } from '../types';
+import {
+    STATUS_POLL_INTERVAL_MS,
+    HISTORY_STORAGE_KEY,
+    MAX_HISTORY_ITEMS
+} from '../constants';
 
-const STATUS_POLL_INTERVAL_MS = 500;
-const HISTORY_STORAGE_KEY = 'v2m_history_v1';
-const MAX_HISTORY_ITEMS = 50;
-
+/**
+ * HOOK PRINCIPAL DE COMUNICACIÓN CON BACKEND (DAEMON)
+ *
+ * Gestiona toda la lógica de estado, conexión IPC, manejo de errores y polling.
+ * Actúa como la capa "Controlador" en el patrón MVC del frontend.
+ *
+ * @returns [state, actions] - Tupla con el estado actual y las acciones disponibles
+ */
 export function useBackend(): [BackendState, BackendActions] {
-    // State
+    // --- ESTADO LOCAL ---
     const [status, setStatus] = useState<Status>("disconnected");
     const [transcription, setTranscription] = useState("");
     const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
@@ -23,7 +32,9 @@ export function useBackend(): [BackendState, BackendActions] {
     const [lastPingTime, setLastPingTime] = useState<number | null>(null);
     const [history, setHistory] = useState<HistoryItem[]>([]);
 
-    // Load history on mount
+    // --- EFECTOS DE INICIALIZACIÓN ---
+
+    // Cargar historial persistido al montar
     useEffect(() => {
         try {
             const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
@@ -35,7 +46,9 @@ export function useBackend(): [BackendState, BackendActions] {
         }
     }, []);
 
-    // Save history helper
+    // --- HELPERS INTERNOS ---
+
+    /** Guarda una nueva entrada en el historial y lo persiste */
     const addToHistory = (text: string, source: "recording" | "refinement") => {
         if (!text.trim()) return;
 
@@ -53,19 +66,24 @@ export function useBackend(): [BackendState, BackendActions] {
         });
     };
 
+    // Refs para acceso síncrono en closures de intervalos
     const statusRef = useRef<Status>(status);
     const errorRef = useRef<string>(errorMessage);
 
-    // Sync refs
     useEffect(() => { statusRef.current = status; }, [status]);
     useEffect(() => { errorRef.current = errorMessage; }, [errorMessage]);
 
-    // Helper: Parse JSON safely
+    /** Parsea respuesta JSON del daemon de forma segura */
     const parseResponse = (json: string): DaemonResponse => {
         try { return JSON.parse(json); } catch { return {}; }
     };
 
-    // Polling Logic
+    // --- LÓGICA DE POLLING (Sondeo) ---
+
+    /**
+     * Consulta el estado del daemon periódicamente.
+     * Es la fuente de verdad para la sincronización UI <-> Backend.
+     */
     const pollStatus = useCallback(async () => {
         try {
             const response = await invoke<string>("get_status");
@@ -74,50 +92,58 @@ export function useBackend(): [BackendState, BackendActions] {
 
             const data = parseResponse(response);
 
-            // Actualizar telemetría siempre
+            // 1. Actualizar telemetría siempre (incluso si estamos grabando)
             if (data.telemetry) setTelemetry(data.telemetry);
 
-            // Mapear estado del daemon
+            // 2. Mapear estado interno del daemon a estados de UI
             let daemonStatus: Status = "idle";
             if (data.state === "recording") daemonStatus = "recording";
             else if (data.state === "paused") daemonStatus = "paused";
-            else daemonStatus = "idle"; // Default fallback
+            else daemonStatus = "idle"; // Fallback por defecto
 
             const currentStatus = statusRef.current;
 
-            // Lógica de preservación de estado optimista para transiciones UI -> Backend
+            // 3. Lógica de preservación de estado optimista "Transitional State"
+            // Si la UI dice "transcribing" (procesando), no volvamos a "idle"
+            // hasta que la acción termine explícitamente y actualice el estado.
+            // Esto evita parpadeos en la UI.
             if ((currentStatus === "transcribing" || currentStatus === "processing") && daemonStatus === "idle") {
-                return; // Esperar a que la acción termine explícitamente y cambie el estado
+                return;
             }
 
-            // Updates state only if changed
+            // 4. Actualizar estado solo si cambió
             setStatus(prev => {
+                // Preservar estados transicionales
                 if ((prev === "transcribing" || prev === "processing") && daemonStatus === "idle") return prev;
+                // Mapeo directo
                 if (daemonStatus === "recording") return "recording";
                 if (daemonStatus === "paused") return "paused";
 
-                // Si estábamos desconectados y volvemos, pasamos a idle (o lo que diga el daemon)
+                // Recuperación tras desconexión
                 if (prev === "disconnected") return daemonStatus;
 
                 return prev !== daemonStatus ? daemonStatus : prev;
             });
 
-            // Auto-clear error if connected and healthy (optional policy)
+            // Auto-limpiar errores al reconectar si todo está bien
             if (errorRef.current && statusRef.current === "disconnected") setErrorMessage("");
 
         } catch (e) {
+            // Manejo de desconexión (daemon caído o cerrado)
             setIsConnected(false);
             setStatus("disconnected");
         }
     }, []);
 
+    // Configurar intervalo de polling
     useEffect(() => {
-        pollStatus(); // Initial fetch
+        pollStatus(); // Fetch inicial inmediato
         const intervalId = window.setInterval(pollStatus, STATUS_POLL_INTERVAL_MS);
         return () => clearInterval(intervalId);
     }, [pollStatus]);
 
-    // Actions
+    // --- ACCIONES PÚBLICAS ---
+
     const startRecording = async () => {
         if (status === "paused") return;
         try {
@@ -130,7 +156,7 @@ export function useBackend(): [BackendState, BackendActions] {
     };
 
     const stopRecording = async () => {
-        setStatus("transcribing");
+        setStatus("transcribing"); // UI Optimista
         try {
             const result = await invoke<string>("stop_recording");
             const data = parseResponse(result);
@@ -151,7 +177,7 @@ export function useBackend(): [BackendState, BackendActions] {
 
     const processText = async () => {
         if (!transcription) return;
-        setStatus("processing");
+        setStatus("processing"); // UI Optimista
         try {
             const result = await invoke<string>("process_text", { text: transcription });
             const data = parseResponse(result);
@@ -194,7 +220,7 @@ export function useBackend(): [BackendState, BackendActions] {
         setStatus("restarting");
         try {
             await invoke("restart_daemon");
-            // El sondeo de estado se encargará de la transición a conectado/inactivo
+            // El polling se encargará de detectar cuando vuelva a estar ONLINE
         } catch (e) {
             setErrorMessage(String(e));
             setStatus("error");

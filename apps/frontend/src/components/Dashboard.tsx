@@ -1,16 +1,20 @@
 import React from 'react';
 import { TelemetryData } from '../types';
+import { SPARKLINE_HISTORY_LENGTH } from '../constants';
 
 interface DashboardProps {
   visible: boolean;
   telemetry: TelemetryData | null;
 }
 
-// Simple Sparkline Component (SVG)
+/**
+ * Componente gráfico Sparkline (SVG ligero).
+ * Renderiza una línea de tendencia simple sin ejes.
+ */
 const Sparkline = ({ data, color, height = 32 }: { data: number[], color: string, height?: number }) => {
   if (data.length < 2) return null;
 
-  const max = 100; // Percentages always 0-100
+  const max = 100; // Porcentajes siempre 0-100
   const min = 0;
   const width = 100;
 
@@ -33,8 +37,12 @@ const Sparkline = ({ data, color, height = 32 }: { data: number[], color: string
   );
 };
 
+/**
+ * Panel de métricas del sistema en tiempo real.
+ * Muestra RAM, CPU y GPU con gráficos históricos pequeños.
+ */
 export const Dashboard: React.FC<DashboardProps> = ({ telemetry, visible }) => {
-  // Accumulate history locally for sparklines
+  // Acumular historial localmente para sparklines
   const [cpuHistory, setCpuHistory] = React.useState<number[]>([]);
   const [ramHistory, setRamHistory] = React.useState<number[]>([]);
 
@@ -43,67 +51,45 @@ export const Dashboard: React.FC<DashboardProps> = ({ telemetry, visible }) => {
 
     setCpuHistory(prev => {
       const next = [...prev, telemetry.cpu.percent];
-      return next.slice(-20); // Keep last 20 points
+      return next.slice(-SPARKLINE_HISTORY_LENGTH);
     });
 
     setRamHistory(prev => {
       const next = [...prev, telemetry.ram.percent];
-      return next.slice(-20);
+      return next.slice(-SPARKLINE_HISTORY_LENGTH);
     });
 
-  }, [telemetry]); // Update when telemetry changes
+  }, [telemetry]);
 
   if (!visible || !telemetry) return null;
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(2, 1fr)',
-      gap: '12px',
-      padding: '0 20px 20px 20px',
-      borderBottom: '1px solid var(--border-subtle)'
-    }}>
+    <div className="dashboard-grid">
 
-      {/* RAM Card */}
-      <div style={{
-        background: 'var(--bg-surface)',
-        padding: '12px',
-        borderRadius: 'var(--radius-md)',
-        border: '1px solid var(--border-subtle)',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
+      {/* Tarjeta RAM */}
+      <div className="dashboard-card">
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div className="label">RAM Usage</div>
-          <div style={{ fontSize: '18px', fontWeight: 600, margin: '4px 0' }}>
-            {telemetry.ram.used_gb.toFixed(1)} <span style={{ fontSize: '13px', color: 'var(--fg-secondary)', fontWeight: 400 }}>/ {telemetry.ram.total_gb} GB</span>
+          <div className="card-value-large">
+            {telemetry.ram.used_gb.toFixed(1)} <span className="card-subtext">/ {telemetry.ram.total_gb} GB</span>
           </div>
         </div>
 
-        {/* Sparkline Overlay */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 32, opacity: 0.2 }}>
+        <div className="sparkline-container">
           <Sparkline data={ramHistory} color="var(--fg-primary)" />
         </div>
       </div>
 
-      {/* CPU Card */}
-      <div style={{
-        background: 'var(--bg-surface)',
-        padding: '12px',
-        borderRadius: 'var(--radius-md)',
-        border: '1px solid var(--border-subtle)',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
+      {/* Tarjeta CPU */}
+      <div className="dashboard-card">
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div className="label">CPU Load</div>
-          <div style={{ fontSize: '18px', fontWeight: 600, margin: '4px 0' }}>
+          <div className="card-value-large">
             {telemetry.cpu.percent.toFixed(1)}%
           </div>
         </div>
 
-        {/* Sparkline Overlay */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 32, opacity: 0.2 }}>
+        <div className="sparkline-container">
           <Sparkline
             data={cpuHistory}
             color={telemetry.cpu.percent > 80 ? 'var(--warning)' : 'var(--fg-primary)'}
@@ -111,18 +97,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ telemetry, visible }) => {
         </div>
       </div>
 
-      {/* GPU Card (Full Width if present) */}
+      {/* Tarjeta GPU (Ancho completo si existe) */}
       {telemetry.gpu && (
-        <div style={{
-          gridColumn: '1 / -1',
-          background: 'var(--bg-surface)',
-          padding: '12px',
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border-subtle)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
+        <div className="dashboard-card dashboard-card-full">
           <div>
             <div className="label">GPU VRAM</div>
             <div style={{ fontSize: '16px', fontWeight: 600 }}>
@@ -138,17 +115,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ telemetry, visible }) => {
         </div>
       )}
 
-      {/* Uptime / Stat (Dummy for now) */}
-      <div style={{
-        gridColumn: '1 / -1',
-        display: 'flex',
-        gap: '8px',
-        fontSize: '12px',
-        color: 'var(--fg-secondary)'
-      }}>
-        <span>System Status: Online</span>
+      {/* Barra de Estado (Placeholder) */}
+      <div className="dashboard-status-bar">
+        <span>Status: Online</span>
         <span>•</span>
-        <span>Latency: ~0ms</span>
+        <span>Latency: &lt;1ms</span>
       </div>
 
     </div>

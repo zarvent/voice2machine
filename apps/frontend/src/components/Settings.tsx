@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { AppConfig } from '../types';
+import { SETTINGS_CLOSE_DELAY_MS } from '../constants';
 
 interface SettingsProps {
   onClose: () => void;
@@ -8,12 +9,17 @@ interface SettingsProps {
 
 type TabType = 'general' | 'advanced';
 
+/**
+ * Modal de configuración de la aplicación.
+ * Permite modificar parámetros de Whisper, selección de backend LLM y opciones avanzadas.
+ */
 export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<AppConfig>({});
 
+  // Cargar configuración inicial desde el backend
   useEffect(() => {
     const loadConfig = async () => {
       try {
@@ -29,6 +35,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     loadConfig();
   }, []);
 
+  /** Helper para actualizar estado inmutable profundo */
   const handleChange = (section: string, key: string, value: any) => {
     setConfig(prev => ({
       ...prev,
@@ -39,31 +46,33 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     }));
   };
 
+  /** Guarda configuración via IPC y cierra modal */
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Send only what changed ideally, but sending connection is ok
       await invoke('update_config', { updates: config });
       setTimeout(() => {
         setSaving(false);
         onClose();
-      }, 500);
+      }, SETTINGS_CLOSE_DELAY_MS);
     } catch (error) {
       console.error('Failed to update config:', error);
       setSaving(false);
+      // TODO: Mostrar error visual
     }
   };
 
   if (loading) return null;
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true">
       <div className="modal-content">
         <div className="modal-header">
-          <div style={{ fontWeight: 600 }}>Settings</div>
-          <button onClick={onClose} className="btn-icon">✕</button>
+          <div style={{ fontWeight: 600 }}>Configuración</div>
+          <button onClick={onClose} className="btn-icon" aria-label="Cerrar configuración">✕</button>
         </div>
 
+        {/* TABS DE NAVEGACIÓN */}
         <div className="tabs" role="tablist">
           <button
             role="tab"
@@ -79,37 +88,40 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             className={`tab ${activeTab === 'advanced' ? 'active' : ''}`}
             onClick={() => setActiveTab('advanced')}
           >
-            Advanced
+            Avanzado
           </button>
         </div>
 
         <div className="modal-body">
+          {/* SECCIÓN GENERAL */}
           {activeTab === 'general' && (
             <>
               <div className="form-group">
-                <label className="label">Whisper Model</label>
+                <label className="label" htmlFor="whisper-model">Modelo Whisper (Transcripción)</label>
                 <select
+                  id="whisper-model"
                   className="select"
                   value={config.whisper?.model || 'large-v3-turbo'}
                   onChange={(e) => handleChange('whisper', 'model', e.target.value)}
                 >
-                  <option value="tiny">Tiny (Fastest)</option>
+                  <option value="tiny">Tiny (Más rápido, menos preciso)</option>
                   <option value="base">Base</option>
                   <option value="small">Small</option>
                   <option value="medium">Medium</option>
-                  <option value="large-v3-turbo">Large v3 Turbo (Recommended)</option>
+                  <option value="large-v3-turbo">Large v3 Turbo (Recomendado)</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label className="label">LLM Backend</label>
+                <label className="label" htmlFor="llm-backend">Backend IA (Refinamiento)</label>
                 <select
+                  id="llm-backend"
                   className="select"
                   value={config.llm?.backend || 'local'}
                   onChange={(e) => handleChange('llm', 'backend', e.target.value)}
                 >
-                  <option value="local">Local (Private - Qwen/Llama)</option>
-                  <option value="gemini">Google Gemini (Cloud)</option>
+                  <option value="local">Local (Privado - Llama/Qwen)</option>
+                  <option value="gemini">Google Gemini (Nube - Requiere API Key)</option>
                 </select>
               </div>
 
@@ -119,32 +131,38 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   <input
                     className="input"
                     type="password"
-                    placeholder="Loaded from Env (Read-only)"
+                    placeholder="Cargada desde variable de entorno (Sólo lectura)"
                     disabled
                   />
+                  <small style={{ color: 'var(--fg-secondary)', fontSize: '11px' }}>
+                    Configure GOOGLE_API_KEY en su archivo .env
+                  </small>
                 </div>
               )}
             </>
           )}
 
+          {/* SECCIÓN AVANZADA */}
           {activeTab === 'advanced' && (
             <>
               <div className="form-group">
-                <label className="label">Compute Type</label>
+                <label className="label" htmlFor="compute-type">Precisión de Cómputo</label>
                 <select
+                  id="compute-type"
                   className="select"
                   value={config.whisper?.compute_type || 'int8_float16'}
                   onChange={(e) => handleChange('whisper', 'compute_type', e.target.value)}
                 >
-                  <option value="float16">float16 (Best VRAM)</option>
-                  <option value="int8_float16">int8_float16 (Balanced)</option>
-                  <option value="int8">int8 (Lowest VRAM)</option>
+                  <option value="float16">float16 (Mayor consumo VRAM)</option>
+                  <option value="int8_float16">int8_float16 (Balanceado)</option>
+                  <option value="int8">int8 (Menor consumo VRAM)</option>
                 </select>
               </div>
 
               <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <label className="label">VAD Filtering (Voice Activity Detection)</label>
+                <label className="label" htmlFor="vad-filter">Filtro de Silencio (VAD)</label>
                 <input
+                  id="vad-filter"
                   type="checkbox"
                   checked={config.whisper?.vad_filter ?? true}
                   onChange={(e) => handleChange('whisper', 'vad_filter', e.target.checked)}
@@ -152,8 +170,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
               </div>
 
               <div className="form-group">
-                <label className="label">LLM Max Tokens</label>
+                <label className="label" htmlFor="max-tokens">Tokens Máximos (LLM Local)</label>
                 <input
+                  id="max-tokens"
                   className="input"
                   type="number"
                   value={config.llm?.local?.max_tokens || 512}
@@ -164,15 +183,16 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
           )}
         </div>
 
+        {/* FOOTER ACCIONES */}
         <div style={{ padding: '20px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: 'var(--bg-panel)' }}>
-          <button className="btn-secondary" onClick={onClose} disabled={saving} style={{ border: 'none' }}>Cancel</button>
+          <button className="btn-secondary" onClick={onClose} disabled={saving} style={{ border: 'none' }}>Cancelar</button>
           <button
             className="btn-secondary"
             onClick={handleSave}
             disabled={saving}
             style={{ background: 'var(--fg-primary)', color: 'var(--bg-app)', borderColor: 'transparent' }}
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Guardando...' : 'Guardar Cambios'}
           </button>
         </div>
       </div>
