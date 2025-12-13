@@ -35,6 +35,7 @@ export const Header = React.memo(({
                     rel="noopener noreferrer"
                     className="btn-icon"
                     title="Code on GitHub"
+                    aria-label="Code on GitHub"
                 >
                     <GithubIcon />
                 </a>
@@ -43,6 +44,7 @@ export const Header = React.memo(({
                     onClick={onToggleDashboard}
                     className={`btn-icon ${showDashboard ? 'active' : ''}`}
                     title="System Metrics"
+                    aria-label="System Metrics"
                 >
                     <ChartIcon />
                 </button>
@@ -51,6 +53,7 @@ export const Header = React.memo(({
                     onClick={onOpenSettings}
                     className="btn-icon"
                     title="Settings"
+                    aria-label="Settings"
                 >
                     <SettingsIcon />
                 </button>
