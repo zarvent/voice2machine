@@ -81,6 +81,7 @@ RECORDING_FLAG="/tmp/v2m_recording.pid"
 DAEMON_SCRIPT="${SCRIPT_DIR}/v2m-daemon.sh"
 
 # --- FUNCIÓN PRINCIPAL ---
+# --- FUNCIÓN PRINCIPAL ---
 ensure_daemon() {
     "${DAEMON_SCRIPT}" status > /dev/null 2>&1
     if [ $? -ne 0 ]; then
@@ -95,11 +96,14 @@ ensure_daemon() {
             fi
             exit 1
         fi
+        # Esperar un momento a que el daemon esté listo
+        sleep 2
     fi
 }
 
 run_client() {
     local command=$1
+    local payload="${2:-}"
 
     if [ ! -f "${VENV_PATH}/bin/activate" ]; then
         if command -v notify-send > /dev/null 2>&1; then
@@ -110,14 +114,26 @@ run_client() {
 
     source "${VENV_PATH}/bin/activate"
     export PYTHONPATH="${PROJECT_DIR}/src"
-    python3 "${MAIN_SCRIPT}" "${command}"
+    # URGENT FIX: Usar módulo cliente para output parseable y evitar desincronización
+    python3 -m v2m.client "${command}" ${payload}
 }
 
 # --- LÓGICA DE CONMUTACIÓN ---
 ensure_daemon
 
-if [ -f "${RECORDING_FLAG}" ]; then
+# Consultar estado real al daemon (IPC) en lugar de confiar en archivo PID
+STATUS_OUTPUT=$(run_client "GET_STATUS")
+
+if [[ "$STATUS_OUTPUT" == *"STATUS: recording"* ]]; then
+    # Si está grabando, detener
     run_client "STOP_RECORDING"
+elif [[ "$STATUS_OUTPUT" == *"STATUS: idle"* ]] || [[ "$STATUS_OUTPUT" == *"STATUS: paused"* ]]; then
+    # Si está inactivo o pausado, iniciar
+    run_client "START_RECORDING"
 else
+    # Estado desconocido o error, intentar iniciar por defecto
+    if command -v notify-send > /dev/null 2>&1; then
+        notify-send --expire-time=${NOTIFY_EXPIRE_TIME} "⚠️ estado desconocido" "intentando grabar..."
+    fi
     run_client "START_RECORDING"
 fi
