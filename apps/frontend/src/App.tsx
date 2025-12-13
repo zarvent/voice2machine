@@ -56,7 +56,7 @@ function App() {
 
           {/* Error Toast (could be a proper Toast component if multiple) */}
           {status === "error" && errorMessage && (
-            <div className="error-banner" style={{
+            <div className="error-banner" role="alert" aria-live="assertive" style={{
               position: 'absolute',
               top: 20,
               left: '50%',
@@ -65,7 +65,14 @@ function App() {
               minWidth: 300
             }}>
               {errorMessage}
-              <button onClick={actions.clearError} style={{ background: 'none', border: 'none', color: 'inherit', marginLeft: 10, cursor: 'pointer' }}>✕</button>
+              <button
+                onClick={actions.clearError}
+                style={{ background: 'none', border: 'none', color: 'inherit', marginLeft: 10, cursor: 'pointer' }}
+                aria-label="Dismiss error"
+                title="Dismiss"
+              >
+                ✕
+              </button>
             </div>
           )}
         </div>

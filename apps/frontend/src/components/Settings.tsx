@@ -61,7 +61,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
       <div className="modal-content">
         <div className="modal-header">
           <div style={{ fontWeight: 600 }}>Settings</div>
-          <button onClick={onClose} className="btn-icon">✕</button>
+          <button onClick={onClose} className="btn-icon" aria-label="Close settings" title="Close">✕</button>
         </div>
 
         <div className="tabs" role="tablist">
