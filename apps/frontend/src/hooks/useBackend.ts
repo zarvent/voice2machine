@@ -190,6 +190,17 @@ export function useBackend(): [BackendState, BackendActions] {
         await pollStatus();
     };
 
+    const restartDaemon = async () => {
+        setStatus("restarting");
+        try {
+            await invoke("restart_daemon");
+            // El sondeo de estado se encargará de la transición a conectado/inactivo
+        } catch (e) {
+            setErrorMessage(String(e));
+            setStatus("error");
+        }
+    };
+
     const state: BackendState = {
         status,
         transcription,
@@ -207,7 +218,8 @@ export function useBackend(): [BackendState, BackendActions] {
         togglePause,
         setTranscription,
         clearError,
-        retryConnection
+        retryConnection,
+        restartDaemon,
     };
 
     return [state, actions];
