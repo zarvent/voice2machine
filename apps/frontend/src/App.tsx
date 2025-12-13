@@ -89,6 +89,18 @@ function App() {
             </div>
             <Dashboard visible={true} telemetry={telemetry} />
 
+            {/* Botón de Reinicio */}
+            <div style={{ padding: '0 20px 20px' }}>
+                <button
+                    onClick={actions.restartDaemon}
+                    disabled={status === 'restarting'}
+                    className="button-secondary"
+                    style={{ width: '100%' }}
+                >
+                    {status === 'restarting' ? 'Reiniciando...' : 'Reiniciar Daemon'}
+                </button>
+            </div>
+
             {/* Future: History List here */}
             {backendState.history && backendState.history.length > 0 && (
               <div style={{ padding: '20px', borderTop: '1px solid var(--border-subtle)' }}>

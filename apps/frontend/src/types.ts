@@ -10,7 +10,8 @@ export type Status =
     | "processing"
     | "paused"
     | "error"
-    | "disconnected";
+    | "disconnected"
+    | "restarting";
 
 export interface TelemetryData {
     ram: {
@@ -64,6 +65,7 @@ export interface BackendActions {
     setTranscription: (text: string) => void;
     clearError: () => void;
     retryConnection: () => Promise<void>;
+    restartDaemon: () => Promise<void>;
 }
 
 export interface WhisperConfig {

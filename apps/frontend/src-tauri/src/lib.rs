@@ -6,6 +6,9 @@ use tokio::net::UnixStream;
 use tokio::io::{AsyncWriteExt, AsyncReadExt};
 use serde::{Serialize, Deserialize};
 use serde_json::json;
+use std::process::Command;
+use tauri::api::path::resolve_path;
+use tauri::Manager;
 
 const SOCKET_PATH: &str = "/tmp/v2m.sock";
 const MAX_RESPONSE_SIZE: usize = 1024 * 1024; // 1MB límite (previene DoS/OOM)
@@ -184,6 +187,27 @@ async fn get_config() -> Result<String, String> {
     extract_result(response)
 }
 
+/// reinicia el daemon usando el script v2m-daemon.sh
+#[tauri::command]
+async fn restart_daemon(app: tauri::AppHandle) -> Result<String, String> {
+    let script_path = app.path()
+        .resolve("scripts/v2m-daemon.sh", tauri::path::BaseDirectory::Resource)
+        .map_err(|e| format!("error resolviendo ruta: {}", e))?;
+
+    let output = Command::new("bash")
+        .arg(script_path)
+        .arg("restart")
+        .output()
+        .map_err(|e| format!("error ejecutando script: {}", e))?;
+
+    if output.status.success() {
+        Ok("daemon reiniciado".to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("fallo al reiniciar daemon: {}", stderr))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -197,7 +221,8 @@ pub fn run() {
             pause_daemon,
             resume_daemon,
             update_config,
-            get_config
+            get_config,
+            restart_daemon
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
