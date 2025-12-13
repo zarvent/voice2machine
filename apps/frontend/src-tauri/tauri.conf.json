@@ -31,11 +31,8 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": [
-      "../../scripts/v2m-daemon.sh"
-    ],
     "resources": [
-      "../../scripts/v2m-daemon.sh"
+      "../../../scripts/v2m-daemon.sh"
     ]
   }
 }
