@@ -58,9 +58,13 @@ from pydantic_settings import (
     PydanticBaseSettingsSource,
     TomlConfigSettingsSource,
 )
+from v2m.utils.paths import get_secure_runtime_dir
 
 # --- ruta base del proyecto ---
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# --- directorio seguro de ejecución ---
+RUNTIME_DIR = get_secure_runtime_dir()
 
 class PathsConfig(BaseModel):
     """
@@ -86,9 +90,9 @@ class PathsConfig(BaseModel):
             if config.paths.recording_flag.exists():
                 print("hay una grabación en progreso")
     """
-    recording_flag: Path = Field(default=Path("/tmp/v2m_recording.pid"))
-    audio_file: Path = Field(default=Path("/tmp/v2m_audio.wav"))
-    log_file: Path = Field(default=Path("/tmp/v2m_debug.log"))
+    recording_flag: Path = Field(default=RUNTIME_DIR / "v2m_recording.pid")
+    audio_file: Path = Field(default=RUNTIME_DIR / "v2m_audio.wav")
+    log_file: Path = Field(default=RUNTIME_DIR / "v2m_debug.log")
     venv_path: Path = Field(default=Path("~/v2m/venv"))
 
     def __getitem__(self, item):

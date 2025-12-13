@@ -1,7 +1,10 @@
 [paths]
-recording_flag = "/tmp/v2m_recording.pid"
-audio_file = "/tmp/v2m_audio.wav"
-log_file = "/tmp/v2m.log"
+# recording_flag, audio_file y log_file se generan dinámicamente en directorios seguros
+# (/run/user/<uid>/v2m o /tmp/v2m_<uid>) para evitar vulnerabilidades de seguridad.
+# Descomentar solo si se requiere una ubicación específica y segura.
+# recording_flag = "/tmp/v2m_recording.pid"
+# audio_file = "/tmp/v2m_audio.wav"
+# log_file = "/tmp/v2m.log"
 venv_path = "~/v2m/venv"
 
 [whisper]
