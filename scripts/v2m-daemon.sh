@@ -69,8 +69,12 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 VENV_PYTHON="${PROJECT_DIR}/venv/bin/python"
-LOG_FILE="/tmp/v2m_daemon.log"
-PID_FILE="/tmp/v2m_daemon.pid"
+
+# resolver rutas seguras
+source "$( dirname "${SCRIPT_DIR}" )/scripts/resolve_paths.sh"
+
+LOG_FILE="$V2M_LOG_FILE"
+PID_FILE="$V2M_PID_FILE"
 
 start_daemon() {
     if [ -f "${PID_FILE}" ]; then

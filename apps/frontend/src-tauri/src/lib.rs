@@ -7,11 +7,10 @@ use std::os::unix::net::UnixStream;
 use std::process::Command as SysCommand;
 use tauri::path::BaseDirectory;
 use tauri::Manager;
+use std::env;
+use std::path::PathBuf;
 
 // --- CONSTANTES DE SEGURIDAD (SEIKETSU/SAFETY) ---
-
-/// Ruta al socket Unix del daemon Python.
-const DAEMON_SOCKET_PATH: &str = "/tmp/v2m.sock";
 
 /// Tamaño máximo de respuesta permitido (1MB) para prevenir ataques de memoria (DoS).
 const MAX_RESPONSE_SIZE: usize = 1024 * 1024;
@@ -45,6 +44,33 @@ struct DaemonResponse {
 
 // --- FUNCIONES CORE ---
 
+/// Determina la ruta segura del socket del daemon
+/// Replíca la lógica de v2m.utils.paths.get_secure_runtime_dir
+fn get_socket_path() -> String {
+    let app_name = "v2m";
+    let runtime_dir: PathBuf;
+
+    // 1. Try XDG_RUNTIME_DIR
+    if let Ok(xdg) = env::var("XDG_RUNTIME_DIR") {
+        runtime_dir = PathBuf::from(xdg).join(app_name);
+    } else {
+        // 2. Fallback to /tmp/v2m_<uid>
+        // Getting UID safely without external crates using command
+        let uid = SysCommand::new("id")
+            .arg("-u")
+            .output()
+            .ok()
+            .and_then(|output| String::from_utf8(output.stdout).ok())
+            .and_then(|s| s.trim().parse::<u32>().ok())
+            .unwrap_or(0); // Fallback to 0 (root) if fails, though unlikely on user session
+
+        let temp_dir = env::temp_dir();
+        runtime_dir = temp_dir.join(format!("{}_{}", app_name, uid));
+    }
+
+    runtime_dir.join("v2m.sock").to_string_lossy().to_string()
+}
+
 /// Envía una solicitud JSON al daemon Python a través de un socket Unix.
 ///
 /// # Argumentos
@@ -59,8 +85,9 @@ struct DaemonResponse {
 fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String> {
     // 1. Conexión al Socket
     // Intentamos conectar al archivo del socket Unix.
-    let mut stream = UnixStream::connect(DAEMON_SOCKET_PATH)
-        .map_err(|e| format!("No se pudo conectar al daemon (¿está corriendo?): {}", e))?;
+    let socket_path = get_socket_path();
+    let mut stream = UnixStream::connect(&socket_path)
+        .map_err(|e| format!("No se pudo conectar al daemon en {} (¿está corriendo?): {}", socket_path, e))?;
 
     // Configurar timeouts para evitar que la UI se congele si el backend muere.
     stream
