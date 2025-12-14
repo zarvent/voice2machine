@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { Settings } from "./components/Settings";
 import { Header } from "./components/Header";
@@ -23,16 +23,24 @@ function App() {
   const [lastCopied, setLastCopied] = useState(false);
 
   /** Maneja el copiado al portapapeles con feedback visual */
-  const handleCopy = () => {
+  const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(transcription);
     setLastCopied(true);
     setTimeout(() => setLastCopied(false), COPY_FEEDBACK_DURATION_MS);
-  };
+  }, [transcription]);
 
   /** Maneja doble click o enter en histórico */
-  const restoreHistoryItem = (text: string) => {
+  const restoreHistoryItem = useCallback((text: string) => {
     actions.setTranscription(text);
-  };
+  }, [actions]);
+
+  const handleToggleRecord = useCallback(() => {
+    if (status === "recording") actions.stopRecording();
+    else actions.startRecording();
+  }, [status, actions]);
+
+  const handleToggleDashboard = useCallback(() => setShowDashboard(prev => !prev), []);
+  const handleOpenSettings = useCallback(() => setShowSettings(true), []);
 
   return (
     <main className="app-container">
@@ -40,8 +48,8 @@ function App() {
         isConnected={isConnected}
         lastPingTime={lastPingTime}
         showDashboard={showDashboard}
-        onToggleDashboard={() => setShowDashboard(!showDashboard)}
-        onOpenSettings={() => setShowSettings(true)}
+        onToggleDashboard={handleToggleDashboard}
+        onOpenSettings={handleOpenSettings}
       />
 
       <div className="workspace">
@@ -59,10 +67,7 @@ function App() {
 
           <MicControl
             status={status}
-            onToggleRecord={() => {
-              if (status === "recording") actions.stopRecording();
-              else actions.startRecording();
-            }}
+            onToggleRecord={handleToggleRecord}
           />
 
           {/* Notificación de error flotante */}

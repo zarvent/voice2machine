@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import {
     BackendState,
@@ -49,7 +49,7 @@ export function useBackend(): [BackendState, BackendActions] {
     // --- HELPERS INTERNOS ---
 
     /** Guarda una nueva entrada en el historial y lo persiste */
-    const addToHistory = (text: string, source: "recording" | "refinement") => {
+    const addToHistory = useCallback((text: string, source: "recording" | "refinement") => {
         if (!text.trim()) return;
 
         const newItem: HistoryItem = {
@@ -64,7 +64,7 @@ export function useBackend(): [BackendState, BackendActions] {
             localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(newHistory));
             return newHistory;
         });
-    };
+    }, []);
 
     // Refs para acceso síncrono en closures de intervalos
     const statusRef = useRef<Status>(status);
@@ -74,9 +74,9 @@ export function useBackend(): [BackendState, BackendActions] {
     useEffect(() => { errorRef.current = errorMessage; }, [errorMessage]);
 
     /** Parsea respuesta JSON del daemon de forma segura */
-    const parseResponse = (json: string): DaemonResponse => {
+    const parseResponse = useCallback((json: string): DaemonResponse => {
         try { return JSON.parse(json); } catch { return {}; }
-    };
+    }, []);
 
     // --- LÓGICA DE POLLING (Sondeo) ---
 
@@ -133,7 +133,7 @@ export function useBackend(): [BackendState, BackendActions] {
             setIsConnected(false);
             setStatus("disconnected");
         }
-    }, []);
+    }, [parseResponse]);
 
     // Configurar intervalo de polling
     useEffect(() => {
@@ -144,8 +144,8 @@ export function useBackend(): [BackendState, BackendActions] {
 
     // --- ACCIONES PÚBLICAS ---
 
-    const startRecording = async () => {
-        if (status === "paused") return;
+    const startRecording = useCallback(async () => {
+        if (statusRef.current === "paused") return;
         try {
             await invoke("start_recording");
             setStatus("recording");
@@ -153,9 +153,9 @@ export function useBackend(): [BackendState, BackendActions] {
             setErrorMessage(String(e));
             setStatus("error");
         }
-    };
+    }, []);
 
-    const stopRecording = async () => {
+    const stopRecording = useCallback(async () => {
         setStatus("transcribing"); // UI Optimista
         try {
             const result = await invoke<string>("stop_recording");
@@ -173,9 +173,9 @@ export function useBackend(): [BackendState, BackendActions] {
             setErrorMessage(String(e));
             setStatus("error");
         }
-    };
+    }, [addToHistory, parseResponse]);
 
-    const processText = async () => {
+    const processText = useCallback(async () => {
         if (!transcription) return;
         setStatus("processing"); // UI Optimista
         try {
@@ -194,11 +194,11 @@ export function useBackend(): [BackendState, BackendActions] {
             setErrorMessage(String(e));
             setStatus("error");
         }
-    };
+    }, [transcription, addToHistory, parseResponse]);
 
-    const togglePause = async () => {
+    const togglePause = useCallback(async () => {
         try {
-            if (status === "paused") {
+            if (statusRef.current === "paused") {
                 await invoke("resume_daemon");
                 setStatus("idle");
             } else {
@@ -208,15 +208,15 @@ export function useBackend(): [BackendState, BackendActions] {
         } catch (e) {
             setErrorMessage(String(e));
         }
-    };
+    }, []);
 
-    const clearError = () => setErrorMessage("");
+    const clearError = useCallback(() => setErrorMessage(""), []);
 
-    const retryConnection = async () => {
+    const retryConnection = useCallback(async () => {
         await pollStatus();
-    };
+    }, [pollStatus]);
 
-    const restartDaemon = async () => {
+    const restartDaemon = useCallback(async () => {
         setStatus("restarting");
         try {
             await invoke("restart_daemon");
@@ -225,9 +225,9 @@ export function useBackend(): [BackendState, BackendActions] {
             setErrorMessage(String(e));
             setStatus("error");
         }
-    };
+    }, []);
 
-    const state: BackendState = {
+    const state: BackendState = useMemo(() => ({
         status,
         transcription,
         telemetry,
@@ -235,9 +235,9 @@ export function useBackend(): [BackendState, BackendActions] {
         isConnected,
         lastPingTime,
         history
-    };
+    }), [status, transcription, telemetry, errorMessage, isConnected, lastPingTime, history]);
 
-    const actions: BackendActions = {
+    const actions: BackendActions = useMemo(() => ({
         startRecording,
         stopRecording,
         processText,
@@ -246,7 +246,7 @@ export function useBackend(): [BackendState, BackendActions] {
         clearError,
         retryConnection,
         restartDaemon,
-    };
+    }), [startRecording, stopRecording, processText, togglePause, clearError, retryConnection, restartDaemon]);
 
     return [state, actions];
 }
