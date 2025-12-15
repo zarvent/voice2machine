@@ -178,8 +178,5 @@ class WhisperTranscriptionService(TranscriptionService):
             logger.error(f"error durante transcripción: {e}")
             raise e
         finally:
-            # empty_cache es barato ~1ms suficiente para liberar vram
             # gc.collect removido python gc automático es suficiente
-            # el thread daemon añadía ~10-50ms de overhead innecesario
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            pass
