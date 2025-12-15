@@ -84,8 +84,19 @@ class LinuxClipboardAdapter(ClipboardInterface):
         # 2. Scavenging vía loginctl
         try:
             user = os.environ.get("USER") or subprocess.getoutput("whoami")
-            cmd = f"loginctl list-sessions --no-legend | grep {user} | awk '{{print $1}}'"
-            sessions = subprocess.check_output(cmd, shell=True, text=True).strip().split('\n')
+            # Safe subprocess call without shell=True
+            output = subprocess.check_output(
+                ["loginctl", "list-sessions", "--no-legend"],
+                text=True
+            ).strip()
+
+            sessions = []
+            for line in output.split('\n'):
+                parts = line.split()
+                # loginctl list-sessions output format: SESSION UID USER SEAT TTY
+                # We want session ID (index 0) where USER (index 2) matches current user
+                if len(parts) >= 3 and parts[2] == user:
+                     sessions.append(parts[0])
 
             for session_id in sessions:
                 if not session_id: continue
