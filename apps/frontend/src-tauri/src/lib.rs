@@ -2,16 +2,15 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::env;
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
+use std::path::PathBuf;
 use std::process::Command as SysCommand;
 use tauri::path::BaseDirectory;
 use tauri::Manager;
 
 // --- CONSTANTES DE SEGURIDAD (SEIKETSU/SAFETY) ---
-
-/// Ruta al socket Unix del daemon Python.
-const DAEMON_SOCKET_PATH: &str = "/tmp/v2m.sock";
 
 /// Tamaño máximo de respuesta permitido (1MB) para prevenir ataques de memoria (DoS).
 const MAX_RESPONSE_SIZE: usize = 1024 * 1024;
@@ -45,6 +44,26 @@ struct DaemonResponse {
 
 // --- FUNCIONES CORE ---
 
+/// Obtiene la ruta segura del socket del daemon.
+/// Replica la lógica de v2m.utils.paths.get_secure_runtime_dir:
+/// 1. XDG_RUNTIME_DIR/v2m/v2m.sock
+/// 2. /tmp/v2m_<uid>/v2m.sock
+fn get_socket_path() -> PathBuf {
+    if let Ok(xdg_runtime) = env::var("XDG_RUNTIME_DIR") {
+        return PathBuf::from(xdg_runtime).join("v2m").join("v2m.sock");
+    }
+
+    // Fallback: /tmp/v2m_<uid>/v2m.sock
+    // Usamos `id -u` porque no queremos agregar dependencias externas como `users` o `libc`
+    let uid_output = SysCommand::new("id")
+        .arg("-u")
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| "1000".to_string()); // Fallback seguro a 1000 si falla id
+
+    PathBuf::from(format!("/tmp/v2m_{}/v2m.sock", uid_output))
+}
+
 /// Envía una solicitud JSON al daemon Python a través de un socket Unix.
 ///
 /// # Argumentos
@@ -59,8 +78,9 @@ struct DaemonResponse {
 fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String> {
     // 1. Conexión al Socket
     // Intentamos conectar al archivo del socket Unix.
-    let mut stream = UnixStream::connect(DAEMON_SOCKET_PATH)
-        .map_err(|e| format!("No se pudo conectar al daemon (¿está corriendo?): {}", e))?;
+    let socket_path = get_socket_path();
+    let mut stream = UnixStream::connect(&socket_path)
+        .map_err(|e| format!("No se pudo conectar al daemon en {:?} (¿está corriendo?): {}", socket_path, e))?;
 
     // Configurar timeouts para evitar que la UI se congele si el backend muere.
     stream
