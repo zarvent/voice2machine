@@ -35,6 +35,15 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     loadConfig();
   }, []);
 
+  // Manejar cierre con tecla Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   /** Helper para actualizar estado inmutable profundo */
   const handleChange = (section: string, key: string, value: any) => {
     setConfig(prev => ({
