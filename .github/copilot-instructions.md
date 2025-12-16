@@ -19,7 +19,7 @@ Voice2Machine (V2M) is a **local-first** voice dictation tool designed to conver
 - **Core Libraries:** `faster-whisper`, `sounddevice`, `pydantic`, `google-genai`.
 - **Linting/Formatting:** `ruff` (strict configuration, 120 line length).
 - **Testing:** `pytest` (asyncio mode), `pytest-mock`.
-- **Type Checking:** Strict type hints (validated by `mypy` - implied).
+- **Type Checking:** Strict type hints (validated by `ruff`'s type-aware linting).
 
 ### Frontend (`apps/frontend`)
 - **Framework:** Tauri v2 (Rust core) + React v19.
