@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -12,18 +12,27 @@ interface ToastProps {
 export const Toast: React.FC<ToastProps> = ({ message, type, onDismiss, duration = 3000 }) => {
     const [visible, setVisible] = useState(true);
 
-    const handleClose = () => {
+    const handleClose = useCallback(() => {
         setVisible(false);
-        setTimeout(onDismiss, 200); // Wait for exit animation
-    };
+        setTimeout(onDismiss, 200); // Esperar a la animación de salida
+    }, [onDismiss]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            setVisible(false);
-            setTimeout(onDismiss, 200);
+            handleClose();
         }, duration);
         return () => clearTimeout(timer);
-    }, [duration, onDismiss]);
+    }, [duration, handleClose]);
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                handleClose();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [handleClose]);
 
     const getIcon = () => {
         switch (type) {
@@ -59,7 +68,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onDismiss, duration
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                paddingRight: '32px', // Space for close button
+                paddingRight: '32px', // Espacio para el botón de cerrar
                 position: 'relative'
             }}
         >
@@ -69,22 +78,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onDismiss, duration
             <button
                 onClick={handleClose}
                 aria-label="Cerrar notificación"
-                style={{
-                    position: 'absolute',
-                    right: '8px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--fg-secondary)',
-                    cursor: 'pointer',
-                    fontSize: '18px',
-                    padding: '4px',
-                    lineHeight: 1,
-                    opacity: 0.6
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                className="toast-close"
             >
                 ×
             </button>
