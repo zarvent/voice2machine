@@ -349,24 +349,43 @@ class Daemon:
 
         try:
             # fase 1 matar todos los procesos v2m excepto el actual
-            for proc in psutil.process_iter(['pid', 'cmdline']):
+            # fase 1 matar todos los procesos v2m excepto el actual
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
                 try:
-                    cmdline = ' '.join(proc.info['cmdline'] or [])
-                    # buscar procesos v2m pero excluir el actual y herramientas del ide
-                    if ('v2m' in cmdline and
-                        proc.pid != current_pid and
-                        'language_server' not in cmdline and
-                        'jedi' not in cmdline and
-                        'health_check' not in cmdline):
+                    cmdline_list = proc.info['cmdline'] or []
+                    cmdline_str = ' '.join(cmdline_list)
+                    proc_name = (proc.info['name'] or '').lower()
 
-                        logger.warning(f"🧹 eliminando proceso v2m huérfano pid {proc.pid}")
-                        proc.kill()
-                        try:
-                            proc.wait(timeout=3)
-                        except psutil.TimeoutExpired:
-                            pass
-                        killed_count += 1
-                        logger.info(f"✅ proceso {proc.pid} eliminado")
+                    # CRITERIOS ESTRICTOS PARA IDENTIFICAR PROCESOS V2M:
+                    # 1. Debe ser un proceso Python o el binario 'v2m'
+                    # 2. Debe indicar ejecución del módulo v2m específico
+                    is_python = 'python' in proc_name
+                    is_v2m_binary = proc_name == 'v2m'
+
+                    # Marcadores fuertes de que es REALMENTE la app v2m
+                    # Evita falsos positivos como "vim v2m_notes.txt"
+                    # Buscamos: "python -m v2m", "python -m v2m.daemon", etc.
+                    is_v2m_module = any(marker in cmdline_str for marker in [
+                        'v2m.daemon',
+                        'v2m.main',
+                        '-m v2m'
+                    ])
+
+                    if ((is_python and is_v2m_module) or is_v2m_binary):
+                        # Filtros de seguridad adicionales (excluir yo mismo y herramientas dev)
+                        if (proc.pid != current_pid and
+                            'language_server' not in cmdline_str and
+                            'jedi' not in cmdline_str and
+                            'health_check' not in cmdline_str):
+
+                            logger.warning(f"🧹 eliminando proceso v2m huérfano pid {proc.pid}: {cmdline_str[:50]}...")
+                            proc.kill()
+                            try:
+                                proc.wait(timeout=3)
+                            except psutil.TimeoutExpired:
+                                pass
+                            killed_count += 1
+                            logger.info(f"✅ proceso {proc.pid} eliminado")
 
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     pass
