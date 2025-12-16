@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { AppConfig } from '../types';
 import { SETTINGS_CLOSE_DELAY_MS } from '../constants';
+import { Toast, ToastType } from './Toast';
 
 interface SettingsProps {
   onClose: () => void;
@@ -18,6 +19,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<AppConfig>({});
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   // Cargar configuración inicial desde el backend
   useEffect(() => {
@@ -28,6 +30,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         setConfig(data.config || {});
       } catch (e) {
         console.error("Error loading config:", e);
+        setToast({ message: "Error cargando configuración", type: 'error' });
       } finally {
         setLoading(false);
       }
@@ -60,6 +63,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     setSaving(true);
     try {
       await invoke('update_config', { updates: config });
+      setToast({ message: 'Configuración guardada', type: 'success' });
       setTimeout(() => {
         setSaving(false);
         onClose();
@@ -67,7 +71,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     } catch (error) {
       console.error('Failed to update config:', error);
       setSaving(false);
-      // TODO: Mostrar error visual
+      setToast({ message: `Error al guardar: ${error}`, type: 'error' });
     }
   };
 
@@ -81,11 +85,23 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
       aria-modal="true"
       aria-labelledby="settings-title"
     >
-      <div className="modal-content">
+      <div className="modal-content" style={{ position: 'relative' }}>
         <div className="modal-header">
           <div id="settings-title" style={{ fontWeight: 600 }}>Configuración</div>
           <button onClick={onClose} className="btn-icon" aria-label="Cerrar configuración">✕</button>
         </div>
+
+        {/* TOAST NOTIFICATIONS */}
+        {toast && (
+          <div style={{ position: 'absolute', top: '70px', right: '20px', zIndex: 10, width: 'auto' }}>
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onDismiss={() => setToast(null)}
+              duration={3000}
+            />
+          </div>
+        )}
 
         {/* TABS DE NAVEGACIÓN */}
         <div className="tabs" role="tablist">
