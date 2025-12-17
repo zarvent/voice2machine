@@ -22,8 +22,8 @@ export const MicControl = React.memo(({ status, onToggleRecord }: MicControlProp
         if (status === "transcribing") return "Transcribiendo audio...";
         if (status === "processing") return "Procesando texto...";
         if (status === "paused") return "Sistema pausado - Reanudar para grabar";
-        if (isRecording) return "Click para detener";
-        return "Click para grabar";
+        if (isRecording) return "Click para detener (Ctrl+Espacio)";
+        return "Click para grabar (Ctrl+Espacio)";
     };
 
     return (

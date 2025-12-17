@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { Settings } from "./components/Settings";
 import { Header } from "./components/Header";
@@ -38,6 +38,21 @@ function App() {
     if (status === "recording") actions.stopRecording();
     else actions.startRecording();
   }, [status, actions]);
+
+  // Global shortcut for toggling recording (Ctrl+Space)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
+        e.preventDefault();
+        const isDisabled = status === "transcribing" || status === "processing" || status === "disconnected" || status === "paused";
+        if (!isDisabled) {
+          handleToggleRecord();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleToggleRecord, status]);
 
   const handleToggleDashboard = useCallback(() => setShowDashboard(prev => !prev), []);
   const handleOpenSettings = useCallback(() => setShowSettings(true), []);
