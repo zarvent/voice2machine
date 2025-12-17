@@ -175,7 +175,9 @@ class Daemon:
                     status="error",
                     error=f"payload excede límite de {MAX_PAYLOAD_SIZE // (1024*1024)}MB"
                 )
-                writer.write(response.to_json().encode())
+                # FRAMING: enviar header de 4 bytes + payload
+                resp_bytes = response.to_json().encode("utf-8")
+                writer.write(len(resp_bytes).to_bytes(4, byteorder="big") + resp_bytes)
                 await writer.drain()
                 writer.close()
                 return
@@ -202,7 +204,9 @@ class Daemon:
                 status="error",
                 error=f"formato JSON inválido: {str(e)}"
             )
-            writer.write(response.to_json().encode())
+            # FRAMING: enviar header de 4 bytes + payload
+            resp_bytes = response.to_json().encode("utf-8")
+            writer.write(len(resp_bytes).to_bytes(4, byteorder="big") + resp_bytes)
             await writer.drain()
             writer.close()
             return
@@ -286,7 +290,11 @@ class Daemon:
             logger.error(f"error manejando comando {cmd_name}: {e}")
             response = IPCResponse(status="error", error=str(e))
 
-        writer.write(response.to_json().encode())
+        # FRAMING: enviar header de 4 bytes con longitud + payload JSON
+        # esto es CRÍTICO para que el frontend Rust pueda leer la respuesta
+        response_bytes = response.to_json().encode("utf-8")
+        response_len = len(response_bytes)
+        writer.write(response_len.to_bytes(4, byteorder="big") + response_bytes)
         await writer.drain()
         writer.close()
 

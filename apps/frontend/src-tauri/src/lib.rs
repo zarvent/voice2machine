@@ -26,7 +26,8 @@ const READ_TIMEOUT_SECS: u64 = 5;
 #[derive(Serialize)]
 struct IpcCommand {
     /// Nombre del comando (ej: "GET_STATUS")
-    command: String,
+    /// NOTA: El campo se llama 'cmd' para coincidir con IPCRequest de Python
+    cmd: String,
     /// Datos opcionales (payload)
     data: Option<Value>,
 }
@@ -40,7 +41,7 @@ struct DaemonResponse {
     /// Mensaje descriptivo o datos de retorno
     data: Option<Value>,
     /// Mensaje de error si status == "error"
-    message: Option<String>,
+    error: Option<String>,
 }
 
 // --- FUNCIONES CORE ---
@@ -69,7 +70,7 @@ fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String
 
     // 2. Preparación del Payload
     let request = IpcCommand {
-        command: command.to_string(),
+        cmd: command.to_string(),
         data,
     };
     let json_payload = serde_json::to_string(&request)
@@ -124,7 +125,7 @@ fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String
     if response.status == "success" {
         Ok(response.data.unwrap_or(Value::Null))
     } else {
-        Err(response.message.unwrap_or_else(|| "Error desconocido del daemon".to_string()))
+        Err(response.error.unwrap_or_else(|| "Error desconocido del daemon".to_string()))
     }
 }
 
