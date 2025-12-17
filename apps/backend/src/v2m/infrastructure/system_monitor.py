@@ -37,7 +37,34 @@ class SystemMonitor:
 
     def __init__(self) -> None:
         self._gpu_available = self._check_gpu_availability()
-        logger.info("system monitor initialized", extra={"gpu_available": self._gpu_available})
+
+        # OPTIMIZACIÓN BOLT: Cachear métricas estáticas (Total RAM, GPU Name)
+        # Esto evita syscalls y llamadas a driver redundantes en cada polling (500ms)
+        try:
+            mem = psutil.virtual_memory()
+            self._ram_total_gb = round(mem.total / (1024**3), 2)
+        except Exception as e:
+            logger.warning(f"failed to cache ram info: {e}")
+            self._ram_total_gb = 0.0
+
+        self._gpu_static_info: Dict[str, Any] = {}
+        if self._gpu_available:
+            try:
+                import torch
+                device = torch.cuda.current_device()
+                props = torch.cuda.get_device_properties(device)
+                self._gpu_static_info = {
+                    "name": props.name,
+                    "vram_total_mb": round(props.total_memory / (1024 ** 2), 2)
+                }
+            except Exception as e:
+                logger.warning(f"failed to cache gpu info: {e}")
+                self._gpu_available = False
+
+        logger.info("system monitor initialized", extra={
+            "gpu_available": self._gpu_available,
+            "ram_total_gb": self._ram_total_gb
+        })
 
     def _check_gpu_availability(self) -> bool:
         """Verifica si hay una GPU NVIDIA disponible via torch.cuda."""
@@ -72,7 +99,7 @@ class SystemMonitor:
         """Retorna uso de memoria RAM en GB y porcentaje."""
         mem = psutil.virtual_memory()
         return {
-            "total_gb": round(mem.total / (1024**3), 2),
+            "total_gb": self._ram_total_gb, # Usar valor cacheado
             "used_gb": round(mem.used / (1024**3), 2),
             "percent": mem.percent
         }
@@ -97,16 +124,16 @@ class SystemMonitor:
                 return {"name": "N/A", "vram_used_mb": 0, "vram_total_mb": 0, "temp_c": 0}
 
             device = torch.cuda.current_device()
-            props = torch.cuda.get_device_properties(device)
+            # Usar estáticos cacheados
+            static = self._gpu_static_info
 
-            # VRAM metrics en MB
+            # VRAM metrics en MB (Dinámico)
             vram_reserved = torch.cuda.memory_reserved(device) / (1024 ** 2)
-            vram_total = props.total_memory / (1024 ** 2)
 
             return {
-                "name": props.name,
+                "name": static.get("name", "Unknown"),
                 "vram_used_mb": round(vram_reserved, 2),
-                "vram_total_mb": round(vram_total, 2),
+                "vram_total_mb": static.get("vram_total_mb", 0),
                 "temp_c": 0  # torch no expone temperatura, requiere pynvml
             }
         except Exception as e:
