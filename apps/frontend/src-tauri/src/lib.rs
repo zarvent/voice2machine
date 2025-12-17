@@ -189,15 +189,28 @@ fn get_config() -> Result<String, String> {
 }
 
 /// Comando: RESTART_DAEMON (Ejecuta script externo)
+/// En desarrollo usa ruta relativa al proyecto, en producción usa recursos bundled.
 #[tauri::command]
 async fn restart_daemon(app: tauri::AppHandle) -> Result<String, String> {
-    let script_path = app.path()
-        .resolve("scripts/v2m-daemon.sh", BaseDirectory::Resource)
-        .map_err(|e| format!("Error resolviendo ruta del script: {}", e))?;
+    // Intentar ruta de desarrollo primero (relativa al proyecto)
+    let dev_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent() // src-tauri -> frontend
+        .and_then(|p| p.parent()) // frontend -> apps
+        .and_then(|p| p.parent()) // apps -> v2m (raíz del proyecto)
+        .map(|p| p.join("scripts/v2m-daemon.sh"));
+
+    let script_path = if let Some(path) = dev_path.filter(|p| p.exists()) {
+        path
+    } else {
+        // Fallback a recursos bundled (producción)
+        app.path()
+            .resolve("scripts/v2m-daemon.sh", BaseDirectory::Resource)
+            .map_err(|e| format!("Error resolviendo ruta del script: {}", e))?
+    };
 
     // Nota: SysCommand es std::process::Command
     let output = SysCommand::new("bash")
-        .arg(script_path)
+        .arg(&script_path)
         .arg("restart")
         .output()
         .map_err(|e| format!("Error ejecutando script de reinicio: {}", e))?;
