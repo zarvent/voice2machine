@@ -69,8 +69,27 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 VENV_PYTHON="${PROJECT_DIR}/venv/bin/python"
-LOG_FILE="/tmp/v2m_daemon.log"
-PID_FILE="/tmp/v2m_daemon.pid"
+
+# --- resolución de directorio seguro de ejecución ---
+# buscamos xdg_runtime_dir (estándar en linux) o usamos /tmp/v2m_<uid>
+# con permisos 0700 para evitar vulnerabilidades de symlink
+if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+    RUNTIME_DIR="${XDG_RUNTIME_DIR}/v2m"
+else
+    RUNTIME_DIR="/tmp/v2m_$(id -u)"
+fi
+
+# nos aseguramos de que el directorio exista
+if [ ! -d "${RUNTIME_DIR}" ]; then
+    mkdir -p "${RUNTIME_DIR}"
+fi
+
+# forzamos permisos 0700 siempre (incluso si ya existía) para evitar ataques
+# si alguien creó el directorio antes con permisos inseguros (777)
+chmod 700 "${RUNTIME_DIR}"
+
+LOG_FILE="${RUNTIME_DIR}/daemon.log"
+PID_FILE="${RUNTIME_DIR}/daemon.pid"
 
 start_daemon() {
     if [ -f "${PID_FILE}" ]; then
