@@ -88,7 +88,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
       <div className="modal-content" style={{ position: 'relative' }}>
         <div className="modal-header">
           <div id="settings-title" style={{ fontWeight: 600 }}>Configuración</div>
-          <button onClick={onClose} className="btn-icon" aria-label="Cerrar configuración">✕</button>
+          <button onClick={onClose} className="btn-icon" aria-label="Cerrar configuración" autoFocus>✕</button>
         </div>
 
         {/* TOAST NOTIFICATIONS */}
@@ -220,8 +220,13 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                 id="max-tokens"
                 className="input"
                 type="number"
+                min="64"
+                step="64"
                 value={config.llm?.local?.max_tokens || 512}
-                onChange={(e) => handleChange('llm', 'local', { ...config.llm?.local, max_tokens: parseInt(e.target.value) })}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  handleChange('llm', 'local', { ...config.llm?.local, max_tokens: isNaN(val) ? 512 : val });
+                }}
               />
             </div>
           </div>
@@ -234,6 +239,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             className="btn-secondary"
             onClick={handleSave}
             disabled={saving}
+            aria-busy={saving}
             style={{ background: 'var(--fg-primary)', color: 'var(--bg-app)', borderColor: 'transparent' }}
           >
             {saving ? 'Guardando...' : 'Guardar Cambios'}
