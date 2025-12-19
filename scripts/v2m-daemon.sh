@@ -69,8 +69,28 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 VENV_PYTHON="${PROJECT_DIR}/venv/bin/python"
-LOG_FILE="/tmp/v2m_daemon.log"
-PID_FILE="/tmp/v2m_daemon.pid"
+
+# --- FUNCIONES DE SEGURIDAD (SEIKETSU/SAFETY) ---
+# obtener directorio seguro de ejecución compatible con python backend
+get_runtime_dir() {
+    local app_name="v2m"
+    if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+        echo "${XDG_RUNTIME_DIR}/${app_name}"
+    else
+        local uid=$(id -u)
+        echo "/tmp/${app_name}_${uid}"
+    fi
+}
+
+RUNTIME_DIR=$(get_runtime_dir)
+# asegurar permisos seguros si creamos el directorio
+if [ ! -d "${RUNTIME_DIR}" ]; then
+    mkdir -p "${RUNTIME_DIR}"
+    chmod 700 "${RUNTIME_DIR}"
+fi
+
+LOG_FILE="${RUNTIME_DIR}/v2m_debug.log"
+PID_FILE="${RUNTIME_DIR}/daemon.pid"
 
 start_daemon() {
     if [ -f "${PID_FILE}" ]; then

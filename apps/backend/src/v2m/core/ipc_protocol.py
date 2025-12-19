@@ -195,4 +195,5 @@ class IPCResponse:
         )
 
 
-SOCKET_PATH = "/tmp/v2m.sock"
+from v2m.utils.paths import get_secure_runtime_dir
+SOCKET_PATH = str(get_secure_runtime_dir() / "v2m.sock")
