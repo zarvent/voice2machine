@@ -93,7 +93,20 @@ export function useBackend(): [BackendState, BackendActions] {
             const data = parseResponse(response);
 
             // 1. Actualizar telemetría siempre (incluso si estamos grabando)
-            if (data.telemetry) setTelemetry(data.telemetry);
+            // OPTIMIZACIÓN BOLT: Telemetry Stability Check
+            // Comparamos el string JSON de la telemetría para evitar actualizaciones
+            // de estado innecesarias y re-renderizados costosos en el Dashboard.
+            // setTelemetry disparará render solo si retornamos un nuevo objeto.
+            if (data.telemetry) {
+                setTelemetry(prev => {
+                    // Si la estructura es idéntica, retornamos la referencia anterior (bailout)
+                    // JSON.stringify es barato aquí (telemetry es pequeño: ram/cpu/gpu metrics)
+                    if (prev && JSON.stringify(prev) === JSON.stringify(data.telemetry)) {
+                        return prev;
+                    }
+                    return data.telemetry!;
+                });
+            }
 
             // 2. Mapear estado interno del daemon a estados de UI
             let daemonStatus: Status = "idle";
