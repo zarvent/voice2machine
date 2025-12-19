@@ -5,13 +5,11 @@ use serde_json::{json, Value};
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::process::Command as SysCommand;
+use std::path::PathBuf;
 use tauri::path::BaseDirectory;
 use tauri::Manager;
 
 // --- CONSTANTES DE SEGURIDAD (SEIKETSU/SAFETY) ---
-
-/// Ruta al socket Unix del daemon Python.
-const DAEMON_SOCKET_PATH: &str = "/tmp/v2m.sock";
 
 /// Tamaño máximo de respuesta permitido (1MB) para prevenir ataques de memoria (DoS).
 const MAX_RESPONSE_SIZE: usize = 1024 * 1024;
@@ -46,6 +44,24 @@ struct DaemonResponse {
 
 // --- FUNCIONES CORE ---
 
+/// Obtiene la ruta segura del socket, compatible con la lógica del backend Python.
+/// Prioriza XDG_RUNTIME_DIR, luego fallback a /tmp/v2m_<uid>.
+fn get_socket_path() -> PathBuf {
+    let app_name = "v2m";
+
+    // 1. Intentar XDG_RUNTIME_DIR
+    if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
+        let path = PathBuf::from(xdg_runtime).join(app_name).join("v2m.sock");
+        return path;
+    }
+
+    // 2. Fallback a /tmp/v2m_<uid>
+    let uid = unsafe { libc::getuid() };
+    PathBuf::from(std::env::temp_dir())
+        .join(format!("{}_{}", app_name, uid))
+        .join("v2m.sock")
+}
+
 /// Envía una solicitud JSON al daemon Python a través de un socket Unix.
 ///
 /// # Argumentos
@@ -59,9 +75,11 @@ struct DaemonResponse {
 /// Implementa framing (4 bytes length header) y límites de tamaño de respuesta.
 fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String> {
     // 1. Conexión al Socket
+    let socket_path = get_socket_path();
+
     // Intentamos conectar al archivo del socket Unix.
-    let mut stream = UnixStream::connect(DAEMON_SOCKET_PATH)
-        .map_err(|e| format!("No se pudo conectar al daemon (¿está corriendo?): {}", e))?;
+    let mut stream = UnixStream::connect(&socket_path)
+        .map_err(|e| format!("No se pudo conectar al daemon en {:?} (¿está corriendo?): {}", socket_path, e))?;
 
     // Configurar timeouts para evitar que la UI se congele si el backend muere.
     stream

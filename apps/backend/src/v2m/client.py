@@ -95,9 +95,12 @@ async def send_command(cmd: str, data: dict = None) -> IPCResponse:
         writer.write(message_bytes)
         await writer.drain()
 
-        # leer respuesta (buffer más grande para transcripciones largas)
-        response_data = await reader.read(1024 * 1024)  # 1MB max
-        response_json = response_data.decode()
+        # leer respuesta con framing
+        header_data = await reader.readexactly(4)
+        response_length = int.from_bytes(header_data, byteorder="big")
+
+        response_data = await reader.readexactly(response_length)
+        response_json = response_data.decode("utf-8")
 
         writer.close()
         await writer.wait_closed()
