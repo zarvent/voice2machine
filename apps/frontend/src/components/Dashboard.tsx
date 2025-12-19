@@ -25,7 +25,7 @@ const Sparkline = ({ data, color, height = 32 }: { data: number[], color: string
   }).join(' ');
 
   return (
-    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ overflow: 'visible' }} aria-hidden="true">
       <polyline
         fill="none"
         stroke={color}

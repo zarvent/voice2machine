@@ -88,7 +88,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
       <div className="modal-content" style={{ position: 'relative' }}>
         <div className="modal-header">
           <div id="settings-title" style={{ fontWeight: 600 }}>Configuración</div>
-          <button onClick={onClose} className="btn-icon" aria-label="Cerrar configuración">✕</button>
+          <button onClick={onClose} className="btn-icon" aria-label="Cerrar configuración" autoFocus>✕</button>
         </div>
 
         {/* TOAST NOTIFICATIONS */}
