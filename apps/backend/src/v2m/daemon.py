@@ -64,6 +64,7 @@ from v2m.core.ipc_protocol import (
     MAX_PAYLOAD_SIZE
 )
 import json
+from v2m.utils.paths import get_secure_runtime_dir
 from v2m.core.di.container import container
 from v2m.application.commands import (
     StartRecordingCommand,
@@ -114,7 +115,7 @@ class Daemon:
         """
         self.running = False
         self.socket_path = Path(SOCKET_PATH)
-        self.pid_file = Path("/tmp/v2m_daemon.pid")
+        self.pid_file = get_secure_runtime_dir() / "daemon.pid"
         self.command_bus = container.get_command_bus()
 
         # limpieza de procesos zombie crítico

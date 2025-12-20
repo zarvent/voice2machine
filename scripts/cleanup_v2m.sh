@@ -58,21 +58,31 @@ else
     fi
 fi
 
+# --- DEFINIR DIRECTORIO SEGURO ---
+if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+    RUNTIME_DIR="${XDG_RUNTIME_DIR}/v2m"
+else
+    UID_VAL=$(id -u)
+    RUNTIME_DIR="/tmp/v2m_${UID_VAL}"
+fi
+
 # 2. Limpiar socket huérfano
 echo -e "\n${YELLOW}[2/4]${NC} Verificando socket Unix..."
-if [[ -S /tmp/v2m.sock ]]; then
-    echo -e "${YELLOW}Socket encontrado, eliminando...${NC}"
-    rm -f /tmp/v2m.sock
+SOCKET_PATH="${RUNTIME_DIR}/v2m.sock"
+if [[ -S "${SOCKET_PATH}" ]]; then
+    echo -e "${YELLOW}Socket encontrado en ${SOCKET_PATH}, eliminando...${NC}"
+    rm -f "${SOCKET_PATH}"
     echo -e "${GREEN}✅ Socket eliminado${NC}"
 else
-    echo -e "${GREEN}✅ No hay socket huérfano${NC}"
+    echo -e "${GREEN}✅ No hay socket huérfano en ${RUNTIME_DIR}${NC}"
 fi
 
 # 3. Limpiar PID file
 echo -e "\n${YELLOW}[3/4]${NC} Verificando PID file..."
-if [[ -f /tmp/v2m_daemon.pid ]]; then
-    echo -e "${YELLOW}PID file encontrado, eliminando...${NC}"
-    rm -f /tmp/v2m_daemon.pid
+PID_FILE="${RUNTIME_DIR}/daemon.pid"
+if [[ -f "${PID_FILE}" ]]; then
+    echo -e "${YELLOW}PID file encontrado en ${PID_FILE}, eliminando...${NC}"
+    rm -f "${PID_FILE}"
     echo -e "${GREEN}✅ PID file eliminado${NC}"
 else
     echo -e "${GREEN}✅ No hay PID file huérfano${NC}"
