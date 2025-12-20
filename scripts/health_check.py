@@ -70,14 +70,26 @@ def get_gpu_memory() -> Tuple[int, int]:
         return 0, 0
 
 
+def get_secure_runtime_dir() -> Path:
+    """Duplica lógica de v2m.utils.paths.py para encontrar directorio seguro."""
+    import os
+    import tempfile
+
+    xdg = os.environ.get("XDG_RUNTIME_DIR")
+    if xdg:
+        return Path(xdg) / "v2m"
+    else:
+        uid = os.getuid()
+        return Path(tempfile.gettempdir()) / f"v2m_{uid}"
+
 def check_daemon_socket() -> bool:
     """Verifica si el socket del daemon existe."""
-    return Path('/tmp/v2m.sock').exists()
+    return (get_secure_runtime_dir() / "v2m.sock").exists()
 
 
 def check_pid_file() -> int | None:
     """Lee el PID file si existe."""
-    pid_file = Path('/tmp/v2m_daemon.pid')
+    pid_file = get_secure_runtime_dir() / "daemon.pid"
     if pid_file.exists():
         try:
             return int(pid_file.read_text().strip())
@@ -92,11 +104,29 @@ def is_daemon_responsive() -> bool:
         import socket
         s = socket.socket(socket.AF_UNIX)
         s.settimeout(2)
-        s.connect('/tmp/v2m.sock')
-        s.send(b'PING')
-        response = s.recv(1024).decode()
+        socket_path = str(get_secure_runtime_dir() / "v2m.sock")
+        s.connect(socket_path)
+
+        # Enviar PING usando el nuevo protocolo IPC (length prefix)
+        # Nota: Idealmente deberíamos importar v2m.client, pero esto es un quick fix
+        # para que el healthcheck funcione sin dependencias complejas.
+        # Protocolo V2 usa framing de 4 bytes + JSON.
+        # PING request: {"cmd": "PING", "data": null}
+        import json
+        request = json.dumps({"cmd": "PING", "data": None})
+        request_bytes = request.encode('utf-8')
+        header = len(request_bytes).to_bytes(4, byteorder='big')
+        s.send(header + request_bytes)
+
+        # Leer respuesta
+        len_bytes = s.recv(4)
+        if not len_bytes: return False
+        length = int.from_bytes(len_bytes, byteorder='big')
+        data = s.recv(length)
+        response_json = json.loads(data.decode('utf-8'))
+
         s.close()
-        return response == 'PONG'
+        return response_json.get("status") == "success" and response_json.get("data", {}).get("message") == "PONG"
     except Exception:
         return False
 
@@ -206,8 +236,9 @@ def main():
             print(f"{Colors.GREEN}✅ {killed} proceso(s) eliminado(s){Colors.NC}")
 
             # Limpiar archivos residuales
-            Path('/tmp/v2m.sock').unlink(missing_ok=True)
-            Path('/tmp/v2m_daemon.pid').unlink(missing_ok=True)
+            runtime_dir = get_secure_runtime_dir()
+            (runtime_dir / "v2m.sock").unlink(missing_ok=True)
+            (runtime_dir / "daemon.pid").unlink(missing_ok=True)
             print(f"{Colors.GREEN}✅ Archivos residuales eliminados{Colors.NC}")
         else:
             print(f"{Colors.YELLOW}💡 Usa --kill-zombies para eliminar automáticamente{Colors.NC}")

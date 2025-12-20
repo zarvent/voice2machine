@@ -69,8 +69,22 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 VENV_PYTHON="${PROJECT_DIR}/venv/bin/python"
-LOG_FILE="/tmp/v2m_daemon.log"
-PID_FILE="/tmp/v2m_daemon.pid"
+
+# --- DEFINIR DIRECTORIO SEGURO (SYNC con apps/backend/src/v2m/utils/paths.py) ---
+# Usamos XDG_RUNTIME_DIR si existe, sino fallback a /tmp con uid
+if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+    RUNTIME_DIR="${XDG_RUNTIME_DIR}/v2m"
+else
+    UID_VAL=$(id -u)
+    RUNTIME_DIR="/tmp/v2m_${UID_VAL}"
+fi
+
+# Asegurar que el directorio existe y es seguro (0700)
+mkdir -p "${RUNTIME_DIR}"
+chmod 700 "${RUNTIME_DIR}"
+
+LOG_FILE="${RUNTIME_DIR}/daemon.log"
+PID_FILE="${RUNTIME_DIR}/daemon.pid"
 
 start_daemon() {
     if [ -f "${PID_FILE}" ]; then

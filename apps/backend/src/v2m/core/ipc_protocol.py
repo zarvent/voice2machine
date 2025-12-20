@@ -44,6 +44,7 @@ CONSTANTES
 """
 
 from enum import Enum
+from v2m.utils.paths import get_secure_runtime_dir
 
 class IPCCommand(str, Enum):
     """
@@ -195,4 +196,4 @@ class IPCResponse:
         )
 
 
-SOCKET_PATH = "/tmp/v2m.sock"
+SOCKET_PATH = str(get_secure_runtime_dir() / "v2m.sock")

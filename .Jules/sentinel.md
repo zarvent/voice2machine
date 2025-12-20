@@ -1,0 +1,4 @@
+## 2025-12-20 - Insecure Runtime Directory & IPC Protocol Fix
+**Vulnerability:** The daemon and shell scripts were using hardcoded paths in `/tmp` (e.g., `/tmp/v2m.sock`, `/tmp/v2m_daemon.pid`) which are vulnerable to symlink attacks and information disclosure. Additionally, the Python client was not respecting the IPC message framing (4-byte length prefix), leading to potential JSON decoding errors.
+**Learning:** Security requires consistency across all layers (Python backend, shell scripts, and client). A secure path utility exists in Python but wasn't used universally, and shell scripts need to manually replicate this logic to be secure.
+**Prevention:** Always use `XDG_RUNTIME_DIR` or a user-owned subdirectory in `/tmp` with `0700` permissions for sensitive runtime files. Ensure all IPC clients strictly adhere to the defined framing protocol.
