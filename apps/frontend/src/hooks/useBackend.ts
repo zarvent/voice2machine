@@ -94,14 +94,13 @@ export function useBackend(): [BackendState, BackendActions] {
 
             // 1. Actualizar telemetría siempre (incluso si estamos grabando)
             // OPTIMIZACIÓN BOLT: Telemetry Stability Check
-            // Comparamos el string JSON de la telemetría para evitar actualizaciones
+            // Comparamos los valores de la telemetría directamente para evitar actualizaciones
             // de estado innecesarias y re-renderizados costosos en el Dashboard.
-            // setTelemetry disparará render solo si retornamos un nuevo objeto.
+            // Se usa comparación superficial para mayor rendimiento en lugar de JSON.stringify.
             if (data.telemetry) {
                 setTelemetry(prev => {
-                    // Si la estructura es idéntica, retornamos la referencia anterior (bailout)
-                    // JSON.stringify es barato aquí (telemetry es pequeño: ram/cpu/gpu metrics)
-                    if (prev && JSON.stringify(prev) === JSON.stringify(data.telemetry)) {
+                    // Si los valores son idénticos, retornamos la referencia anterior (bailout)
+                    if (prev && areTelemetryEqual(prev, data.telemetry!)) {
                         return prev;
                     }
                     return data.telemetry!;
@@ -262,4 +261,31 @@ export function useBackend(): [BackendState, BackendActions] {
     }), [startRecording, stopRecording, processText, togglePause, clearError, retryConnection, restartDaemon]);
 
     return [state, actions];
+}
+
+/**
+ * OPTIMIZACIÓN BOLT: Comparación eficiente de telemetría.
+ * Evita la serialización JSON costosa en el ciclo de renderizado caliente (hot loop) del polling.
+ * Complejidad: O(1) vs O(N) de JSON.stringify, donde N es la longitud del string.
+ */
+function areTelemetryEqual(a: TelemetryData, b: TelemetryData): boolean {
+    if (a === b) return true;
+
+    // CPU Check
+    if (a.cpu.percent !== b.cpu.percent) return false;
+
+    // RAM Check
+    if (a.ram.percent !== b.ram.percent ||
+        a.ram.used_gb !== b.ram.used_gb ||
+        a.ram.total_gb !== b.ram.total_gb) return false;
+
+    // GPU Check (Optional)
+    if (!a.gpu && !b.gpu) return true; // Ambos undefined
+    if (!a.gpu || !b.gpu) return false; // Uno undefined
+
+    // Ambos GPU definidos
+    if (a.gpu.vram_used_mb !== b.gpu.vram_used_mb ||
+        a.gpu.temp_c !== b.gpu.temp_c) return false;
+
+    return true;
 }
