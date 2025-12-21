@@ -15,7 +15,7 @@ import "./App.css";
 function App() {
   // Hook personalizado de lógica de negocio (Backend IPC)
   const [backendState, actions] = useBackend();
-  const { status, transcription, telemetry, errorMessage, isConnected, lastPingTime, history } = backendState;
+  const { status, transcription, telemetry, cpuHistory, ramHistory, errorMessage, isConnected, lastPingTime, history } = backendState;
 
   // Estado UI local
   const [showSettings, setShowSettings] = useState(false);
@@ -107,7 +107,12 @@ function App() {
               Métricas del Sistema
             </div>
 
-            <Dashboard visible={true} telemetry={telemetry} />
+            <Dashboard
+              visible={true}
+              telemetry={telemetry}
+              cpuHistory={cpuHistory}
+              ramHistory={ramHistory}
+            />
 
             <div className="sidebar-section">
               <button

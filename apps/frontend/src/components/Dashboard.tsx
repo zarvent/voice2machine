@@ -1,10 +1,11 @@
 import React from 'react';
 import { TelemetryData } from '../types';
-import { SPARKLINE_HISTORY_LENGTH } from '../constants';
 
 interface DashboardProps {
   visible: boolean;
   telemetry: TelemetryData | null;
+  cpuHistory: number[];
+  ramHistory: number[];
 }
 
 /**
@@ -41,24 +42,7 @@ const Sparkline = ({ data, color, height = 32 }: { data: number[], color: string
  * Panel de métricas del sistema en tiempo real.
  * Muestra RAM, CPU y GPU con gráficos históricos pequeños.
  */
-export const Dashboard = React.memo(({ telemetry, visible }: DashboardProps) => {
-  // Acumular historial localmente para sparklines
-  const [cpuHistory, setCpuHistory] = React.useState<number[]>([]);
-  const [ramHistory, setRamHistory] = React.useState<number[]>([]);
-  // Fix: Initialize with null to ensure first update is captured
-  const [prevTelemetry, setPrevTelemetry] = React.useState<TelemetryData | null>(null);
-
-  // OPTIMIZACIÓN BOLT: State Update During Render (Derived State)
-  // Reemplaza useEffect para evitar doble renderizado (Render -> Effect -> SetState -> Render)
-  // Al actualizar el estado durante el render, React descarta el output actual y re-renderiza inmediatamente (1 solo commit).
-  if (telemetry !== prevTelemetry) {
-    setPrevTelemetry(telemetry);
-    if (telemetry) {
-      setCpuHistory(prev => [...prev, telemetry.cpu.percent].slice(-SPARKLINE_HISTORY_LENGTH));
-      setRamHistory(prev => [...prev, telemetry.ram.percent].slice(-SPARKLINE_HISTORY_LENGTH));
-    }
-  }
-
+export const Dashboard = React.memo(({ telemetry, visible, cpuHistory, ramHistory }: DashboardProps) => {
   if (!visible || !telemetry) return null;
 
   return (
