@@ -19,6 +19,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<AppConfig>({});
+  // Local state for numeric input to allow flexible typing (e.g. empty string)
+  const [maxTokensInput, setMaxTokensInput] = useState<string>('512');
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   // Cargar configuración inicial desde el backend
@@ -27,7 +29,12 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
       try {
         const res = await invoke<string>('get_config');
         const data = JSON.parse(res);
-        setConfig(data.config || {});
+        const loadedConfig = data.config || {};
+        setConfig(loadedConfig);
+        // Initialize local input state
+        if (loadedConfig.llm?.local?.max_tokens) {
+          setMaxTokensInput(loadedConfig.llm.local.max_tokens.toString());
+        }
       } catch (e) {
         console.error("Error loading config:", e);
         setToast({ message: "Error cargando configuración", type: 'error' });
@@ -222,10 +229,25 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                 type="number"
                 min="64"
                 step="64"
-                value={config.llm?.local?.max_tokens || 512}
+                value={maxTokensInput}
                 onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  handleChange('llm', 'local', { ...config.llm?.local, max_tokens: isNaN(val) ? 512 : val });
+                  const val = e.target.value;
+                  setMaxTokensInput(val);
+                  const parsed = parseInt(val);
+                  if (!isNaN(parsed) && parsed >= 64) {
+                    handleChange('llm', 'local', { ...config.llm?.local, max_tokens: parsed });
+                  }
+                }}
+                onBlur={() => {
+                  const parsed = parseInt(maxTokensInput);
+                  if (isNaN(parsed) || parsed < 64) {
+                    // Reset to last valid from config or default
+                    const validVal = config.llm?.local?.max_tokens || 512;
+                    setMaxTokensInput(validVal.toString());
+                  } else {
+                    // Format correctly (remove leading zeros etc)
+                    setMaxTokensInput(parsed.toString());
+                  }
                 }}
               />
             </div>
