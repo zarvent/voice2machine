@@ -33,6 +33,24 @@ fi
 echo -e "${YELLOW}🧹 V2M Cleanup Script${NC}"
 echo "======================================"
 
+# --- Secure Runtime Directory Logic ---
+get_secure_dir() {
+    local app_name="v2m"
+    local runtime_dir=""
+
+    if [ -n "${XDG_RUNTIME_DIR}" ]; then
+        runtime_dir="${XDG_RUNTIME_DIR}/${app_name}"
+    else
+        local uid=$(id -u)
+        runtime_dir="/tmp/${app_name}_${uid}"
+    fi
+
+    # Don't create it here, just return where it *should* be
+    echo "${runtime_dir}"
+}
+
+SECURE_DIR=$(get_secure_dir)
+
 # 1. Buscar procesos v2m
 echo -e "\n${YELLOW}[1/4]${NC} Buscando procesos v2m..."
 PIDS=$(pgrep -f "v2m" || true)
@@ -60,22 +78,36 @@ fi
 
 # 2. Limpiar socket huérfano
 echo -e "\n${YELLOW}[2/4]${NC} Verificando socket Unix..."
-if [[ -S /tmp/v2m.sock ]]; then
-    echo -e "${YELLOW}Socket encontrado, eliminando...${NC}"
-    rm -f /tmp/v2m.sock
+if [[ -S "${SECURE_DIR}/v2m.sock" ]]; then
+    echo -e "${YELLOW}Socket encontrado en ${SECURE_DIR}, eliminando...${NC}"
+    rm -f "${SECURE_DIR}/v2m.sock"
     echo -e "${GREEN}✅ Socket eliminado${NC}"
 else
-    echo -e "${GREEN}✅ No hay socket huérfano${NC}"
+    # Also check insecure legacy location just in case
+    if [[ -S /tmp/v2m.sock ]]; then
+        echo -e "${YELLOW}Legacy socket encontrado en /tmp, eliminando...${NC}"
+        rm -f /tmp/v2m.sock
+        echo -e "${GREEN}✅ Legacy socket eliminado${NC}"
+    else
+        echo -e "${GREEN}✅ No hay socket huérfano${NC}"
+    fi
 fi
 
 # 3. Limpiar PID file
 echo -e "\n${YELLOW}[3/4]${NC} Verificando PID file..."
-if [[ -f /tmp/v2m_daemon.pid ]]; then
-    echo -e "${YELLOW}PID file encontrado, eliminando...${NC}"
-    rm -f /tmp/v2m_daemon.pid
+if [[ -f "${SECURE_DIR}/v2m_daemon.pid" ]]; then
+    echo -e "${YELLOW}PID file encontrado en ${SECURE_DIR}, eliminando...${NC}"
+    rm -f "${SECURE_DIR}/v2m_daemon.pid"
     echo -e "${GREEN}✅ PID file eliminado${NC}"
 else
-    echo -e "${GREEN}✅ No hay PID file huérfano${NC}"
+    # Check legacy
+    if [[ -f /tmp/v2m_daemon.pid ]]; then
+        echo -e "${YELLOW}Legacy PID file encontrado en /tmp, eliminando...${NC}"
+        rm -f /tmp/v2m_daemon.pid
+        echo -e "${GREEN}✅ Legacy PID file eliminado${NC}"
+    else
+        echo -e "${GREEN}✅ No hay PID file huérfano${NC}"
+    fi
 fi
 
 # 4. Verificar VRAM

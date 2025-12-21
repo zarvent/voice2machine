@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend" / "src"
 import psutil
 import subprocess
 from typing import List, Tuple
+from v2m.utils.paths import get_secure_runtime_dir
 
 # Colores ANSI
 class Colors:
@@ -72,12 +73,14 @@ def get_gpu_memory() -> Tuple[int, int]:
 
 def check_daemon_socket() -> bool:
     """Verifica si el socket del daemon existe."""
-    return Path('/tmp/v2m.sock').exists()
+    runtime_dir = get_secure_runtime_dir()
+    return (runtime_dir / 'v2m.sock').exists()
 
 
 def check_pid_file() -> int | None:
     """Lee el PID file si existe."""
-    pid_file = Path('/tmp/v2m_daemon.pid')
+    runtime_dir = get_secure_runtime_dir()
+    pid_file = runtime_dir / 'v2m_daemon.pid'
     if pid_file.exists():
         try:
             return int(pid_file.read_text().strip())
@@ -92,7 +95,8 @@ def is_daemon_responsive() -> bool:
         import socket
         s = socket.socket(socket.AF_UNIX)
         s.settimeout(2)
-        s.connect('/tmp/v2m.sock')
+        runtime_dir = get_secure_runtime_dir()
+        s.connect(str(runtime_dir / 'v2m.sock'))
         s.send(b'PING')
         response = s.recv(1024).decode()
         s.close()
@@ -147,7 +151,8 @@ def main():
     print(f"\n{Colors.YELLOW}[2/4] Verificando socket Unix...{Colors.NC}")
     socket_exists = check_daemon_socket()
     if socket_exists:
-        print(f"{Colors.GREEN}✅ Socket /tmp/v2m.sock existe{Colors.NC}")
+        runtime_dir = get_secure_runtime_dir()
+        print(f"{Colors.GREEN}✅ Socket {runtime_dir}/v2m.sock existe{Colors.NC}")
     else:
         print(f"{Colors.YELLOW}⚠️  Socket no encontrado{Colors.NC}")
 
@@ -206,8 +211,9 @@ def main():
             print(f"{Colors.GREEN}✅ {killed} proceso(s) eliminado(s){Colors.NC}")
 
             # Limpiar archivos residuales
-            Path('/tmp/v2m.sock').unlink(missing_ok=True)
-            Path('/tmp/v2m_daemon.pid').unlink(missing_ok=True)
+            runtime_dir = get_secure_runtime_dir()
+            (runtime_dir / 'v2m.sock').unlink(missing_ok=True)
+            (runtime_dir / 'v2m_daemon.pid').unlink(missing_ok=True)
             print(f"{Colors.GREEN}✅ Archivos residuales eliminados{Colors.NC}")
         else:
             print(f"{Colors.YELLOW}💡 Usa --kill-zombies para eliminar automáticamente{Colors.NC}")

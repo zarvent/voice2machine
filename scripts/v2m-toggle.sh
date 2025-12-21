@@ -56,7 +56,7 @@
 #   - entorno virtual de python en ./venv
 #
 # ARCHIVOS
-#   /tmp/v2m_recording.pid - indica que se está grabando
+#   (dinámico)/v2m_recording.pid - indica que se está grabando
 #
 # NOTAS
 #   - el servicio arranca solo si no está activo
@@ -77,8 +77,33 @@ NOTIFY_EXPIRE_TIME=3000
 # --- RUTAS DERIVADAS ---
 VENV_PATH="${PROJECT_DIR}/venv"
 MAIN_SCRIPT="${PROJECT_DIR}/src/v2m/main.py"
-RECORDING_FLAG="/tmp/v2m_recording.pid"
 DAEMON_SCRIPT="${SCRIPT_DIR}/v2m-daemon.sh"
+
+# --- Secure Runtime Directory Logic ---
+get_secure_dir() {
+    local app_name="v2m"
+    local runtime_dir=""
+
+    if [ -n "${XDG_RUNTIME_DIR}" ]; then
+        runtime_dir="${XDG_RUNTIME_DIR}/${app_name}"
+    else
+        local uid=$(id -u)
+        runtime_dir="/tmp/${app_name}_${uid}"
+    fi
+
+    if [ ! -d "${runtime_dir}" ]; then
+        mkdir -p "${runtime_dir}"
+        chmod 700 "${runtime_dir}"
+    else
+        # Ensure permissions are correct
+        chmod 700 "${runtime_dir}"
+    fi
+
+    echo "${runtime_dir}"
+}
+
+SECURE_DIR=$(get_secure_dir)
+RECORDING_FLAG="${SECURE_DIR}/v2m_recording.pid"
 
 # --- FUNCIÓN PRINCIPAL ---
 # --- FUNCIÓN PRINCIPAL ---
