@@ -33,8 +33,8 @@
 #   logs     - te muestra los registros del servicio
 #
 # ARCHIVOS
-#   /tmp/v2m_daemon.log  - archivo donde se guardan los registros
-#   /tmp/v2m_daemon.pid  - archivo que guarda el identificador del proceso
+#   (dinámico)  - archivo donde se guardan los registros
+#   (dinámico)  - archivo que guarda el identificador del proceso
 #
 # VARIABLES DE ENTORNO
 #   LD_LIBRARY_PATH - se configura sola para que funcione con cuda
@@ -69,8 +69,33 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 VENV_PYTHON="${PROJECT_DIR}/venv/bin/python"
-LOG_FILE="/tmp/v2m_daemon.log"
-PID_FILE="/tmp/v2m_daemon.pid"
+
+# --- Secure Runtime Directory Logic ---
+get_secure_dir() {
+    local app_name="v2m"
+    local runtime_dir=""
+
+    if [ -n "${XDG_RUNTIME_DIR}" ]; then
+        runtime_dir="${XDG_RUNTIME_DIR}/${app_name}"
+    else
+        local uid=$(id -u)
+        runtime_dir="/tmp/${app_name}_${uid}"
+    fi
+
+    if [ ! -d "${runtime_dir}" ]; then
+        mkdir -p "${runtime_dir}"
+        chmod 700 "${runtime_dir}"
+    else
+        # Ensure permissions are correct
+        chmod 700 "${runtime_dir}"
+    fi
+
+    echo "${runtime_dir}"
+}
+
+SECURE_DIR=$(get_secure_dir)
+LOG_FILE="${SECURE_DIR}/v2m_daemon.log"
+PID_FILE="${SECURE_DIR}/v2m_daemon.pid"
 
 start_daemon() {
     if [ -f "${PID_FILE}" ]; then
