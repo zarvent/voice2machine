@@ -95,9 +95,15 @@ async def send_command(cmd: str, data: dict = None) -> IPCResponse:
         writer.write(message_bytes)
         await writer.drain()
 
-        # leer respuesta (buffer más grande para transcripciones largas)
-        response_data = await reader.read(1024 * 1024)  # 1MB max
-        response_json = response_data.decode()
+        # leer header 4 bytes (big endian int32)
+        # esto previene que leamos basura o que falte el header
+        header = await reader.readexactly(4)
+        response_length = int.from_bytes(header, byteorder="big")
+
+        # leer payload exacto según longitud indicada en header
+        # esto evita truncamiento de mensajes largos o lectura excesiva
+        response_data = await reader.readexactly(response_length)
+        response_json = response_data.decode("utf-8")
 
         writer.close()
         await writer.wait_closed()
@@ -109,6 +115,9 @@ async def send_command(cmd: str, data: dict = None) -> IPCResponse:
         sys.exit(1)
     except ConnectionRefusedError:
         print("error conexión rechazada el daemon podría estar muerto", file=sys.stderr)
+        sys.exit(1)
+    except asyncio.IncompleteReadError:
+        print("error conexión interrumpida respuesta incompleta del daemon", file=sys.stderr)
         sys.exit(1)
 
 
