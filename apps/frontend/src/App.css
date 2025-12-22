@@ -424,6 +424,11 @@ textarea.editor::placeholder {
   animation: pulse 1s infinite;
 }
 
+/* Used for skeleton loading states */
+.skeleton-pulse {
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
 @keyframes pulse {
   0% { opacity: 0.5; }
   50% { opacity: 1; }

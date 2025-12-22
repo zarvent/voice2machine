@@ -1,6 +1,7 @@
 import React from 'react';
 import { TelemetryData } from '../types';
 import { SPARKLINE_HISTORY_LENGTH } from '../constants';
+import { DashboardSkeleton } from './DashboardSkeleton';
 
 interface DashboardProps {
   visible: boolean;
@@ -59,7 +60,8 @@ export const Dashboard = React.memo(({ telemetry, visible }: DashboardProps) => 
     }
   }
 
-  if (!visible || !telemetry) return null;
+  if (!visible) return null;
+  if (!telemetry) return <DashboardSkeleton />;
 
   return (
     <div className="dashboard-grid">
