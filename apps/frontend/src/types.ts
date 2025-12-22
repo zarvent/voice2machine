@@ -90,6 +90,10 @@ export interface BackendState {
     transcription: string;
     /** Datos de rendimiento en tiempo real */
     telemetry: TelemetryData | null;
+    /** Historial de uso de CPU para gráficas */
+    cpuHistory: number[];
+    /** Historial de uso de RAM para gráficas */
+    ramHistory: number[];
     /** Mensaje de error actual (si existe) */
     errorMessage: string;
     /** Flag de conexión socket activa */

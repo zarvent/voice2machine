@@ -11,7 +11,8 @@ import {
 import {
     STATUS_POLL_INTERVAL_MS,
     HISTORY_STORAGE_KEY,
-    MAX_HISTORY_ITEMS
+    MAX_HISTORY_ITEMS,
+    SPARKLINE_HISTORY_LENGTH
 } from '../constants';
 
 /**
@@ -27,6 +28,8 @@ export function useBackend(): [BackendState, BackendActions] {
     const [status, setStatus] = useState<Status>("disconnected");
     const [transcription, setTranscription] = useState("");
     const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
+    const [cpuHistory, setCpuHistory] = useState<number[]>([]);
+    const [ramHistory, setRamHistory] = useState<number[]>([]);
     const [errorMessage, setErrorMessage] = useState("");
     const [isConnected, setIsConnected] = useState(false);
     const [lastPingTime, setLastPingTime] = useState<number | null>(null);
@@ -69,6 +72,8 @@ export function useBackend(): [BackendState, BackendActions] {
     // Refs para acceso síncrono en closures de intervalos
     const statusRef = useRef<Status>(status);
     const errorRef = useRef<string>(errorMessage);
+    // OPTIMIZACIÓN BOLT: Ref para comparar telemetría sin re-renderizar
+    const prevTelemetryRef = useRef<TelemetryData | null>(null);
 
     useEffect(() => { statusRef.current = status; }, [status]);
     useEffect(() => { errorRef.current = errorMessage; }, [errorMessage]);
@@ -93,19 +98,21 @@ export function useBackend(): [BackendState, BackendActions] {
             const data = parseResponse(response);
 
             // 1. Actualizar telemetría siempre (incluso si estamos grabando)
-            // OPTIMIZACIÓN BOLT: Telemetry Stability Check
-            // Comparamos el string JSON de la telemetría para evitar actualizaciones
-            // de estado innecesarias y re-renderizados costosos en el Dashboard.
-            // setTelemetry disparará render solo si retornamos un nuevo objeto.
+            // OPTIMIZACIÓN BOLT: Single Pass Update & React Batching
+            // Comparamos usando ref para evitar efectos secundarios en setTelemetry.
+            // Las actualizaciones secuenciales se agrupan automáticamente en React 18+.
             if (data.telemetry) {
-                setTelemetry(prev => {
-                    // Si la estructura es idéntica, retornamos la referencia anterior (bailout)
-                    // JSON.stringify es barato aquí (telemetry es pequeño: ram/cpu/gpu metrics)
-                    if (prev && JSON.stringify(prev) === JSON.stringify(data.telemetry)) {
-                        return prev;
-                    }
-                    return data.telemetry!;
-                });
+                const newTelemetry = data.telemetry;
+                const prev = prevTelemetryRef.current;
+
+                // Si la estructura cambió o es la primera vez
+                if (!prev || JSON.stringify(prev) !== JSON.stringify(newTelemetry)) {
+                    prevTelemetryRef.current = newTelemetry;
+
+                    setTelemetry(newTelemetry);
+                    setCpuHistory(h => [...h, newTelemetry.cpu.percent].slice(-SPARKLINE_HISTORY_LENGTH));
+                    setRamHistory(h => [...h, newTelemetry.ram.percent].slice(-SPARKLINE_HISTORY_LENGTH));
+                }
             }
 
             // 2. Mapear estado interno del daemon a estados de UI
@@ -244,11 +251,13 @@ export function useBackend(): [BackendState, BackendActions] {
         status,
         transcription,
         telemetry,
+        cpuHistory,
+        ramHistory,
         errorMessage,
         isConnected,
         lastPingTime,
         history
-    }), [status, transcription, telemetry, errorMessage, isConnected, lastPingTime, history]);
+    }), [status, transcription, telemetry, cpuHistory, ramHistory, errorMessage, isConnected, lastPingTime, history]);
 
     const actions: BackendActions = useMemo(() => ({
         startRecording,
