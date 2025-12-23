@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend" / "src"
 import psutil
 import subprocess
 from typing import List, Tuple
+from v2m.utils.paths import get_secure_runtime_dir
 
 # Colores ANSI
 class Colors:
@@ -70,9 +71,14 @@ def get_gpu_memory() -> Tuple[int, int]:
         return 0, 0
 
 
+def get_socket_path() -> Path:
+    """Obtiene la ruta segura del socket."""
+    return get_secure_runtime_dir() / "v2m.sock"
+
+
 def check_daemon_socket() -> bool:
     """Verifica si el socket del daemon existe."""
-    return Path('/tmp/v2m.sock').exists()
+    return get_socket_path().exists()
 
 
 def check_pid_file() -> int | None:
@@ -92,7 +98,7 @@ def is_daemon_responsive() -> bool:
         import socket
         s = socket.socket(socket.AF_UNIX)
         s.settimeout(2)
-        s.connect('/tmp/v2m.sock')
+        s.connect(str(get_socket_path()))
         s.send(b'PING')
         response = s.recv(1024).decode()
         s.close()
@@ -144,10 +150,11 @@ def main():
         daemon_running = True
 
     # 2. Verificar socket
-    print(f"\n{Colors.YELLOW}[2/4] Verificando socket Unix...{Colors.NC}")
+    socket_path = get_socket_path()
+    print(f"\n{Colors.YELLOW}[2/4] Verificando socket Unix ({socket_path})...{Colors.NC}")
     socket_exists = check_daemon_socket()
     if socket_exists:
-        print(f"{Colors.GREEN}✅ Socket /tmp/v2m.sock existe{Colors.NC}")
+        print(f"{Colors.GREEN}✅ Socket existe{Colors.NC}")
     else:
         print(f"{Colors.YELLOW}⚠️  Socket no encontrado{Colors.NC}")
 
@@ -206,7 +213,7 @@ def main():
             print(f"{Colors.GREEN}✅ {killed} proceso(s) eliminado(s){Colors.NC}")
 
             # Limpiar archivos residuales
-            Path('/tmp/v2m.sock').unlink(missing_ok=True)
+            socket_path.unlink(missing_ok=True)
             Path('/tmp/v2m_daemon.pid').unlink(missing_ok=True)
             print(f"{Colors.GREEN}✅ Archivos residuales eliminados{Colors.NC}")
         else:
