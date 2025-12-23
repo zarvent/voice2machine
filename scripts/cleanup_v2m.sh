@@ -60,22 +60,49 @@ fi
 
 # 2. Limpiar socket huérfano
 echo -e "\n${YELLOW}[2/4]${NC} Verificando socket Unix..."
+
+# Determinar ruta segura
+APP_NAME="v2m"
+UID_VAL=$(id -u)
+if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
+    RUNTIME_DIR="$XDG_RUNTIME_DIR/$APP_NAME"
+else
+    RUNTIME_DIR="/tmp/${APP_NAME}_${UID_VAL}"
+fi
+
+# Limpiar rutas seguras
+if [[ -S "$RUNTIME_DIR/v2m.sock" ]]; then
+    echo -e "${YELLOW}Socket seguro encontrado ($RUNTIME_DIR/v2m.sock), eliminando...${NC}"
+    rm -f "$RUNTIME_DIR/v2m.sock"
+    echo -e "${GREEN}✅ Socket eliminado${NC}"
+fi
+
+# Fallback legacy
 if [[ -S /tmp/v2m.sock ]]; then
-    echo -e "${YELLOW}Socket encontrado, eliminando...${NC}"
+    echo -e "${YELLOW}Socket legacy encontrado (/tmp/v2m.sock), eliminando...${NC}"
     rm -f /tmp/v2m.sock
     echo -e "${GREEN}✅ Socket eliminado${NC}"
 else
-    echo -e "${GREEN}✅ No hay socket huérfano${NC}"
+    echo -e "${GREEN}✅ No hay socket legacy huérfano${NC}"
 fi
 
 # 3. Limpiar PID file
 echo -e "\n${YELLOW}[3/4]${NC} Verificando PID file..."
+
+# Limpiar rutas seguras
+if [[ -f "$RUNTIME_DIR/v2m_daemon.pid" ]]; then
+    echo -e "${YELLOW}PID file seguro encontrado ($RUNTIME_DIR/v2m_daemon.pid), eliminando...${NC}"
+    rm -f "$RUNTIME_DIR/v2m_daemon.pid"
+    echo -e "${GREEN}✅ PID file eliminado${NC}"
+fi
+
+# Fallback legacy
 if [[ -f /tmp/v2m_daemon.pid ]]; then
-    echo -e "${YELLOW}PID file encontrado, eliminando...${NC}"
+    echo -e "${YELLOW}PID file legacy encontrado, eliminando...${NC}"
     rm -f /tmp/v2m_daemon.pid
     echo -e "${GREEN}✅ PID file eliminado${NC}"
 else
-    echo -e "${GREEN}✅ No hay PID file huérfano${NC}"
+    echo -e "${GREEN}✅ No hay PID file legacy huérfano${NC}"
 fi
 
 # 4. Verificar VRAM
