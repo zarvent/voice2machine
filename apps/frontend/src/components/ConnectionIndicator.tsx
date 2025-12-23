@@ -2,15 +2,13 @@ import React from 'react';
 
 interface ConnectionIndicatorProps {
     isConnected: boolean;
-    lastPingTime: number | null;
 }
 
-export const ConnectionIndicator: React.FC<ConnectionIndicatorProps> = ({ isConnected, lastPingTime }) => {
-    const timeString = lastPingTime ? new Date(lastPingTime).toLocaleTimeString() : '--:--';
-
+export const ConnectionIndicator: React.FC<ConnectionIndicatorProps> = ({ isConnected }) => {
+    // OPTIMIZACIÓN BOLT: Se eliminó lastPingTime para evitar re-renders cada 500ms
     return (
         <div
-            title={`Estado: ${isConnected ? 'Conectado' : 'Desconectado'} (Último ping: ${timeString})`}
+            title={`Estado: ${isConnected ? 'Conectado' : 'Desconectado'}`}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--fg-muted)' }}
         >
             <div
