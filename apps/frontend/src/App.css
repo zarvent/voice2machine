@@ -265,6 +265,19 @@ textarea.editor::placeholder {
   box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
 }
 
+.mic-btn.processing {
+  cursor: wait;
+}
+
+.spin-anim {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* Settings Modal */
 .modal-overlay {
   position: fixed;
