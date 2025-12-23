@@ -92,8 +92,19 @@ export function useBackend(): [BackendState, BackendActions] {
     const pollStatus = useCallback(async () => {
         try {
             const response = await invoke<string>("get_status");
-            setIsConnected(true);
-            setLastPingTime(Date.now());
+
+            // OPTIMIZACIÓN BOLT: Evitar re-renders masivos por actualización de timestamp
+            // Solo actualizamos estado de conexión si estaba desconectado.
+            // El timestamp exacto no es crítico para la UI.
+            setIsConnected((prev) => {
+                if (!prev) {
+                    setLastPingTime(Date.now());
+                    return true;
+                }
+                return true;
+            });
+            // NOTA: Ya no actualizamos setLastPingTime(Date.now()) en cada poll (500ms)
+            // Esto reduce re-renders en componentes que dependen de BackendState.
 
             const data = parseResponse(response);
 

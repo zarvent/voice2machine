@@ -15,7 +15,8 @@ import "./App.css";
 function App() {
   // Hook personalizado de lógica de negocio (Backend IPC)
   const [backendState, actions] = useBackend();
-  const { status, transcription, telemetry, cpuHistory, ramHistory, errorMessage, isConnected, lastPingTime, history } = backendState;
+  // OPTIMIZACIÓN BOLT: lastPingTime no se usa en UI para evitar re-renders
+  const { status, transcription, telemetry, cpuHistory, ramHistory, errorMessage, isConnected, history } = backendState;
 
   // Estado UI local
   const [showSettings, setShowSettings] = useState(false);
@@ -61,7 +62,6 @@ function App() {
     <main className="app-container">
       <Header
         isConnected={isConnected}
-        lastPingTime={lastPingTime}
         showDashboard={showDashboard}
         onToggleDashboard={handleToggleDashboard}
         onOpenSettings={handleOpenSettings}
