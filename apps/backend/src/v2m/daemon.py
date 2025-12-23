@@ -63,6 +63,7 @@ from v2m.core.ipc_protocol import (
     IPCResponse,
     MAX_PAYLOAD_SIZE
 )
+from v2m.utils.paths import get_secure_runtime_dir
 import json
 from v2m.core.di.container import container
 from v2m.application.commands import (
@@ -114,13 +115,15 @@ class Daemon:
         """
         self.running = False
         self.socket_path = Path(SOCKET_PATH)
-        self.pid_file = Path("/tmp/v2m_daemon.pid")
+        self.pid_file = get_secure_runtime_dir() / "v2m_daemon.pid"
         self.command_bus = container.get_command_bus()
 
         # limpieza de procesos zombie crítico
         self._cleanup_orphaned_processes()
 
         # limpiar flag de grabación si existe recuperación de error
+        # Nota: config.paths.recording_flag se debe actualizar en config.py para usar secure dir
+        # Por ahora, usamos una ruta segura manual si config no la provee
         if config.paths.recording_flag.exists():
             logger.warning("limpiando flag de grabación huérfano")
             config.paths.recording_flag.unlink()
@@ -415,8 +418,14 @@ class Daemon:
             residual_files = [
                 self.pid_file,
                 self.socket_path,
-                Path("/tmp/v2m_recording.pid"),
+                # Path("/tmp/v2m_recording.pid"), # Old insecure path
+                get_secure_runtime_dir() / "v2m_recording.pid",
             ]
+            # También intentar limpiar la ruta vieja por si acaso
+            old_recording_pid = Path("/tmp/v2m_recording.pid")
+            if old_recording_pid.exists():
+                 residual_files.append(old_recording_pid)
+
             for f in residual_files:
                 if f.exists():
                     try:

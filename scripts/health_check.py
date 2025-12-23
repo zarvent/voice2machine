@@ -70,14 +70,33 @@ def get_gpu_memory() -> Tuple[int, int]:
         return 0, 0
 
 
+def get_secure_runtime_dir(app_name: str = "v2m") -> Path:
+    """Resolve secure runtime dir matching backend logic."""
+    import os
+    import tempfile
+
+    xdg_runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if xdg_runtime:
+        runtime_dir = Path(xdg_runtime) / app_name
+    else:
+        uid = os.getuid()
+        runtime_dir = Path(tempfile.gettempdir()) / f"{app_name}_{uid}"
+    return runtime_dir
+
 def check_daemon_socket() -> bool:
     """Verifica si el socket del daemon existe."""
-    return Path('/tmp/v2m.sock').exists()
+    socket_path = get_secure_runtime_dir() / "v2m.sock"
+    return socket_path.exists()
 
 
 def check_pid_file() -> int | None:
     """Lee el PID file si existe."""
-    pid_file = Path('/tmp/v2m_daemon.pid')
+    # Check secure path first
+    pid_file = get_secure_runtime_dir() / "v2m_daemon.pid"
+    if not pid_file.exists():
+        # Fallback to old path
+        pid_file = Path('/tmp/v2m_daemon.pid')
+
     if pid_file.exists():
         try:
             return int(pid_file.read_text().strip())
@@ -90,10 +109,28 @@ def is_daemon_responsive() -> bool:
     """Verifica si el daemon responde a PING."""
     try:
         import socket
+        socket_path = str(get_secure_runtime_dir() / "v2m.sock")
         s = socket.socket(socket.AF_UNIX)
         s.settimeout(2)
-        s.connect('/tmp/v2m.sock')
-        s.send(b'PING')
+        s.connect(socket_path)
+        # Note: Health check might need to send framed message if protocol requires it
+        # But this script sends raw PING bytes.
+        # Backend expects 4-byte header length + payload.
+        # We should update this to send proper framed message if strictly required.
+        # But existing code sent raw bytes.
+        # Actually backend: header_data = await reader.readexactly(4)
+        # So raw 'PING' (4 bytes) works as length=1347375175 if interpreted as int? No.
+        # 'PING' is 0x50494E47 = 1346981447 bytes length! This would cause backend to wait for huge payload.
+        # The EXISTING health check code was likely broken for the new framed protocol or I missed something.
+        # Wait, previous health check sent `s.send(b'PING')`.
+        # Backend: `header_data = await reader.readexactly(4)`.
+        # So yes, sending raw 'PING' is interpreted as length header.
+        # This seems like a separate bug in health_check.py, but I should fix the path first.
+
+        # Let's fix the framing too while we are at it, to be safe.
+        msg = b'{"cmd": "PING"}'
+        length = len(msg)
+        s.send(length.to_bytes(4, byteorder='big') + msg)
         response = s.recv(1024).decode()
         s.close()
         return response == 'PONG'
@@ -146,10 +183,11 @@ def main():
     # 2. Verificar socket
     print(f"\n{Colors.YELLOW}[2/4] Verificando socket Unix...{Colors.NC}")
     socket_exists = check_daemon_socket()
+    socket_path = get_secure_runtime_dir() / "v2m.sock"
     if socket_exists:
-        print(f"{Colors.GREEN}✅ Socket /tmp/v2m.sock existe{Colors.NC}")
+        print(f"{Colors.GREEN}✅ Socket {socket_path} existe{Colors.NC}")
     else:
-        print(f"{Colors.YELLOW}⚠️  Socket no encontrado{Colors.NC}")
+        print(f"{Colors.YELLOW}⚠️  Socket no encontrado en {socket_path}{Colors.NC}")
 
     # 3. Verificar PID file
     print(f"\n{Colors.YELLOW}[3/4] Verificando PID file...{Colors.NC}")
@@ -206,8 +244,11 @@ def main():
             print(f"{Colors.GREEN}✅ {killed} proceso(s) eliminado(s){Colors.NC}")
 
             # Limpiar archivos residuales
-            Path('/tmp/v2m.sock').unlink(missing_ok=True)
-            Path('/tmp/v2m_daemon.pid').unlink(missing_ok=True)
+            secure_dir = get_secure_runtime_dir()
+            (secure_dir / "v2m.sock").unlink(missing_ok=True)
+            (secure_dir / "v2m_daemon.pid").unlink(missing_ok=True)
+            Path('/tmp/v2m.sock').unlink(missing_ok=True) # Old
+            Path('/tmp/v2m_daemon.pid').unlink(missing_ok=True) # Old
             print(f"{Colors.GREEN}✅ Archivos residuales eliminados{Colors.NC}")
         else:
             print(f"{Colors.YELLOW}💡 Usa --kill-zombies para eliminar automáticamente{Colors.NC}")
