@@ -1,5 +1,5 @@
 import React from 'react';
-import { MicIcon, StopIcon } from "../assets/Icons";
+import { MicIcon, StopIcon, LoaderIcon } from "../assets/Icons";
 import { Status } from "../types";
 
 interface MicControlProps {
@@ -13,9 +13,12 @@ interface MicControlProps {
  */
 export const MicControl = React.memo(({ status, onToggleRecord }: MicControlProps) => {
     const isRecording = status === "recording";
-    // Deshabilitar botón si el sistema está ocupado o desconectado
-    // Deshabilitar botón si el sistema está ocupado o desconectado
-    const isDisabled = status === "transcribing" || status === "processing" || status === "disconnected" || status === "paused";
+    const isProcessing = status === "transcribing" || status === "processing";
+
+    // Deshabilitar botón si el sistema está desconectado o pausado
+    // Nota: 'processing' no lo deshabilita visualmente para mostrar el spinner,
+    // pero el click no hará nada útil (o podría cancelar).
+    const isDisabled = status === "disconnected" || status === "paused" || isProcessing;
 
     const getTooltip = () => {
         if (status === "disconnected") return "Sistema desconectado - Verifique el daemon";
@@ -26,16 +29,28 @@ export const MicControl = React.memo(({ status, onToggleRecord }: MicControlProp
         return "Click para grabar (Ctrl+Espacio)";
     };
 
+    const getIcon = () => {
+        if (isProcessing) return <LoaderIcon />;
+        if (isRecording) return <StopIcon />;
+        return <MicIcon />;
+    };
+
+    const getAriaLabel = () => {
+        if (isProcessing) return "Procesando...";
+        if (isRecording) return "Detener grabación";
+        return "Iniciar grabación";
+    };
+
     return (
         <div className="mic-float">
             <button
-                className={`mic-btn ${isRecording ? "recording" : ""}`}
+                className={`mic-btn ${isRecording ? "recording" : ""} ${isProcessing ? "processing" : ""}`}
                 onClick={onToggleRecord}
                 disabled={isDisabled}
-                aria-label={isRecording ? "Detener grabación" : "Iniciar grabación"}
+                aria-label={getAriaLabel()}
                 title={getTooltip()}
             >
-                {isRecording ? <StopIcon /> : <MicIcon />}
+                {getIcon()}
             </button>
         </div>
     );
