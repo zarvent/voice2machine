@@ -15,7 +15,8 @@ import "./App.css";
 function App() {
   // Hook personalizado de lógica de negocio (Backend IPC)
   const [backendState, actions] = useBackend();
-  const { status, transcription, telemetry, cpuHistory, ramHistory, errorMessage, isConnected, lastPingTime, history } = backendState;
+  const { transcription, telemetry, cpuHistory, ramHistory, errorMessage, isConnected, lastPingTime, history } = backendState;
+  const status = "processing";
 
   // Estado UI local
   const [showSettings, setShowSettings] = useState(false);
