@@ -1,5 +1,5 @@
 import React from 'react';
-import { MicIcon, StopIcon } from "../assets/Icons";
+import { MicIcon, StopIcon, LoaderIcon } from "../assets/Icons";
 import { Status } from "../types";
 
 interface MicControlProps {
@@ -13,9 +13,10 @@ interface MicControlProps {
  */
 export const MicControl = React.memo(({ status, onToggleRecord }: MicControlProps) => {
     const isRecording = status === "recording";
+    const isProcessing = status === "transcribing" || status === "processing";
+
     // Deshabilitar botón si el sistema está ocupado o desconectado
-    // Deshabilitar botón si el sistema está ocupado o desconectado
-    const isDisabled = status === "transcribing" || status === "processing" || status === "disconnected" || status === "paused";
+    const isDisabled = isProcessing || status === "disconnected" || status === "paused";
 
     const getTooltip = () => {
         if (status === "disconnected") return "Sistema desconectado - Verifique el daemon";
@@ -29,13 +30,21 @@ export const MicControl = React.memo(({ status, onToggleRecord }: MicControlProp
     return (
         <div className="mic-float">
             <button
-                className={`mic-btn ${isRecording ? "recording" : ""}`}
+                className={`mic-btn ${isRecording ? "recording" : ""} ${isProcessing ? "processing" : ""}`}
                 onClick={onToggleRecord}
                 disabled={isDisabled}
-                aria-label={isRecording ? "Detener grabación" : "Iniciar grabación"}
+                aria-label={isProcessing ? "Procesando..." : (isRecording ? "Detener grabación" : "Iniciar grabación")}
                 title={getTooltip()}
             >
-                {isRecording ? <StopIcon /> : <MicIcon />}
+                {isProcessing ? (
+                    <div className="spin-anim">
+                        <LoaderIcon />
+                    </div>
+                ) : isRecording ? (
+                    <StopIcon />
+                ) : (
+                    <MicIcon />
+                )}
             </button>
         </div>
     );
