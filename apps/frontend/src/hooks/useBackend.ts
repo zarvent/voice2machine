@@ -16,6 +16,36 @@ import {
 } from '../constants';
 
 /**
+ * Compara dos objetos TelemetryData campo por campo para evitar serialización JSON costosa.
+ * @returns true si son idénticos, false si hay cambios.
+ */
+function isTelemetryEqual(a: TelemetryData | null, b: TelemetryData | null): boolean {
+    if (a === b) return true;
+    if (!a || !b) return false;
+
+    // CPU - Comparación directa de número
+    if (a.cpu.percent !== b.cpu.percent) return false;
+
+    // RAM - Comparación de campos
+    if (a.ram.percent !== b.ram.percent) return false;
+    if (a.ram.used_gb !== b.ram.used_gb) return false;
+    if (a.ram.total_gb !== b.ram.total_gb) return false;
+
+    // GPU - Manejo de opcionalidad
+    const aGpu = a.gpu;
+    const bGpu = b.gpu;
+    // Si uno tiene GPU y el otro no
+    if (!!aGpu !== !!bGpu) return false;
+    // Si ambos tienen, comparar valores
+    if (aGpu && bGpu) {
+        if (aGpu.vram_used_mb !== bGpu.vram_used_mb) return false;
+        if (aGpu.temp_c !== bGpu.temp_c) return false;
+    }
+
+    return true;
+}
+
+/**
  * HOOK PRINCIPAL DE COMUNICACIÓN CON BACKEND (DAEMON)
  *
  * Gestiona toda la lógica de estado, conexión IPC, manejo de errores y polling.
@@ -106,7 +136,7 @@ export function useBackend(): [BackendState, BackendActions] {
                 const prev = prevTelemetryRef.current;
 
                 // Si la estructura cambió o es la primera vez
-                if (!prev || JSON.stringify(prev) !== JSON.stringify(newTelemetry)) {
+                if (!isTelemetryEqual(prev, newTelemetry)) {
                     prevTelemetryRef.current = newTelemetry;
 
                     setTelemetry(newTelemetry);
