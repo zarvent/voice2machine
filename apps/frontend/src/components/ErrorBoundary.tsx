@@ -1,63 +1,44 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
-    children: ReactNode;
+  children: ReactNode;
 }
 
 interface State {
-    hasError: boolean;
-    error: Error | null;
+  hasError: boolean;
+  error: Error | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-    public state: State = {
-        hasError: false,
-        error: null,
-    };
+  public state: State = {
+    hasError: false,
+    error: null,
+  };
 
-    public static getDerivedStateFromError(error: Error): State {
-        return { hasError: true, error };
+  public static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <div className="error-fallback">
+          <h2>Algo salió mal en la interfaz.</h2>
+          <p className="error-fallback-message">{this.state.error?.message}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="error-fallback-btn"
+          >
+            Recargar Aplicación
+          </button>
+        </div>
+      );
     }
 
-    public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        console.error("Uncaught error:", error, errorInfo);
-    }
-
-    public render() {
-        if (this.state.hasError) {
-            return (
-                <div style={{
-                    height: "100vh",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "#09090b",
-                    color: "#ef4444",
-                    padding: "20px",
-                    textAlign: "center"
-                }}>
-                    <h2>Algo salió mal en la interfaz.</h2>
-                    <p style={{ color: "#a1a1aa", maxWidth: "400px", marginBottom: "20px" }}>
-                        {this.state.error?.message}
-                    </p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        style={{
-                            padding: "10px 20px",
-                            background: "#333",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "8px",
-                            cursor: "pointer"
-                        }}
-                    >
-                        Recargar Aplicación
-                    </button>
-                </div>
-            );
-        }
-
-        return this.props.children;
-    }
+    return this.props.children;
+  }
 }

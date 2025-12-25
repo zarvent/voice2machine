@@ -1,43 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { AppConfig } from '../types';
-import { SETTINGS_CLOSE_DELAY_MS } from '../constants';
-import { Toast, ToastType } from './Toast';
+import React, { useState, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { AppConfig } from "../types";
+import { SETTINGS_CLOSE_DELAY_MS } from "../constants";
+import { Toast, ToastType } from "./Toast";
 
 interface SettingsProps {
   onClose: () => void;
 }
 
-type TabType = 'general' | 'advanced';
+type TabType = "general" | "advanced";
 
 /**
  * Modal de configuración de la aplicación.
  * Permite modificar parámetros de Whisper, selección de backend LLM y opciones avanzadas.
  */
 export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('general');
+  const [activeTab, setActiveTab] = useState<TabType>("general");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<AppConfig>({});
-  // Local state for numeric input to allow flexible typing (e.g. empty string)
-  const [maxTokensInput, setMaxTokensInput] = useState<string>('512');
-  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  // Estado local para input numérico que permite tipeo flexible
+  const [maxTokensInput, setMaxTokensInput] = useState<string>("512");
+  const [toast, setToast] = useState<{
+    message: string;
+    type: ToastType;
+  } | null>(null);
 
   // Cargar configuración inicial desde el backend
   useEffect(() => {
     const loadConfig = async () => {
       try {
-        const res = await invoke<string>('get_config');
+        const res = await invoke<string>("get_config");
         const data = JSON.parse(res);
         const loadedConfig = data.config || {};
         setConfig(loadedConfig);
-        // Initialize local input state
+        // Inicializar estado local del input
         if (loadedConfig.llm?.local?.max_tokens) {
           setMaxTokensInput(loadedConfig.llm.local.max_tokens.toString());
         }
       } catch (e) {
         console.error("Error loading config:", e);
-        setToast({ message: "Error cargando configuración", type: 'error' });
+        setToast({ message: "Error cargando configuración", type: "error" });
       } finally {
         setLoading(false);
       }
@@ -48,20 +51,24 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   // Manejar cierre con tecla Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
   /** Helper para actualizar estado inmutable profundo */
-  const handleChange = (section: string, key: string, value: any) => {
-    setConfig(prev => ({
+  const handleChange = <K extends keyof AppConfig>(
+    section: K,
+    key: string,
+    value: unknown
+  ) => {
+    setConfig((prev) => ({
       ...prev,
       [section]: {
-        ...prev[section],
-        [key]: value
-      }
+        ...(prev[section] as Record<string, unknown>),
+        [key]: value,
+      },
     }));
   };
 
@@ -69,16 +76,16 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await invoke('update_config', { updates: config });
-      setToast({ message: 'Configuración guardada', type: 'success' });
+      await invoke("update_config", { updates: config });
+      setToast({ message: "Configuración guardada", type: "success" });
       setTimeout(() => {
         setSaving(false);
         onClose();
       }, SETTINGS_CLOSE_DELAY_MS);
     } catch (error) {
-      console.error('Failed to update config:', error);
+      console.error("Failed to update config:", error);
       setSaving(false);
-      setToast({ message: `Error al guardar: ${error}`, type: 'error' });
+      setToast({ message: `Error al guardar: ${error}`, type: "error" });
     }
   };
 
@@ -92,15 +99,24 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
       aria-modal="true"
       aria-labelledby="settings-title"
     >
-      <div className="modal-content" style={{ position: 'relative' }}>
+      <div className="modal-content">
         <div className="modal-header">
-          <div id="settings-title" style={{ fontWeight: 600 }}>Configuración</div>
-          <button onClick={onClose} className="btn-icon" aria-label="Cerrar configuración" autoFocus>✕</button>
+          <div id="settings-title" className="modal-title">
+            Configuración
+          </div>
+          <button
+            onClick={onClose}
+            className="btn-icon"
+            aria-label="Cerrar configuración"
+            autoFocus
+          >
+            ✕
+          </button>
         </div>
 
         {/* TOAST NOTIFICATIONS */}
         {toast && (
-          <div style={{ position: 'absolute', top: '70px', right: '20px', zIndex: 10, width: 'auto' }}>
+          <div className="settings-toast-container">
             <Toast
               message={toast.message}
               type={toast.type}
@@ -115,20 +131,20 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
           <button
             id="tab-general"
             role="tab"
-            aria-selected={activeTab === 'general'}
+            aria-selected={activeTab === "general"}
             aria-controls="panel-general"
-            className={`tab ${activeTab === 'general' ? 'active' : ''}`}
-            onClick={() => setActiveTab('general')}
+            className={`tab ${activeTab === "general" ? "active" : ""}`}
+            onClick={() => setActiveTab("general")}
           >
             General
           </button>
           <button
             id="tab-advanced"
             role="tab"
-            aria-selected={activeTab === 'advanced'}
+            aria-selected={activeTab === "advanced"}
             aria-controls="panel-advanced"
-            className={`tab ${activeTab === 'advanced' ? 'active' : ''}`}
-            onClick={() => setActiveTab('advanced')}
+            className={`tab ${activeTab === "advanced" ? "active" : ""}`}
+            onClick={() => setActiveTab("advanced")}
           >
             Avanzado
           </button>
@@ -140,41 +156,55 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             id="panel-general"
             role="tabpanel"
             aria-labelledby="tab-general"
-            hidden={activeTab !== 'general'}
-            style={{ display: activeTab === 'general' ? 'flex' : 'none', flexDirection: 'column', gap: '20px' }}
+            hidden={activeTab !== "general"}
+            className={`panel-content ${
+              activeTab === "general" ? "" : "panel-content--hidden"
+            }`}
           >
             <div className="form-group">
-              <label className="label" htmlFor="whisper-model">Modelo Whisper (Transcripción)</label>
+              <label className="label" htmlFor="whisper-model">
+                Modelo Whisper (Transcripción)
+              </label>
               <select
                 id="whisper-model"
                 className="select"
-                value={config.whisper?.model || 'large-v3-turbo'}
-                onChange={(e) => handleChange('whisper', 'model', e.target.value)}
+                value={config.whisper?.model || "large-v3-turbo"}
+                onChange={(e) =>
+                  handleChange("whisper", "model", e.target.value)
+                }
               >
                 <option value="tiny">Tiny (Más rápido, menos preciso)</option>
                 <option value="base">Base</option>
                 <option value="small">Small</option>
                 <option value="medium">Medium</option>
-                <option value="large-v3-turbo">Large v3 Turbo (Recomendado)</option>
+                <option value="large-v3-turbo">
+                  Large v3 Turbo (Recomendado)
+                </option>
               </select>
             </div>
 
             <div className="form-group">
-              <label className="label" htmlFor="llm-backend">Backend IA (Refinamiento)</label>
+              <label className="label" htmlFor="llm-backend">
+                Backend IA (Refinamiento)
+              </label>
               <select
                 id="llm-backend"
                 className="select"
-                value={config.llm?.backend || 'local'}
-                onChange={(e) => handleChange('llm', 'backend', e.target.value)}
+                value={config.llm?.backend || "local"}
+                onChange={(e) => handleChange("llm", "backend", e.target.value)}
               >
                 <option value="local">Local (Privado - Llama/Qwen)</option>
-                <option value="gemini">Google Gemini (Nube - Requiere API Key)</option>
+                <option value="gemini">
+                  Google Gemini (Nube - Requiere API Key)
+                </option>
               </select>
             </div>
 
-            {config.llm?.backend === 'gemini' && (
+            {config.llm?.backend === "gemini" && (
               <div className="form-group">
-                <label className="label" htmlFor="gemini-api-key">Gemini API Key</label>
+                <label className="label" htmlFor="gemini-api-key">
+                  Gemini API Key
+                </label>
                 <input
                   id="gemini-api-key"
                   className="input"
@@ -182,7 +212,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   placeholder="Cargada desde variable de entorno (Sólo lectura)"
                   disabled
                 />
-                <small style={{ color: 'var(--fg-secondary)', fontSize: '11px' }}>
+                <small className="form-hint">
                   Configure GOOGLE_API_KEY en su archivo .env
                 </small>
               </div>
@@ -194,16 +224,22 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             id="panel-advanced"
             role="tabpanel"
             aria-labelledby="tab-advanced"
-            hidden={activeTab !== 'advanced'}
-            style={{ display: activeTab === 'advanced' ? 'flex' : 'none', flexDirection: 'column', gap: '20px' }}
+            hidden={activeTab !== "advanced"}
+            className={`panel-content ${
+              activeTab === "advanced" ? "" : "panel-content--hidden"
+            }`}
           >
             <div className="form-group">
-              <label className="label" htmlFor="compute-type">Precisión de Cómputo</label>
+              <label className="label" htmlFor="compute-type">
+                Precisión de Cómputo
+              </label>
               <select
                 id="compute-type"
                 className="select"
-                value={config.whisper?.compute_type || 'int8_float16'}
-                onChange={(e) => handleChange('whisper', 'compute_type', e.target.value)}
+                value={config.whisper?.compute_type || "int8_float16"}
+                onChange={(e) =>
+                  handleChange("whisper", "compute_type", e.target.value)
+                }
               >
                 <option value="float16">float16 (Mayor consumo VRAM)</option>
                 <option value="int8_float16">int8_float16 (Balanceado)</option>
@@ -211,18 +247,24 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
               </select>
             </div>
 
-            <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <label className="label" htmlFor="vad-filter">Filtro de Silencio (VAD)</label>
+            <div className="form-group form-group--row">
+              <label className="label" htmlFor="vad-filter">
+                Filtro de Silencio (VAD)
+              </label>
               <input
                 id="vad-filter"
                 type="checkbox"
                 checked={config.whisper?.vad_filter ?? true}
-                onChange={(e) => handleChange('whisper', 'vad_filter', e.target.checked)}
+                onChange={(e) =>
+                  handleChange("whisper", "vad_filter", e.target.checked)
+                }
               />
             </div>
 
             <div className="form-group">
-              <label className="label" htmlFor="max-tokens">Tokens Máximos (LLM Local)</label>
+              <label className="label" htmlFor="max-tokens">
+                Tokens Máximos (LLM Local)
+              </label>
               <input
                 id="max-tokens"
                 className="input"
@@ -235,17 +277,20 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   setMaxTokensInput(val);
                   const parsed = parseInt(val);
                   if (!isNaN(parsed) && parsed >= 64) {
-                    handleChange('llm', 'local', { ...config.llm?.local, max_tokens: parsed });
+                    handleChange("llm", "local", {
+                      ...config.llm?.local,
+                      max_tokens: parsed,
+                    });
                   }
                 }}
                 onBlur={() => {
                   const parsed = parseInt(maxTokensInput);
                   if (isNaN(parsed) || parsed < 64) {
-                    // Reset to last valid from config or default
+                    // Reset al último valor válido o default
                     const validVal = config.llm?.local?.max_tokens || 512;
                     setMaxTokensInput(validVal.toString());
                   } else {
-                    // Format correctly (remove leading zeros etc)
+                    // Formatear correctamente
                     setMaxTokensInput(parsed.toString());
                   }
                 }}
@@ -255,19 +300,26 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         </div>
 
         {/* FOOTER ACCIONES */}
-        <div style={{ padding: '20px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: 'var(--bg-panel)' }}>
-          <button className="btn-secondary" onClick={onClose} disabled={saving} style={{ border: 'none' }}>Cancelar</button>
+        <div className="modal-footer">
           <button
-            className="btn-secondary"
+            className="btn-secondary btn-cancel"
+            onClick={onClose}
+            disabled={saving}
+          >
+            Cancelar
+          </button>
+          <button
+            className="btn-primary"
             onClick={handleSave}
             disabled={saving}
             aria-busy={saving}
-            style={{ background: 'var(--fg-primary)', color: 'var(--bg-app)', borderColor: 'transparent' }}
           >
-            {saving ? 'Guardando...' : 'Guardar Cambios'}
+            {saving ? "Guardando..." : "Guardar Cambios"}
           </button>
         </div>
       </div>
     </div>
   );
 };
+
+Settings.displayName = "Settings";

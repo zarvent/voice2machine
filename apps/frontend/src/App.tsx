@@ -1,12 +1,18 @@
-import { useState, useCallback, useEffect } from "react";
-import { Dashboard } from "./components/Dashboard";
-import { Settings } from "./components/Settings";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { Header } from "./components/Header";
 import { MicControl } from "./components/MicControl";
 import { TranscriptionArea } from "./components/TranscriptionArea";
 import { useBackend } from "./hooks/useBackend";
 import { COPY_FEEDBACK_DURATION_MS } from "./constants";
 import "./App.css";
+
+// Lazy loading para componentes pesados (code splitting)
+const Dashboard = lazy(() =>
+  import("./components/Dashboard").then((m) => ({ default: m.Dashboard }))
+);
+const Settings = lazy(() =>
+  import("./components/Settings").then((m) => ({ default: m.Settings }))
+);
 
 /**
  * COMPONENTE RAÍZ DE LA APLICACIÓN
@@ -15,7 +21,17 @@ import "./App.css";
 function App() {
   // Hook personalizado de lógica de negocio (Backend IPC)
   const [backendState, actions] = useBackend();
-  const { status, transcription, telemetry, cpuHistory, ramHistory, errorMessage, isConnected, history } = backendState;
+  const {
+    status,
+    transcription,
+    telemetry,
+    cpuHistory,
+    ramHistory,
+    errorMessage,
+    isConnected,
+    lastPingTime,
+    history,
+  } = backendState;
 
   // Estado UI local
   const [showSettings, setShowSettings] = useState(false);
@@ -30,9 +46,12 @@ function App() {
   }, [transcription]);
 
   /** Maneja doble click o enter en histórico */
-  const restoreHistoryItem = useCallback((text: string) => {
-    actions.setTranscription(text);
-  }, [actions]);
+  const restoreHistoryItem = useCallback(
+    (text: string) => {
+      actions.setTranscription(text);
+    },
+    [actions]
+  );
 
   const handleToggleRecord = useCallback(() => {
     if (status === "recording") actions.stopRecording();
@@ -42,25 +61,33 @@ function App() {
   // Global shortcut for toggling recording (Ctrl+Space)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
+      if ((e.ctrlKey || e.metaKey) && e.code === "Space") {
         e.preventDefault();
-        const isDisabled = status === "transcribing" || status === "processing" || status === "disconnected" || status === "paused";
+        const isDisabled =
+          status === "transcribing" ||
+          status === "processing" ||
+          status === "disconnected" ||
+          status === "paused";
         if (!isDisabled) {
           handleToggleRecord();
         }
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleToggleRecord, status]);
 
-  const handleToggleDashboard = useCallback(() => setShowDashboard(prev => !prev), []);
+  const handleToggleDashboard = useCallback(
+    () => setShowDashboard((prev) => !prev),
+    []
+  );
   const handleOpenSettings = useCallback(() => setShowSettings(true), []);
 
   return (
     <main className="app-container">
       <Header
         isConnected={isConnected}
+        lastPingTime={lastPingTime}
         showDashboard={showDashboard}
         onToggleDashboard={handleToggleDashboard}
         onOpenSettings={handleOpenSettings}
@@ -79,14 +106,15 @@ function App() {
             onTogglePause={actions.togglePause}
           />
 
-          <MicControl
-            status={status}
-            onToggleRecord={handleToggleRecord}
-          />
+          <MicControl status={status} onToggleRecord={handleToggleRecord} />
 
           {/* Notificación de error flotante */}
           {status === "error" && errorMessage && (
-            <div className="error-banner error-toast-container" role="alert" aria-live="assertive">
+            <div
+              className="error-banner error-toast-container"
+              role="alert"
+              aria-live="assertive"
+            >
               {errorMessage}
               <button
                 onClick={actions.clearError}
@@ -102,50 +130,51 @@ function App() {
         {/* --- BARRA LATERAL (DASHBOARD) --- */}
         {showDashboard && (
           <aside className="sidebar-dashboard">
-            <div className="sidebar-header">
-              Métricas del Sistema
-            </div>
+            <div className="sidebar-header">Métricas del Sistema</div>
 
-            <Dashboard
-              visible={true}
-              telemetry={telemetry}
-              cpuHistory={cpuHistory}
-              ramHistory={ramHistory}
-            />
+            <Suspense
+              fallback={<div className="sidebar-loading">Cargando...</div>}
+            >
+              <Dashboard
+                visible={true}
+                telemetry={telemetry}
+                cpuHistory={cpuHistory}
+                ramHistory={ramHistory}
+              />
+            </Suspense>
 
             <div className="sidebar-section">
               <button
                 onClick={actions.restartDaemon}
-                disabled={status === 'restarting'}
-                className="button-secondary"
-                style={{ width: '100%' }} // Mantener width aquí o mover a clase btn-full
+                disabled={status === "restarting"}
+                className="button-secondary btn-full"
               >
-                {status === 'restarting' ? 'Reiniciando...' : 'Reiniciar Daemon'}
+                {status === "restarting"
+                  ? "Reiniciando..."
+                  : "Reiniciar Daemon"}
               </button>
             </div>
 
             {history && history.length > 0 && (
               <div className="history-section-container">
-                <div className="history-title">
-                  Historial
-                </div>
+                <div className="history-title">Historial</div>
                 <div className="history-list">
-                  {history.map(item => (
+                  {history.map((item) => (
                     <div
                       key={item.id}
                       role="button"
                       tabIndex={0}
                       className="history-item"
                       onClick={() => restoreHistoryItem(item.text)}
-                      onKeyDown={(e) => e.key === 'Enter' && restoreHistoryItem(item.text)}
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && restoreHistoryItem(item.text)
+                      }
                       title="Click para restaurar"
                     >
                       <div className="history-time">
                         {new Date(item.timestamp).toLocaleTimeString()}
                       </div>
-                      <div className="history-text">
-                        {item.text}
-                      </div>
+                      <div className="history-text">{item.text}</div>
                     </div>
                   ))}
                 </div>
@@ -155,7 +184,15 @@ function App() {
         )}
       </div>
 
-      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <Suspense
+          fallback={
+            <div className="modal-overlay modal-loading">Cargando...</div>
+          }
+        >
+          <Settings onClose={() => setShowSettings(false)} />
+        </Suspense>
+      )}
     </main>
   );
 }
