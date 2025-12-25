@@ -93,7 +93,7 @@ class PathsConfig(BaseModel):
     recording_flag: Path = Field(default=RUNTIME_DIR / "v2m_recording.pid")
     audio_file: Path = Field(default=RUNTIME_DIR / "v2m_audio.wav")
     log_file: Path = Field(default=RUNTIME_DIR / "v2m_debug.log")
-    venv_path: Path = Field(default=Path("~/v2m/venv"))
+    venv_path: Path = Field(default=BASE_DIR / "venv")
 
     def __getitem__(self, item):
         return getattr(self, item)

@@ -81,9 +81,14 @@ NC='\033[0m' # No Color
 
 ISSUES=0
 
+# Detectar directorio del proyecto dinámicamente
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )"
+BACKEND_DIR="${PROJECT_DIR}/apps/backend"
+
 # 1. Verificar venv
 echo -n "✓ Entorno virtual: "
-if [ -d "$HOME/v2m/apps/backend/venv" ]; then
+if [ -d "${BACKEND_DIR}/venv" ]; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FALLO${NC}"
@@ -92,7 +97,7 @@ fi
 
 # 2. Verificar faster-whisper
 echo -n "✓ Faster-Whisper instalado: "
-if source "$HOME/v2m/apps/backend/venv/bin/activate" 2>/dev/null && python3 -c "import faster_whisper" 2>/dev/null; then
+if source "${BACKEND_DIR}/venv/bin/activate" 2>/dev/null && python3 -c "import faster_whisper" 2>/dev/null; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FALLO${NC}"
@@ -101,7 +106,7 @@ fi
 
 # 3. Verificar CUDA
 echo -n "✓ CUDA disponible: "
-if source "$HOME/v2m/apps/backend/venv/bin/activate" 2>/dev/null && python3 -c "import torch; print(torch.cuda.is_available())" 2>/dev/null | grep -q "True"; then
+if source "${BACKEND_DIR}/venv/bin/activate" 2>/dev/null && python3 -c "import torch; print(torch.cuda.is_available())" 2>/dev/null | grep -q "True"; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}NO (Verificar CUDA)${NC}"
@@ -110,7 +115,7 @@ fi
 
 # 4. Verificar LD_LIBRARY_PATH
 echo -n "✓ LD_LIBRARY_PATH configurado: "
-if source "$HOME/v2m/apps/backend/venv/bin/activate" 2>/dev/null && [ -n "$LD_LIBRARY_PATH" ]; then
+if source "${BACKEND_DIR}/venv/bin/activate" 2>/dev/null && [ -n "$LD_LIBRARY_PATH" ]; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${YELLOW}VACIO (Se configurará al activar)${NC}"
@@ -118,7 +123,7 @@ fi
 
 # 5. Verificar script principal
 echo -n "✓ Script v2m-toggle.sh: "
-if [ -x "$HOME/v2m/scripts/v2m-toggle.sh" ]; then
+if [ -x "${SCRIPT_DIR}/v2m-toggle.sh" ]; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FALLO${NC}"
@@ -174,10 +179,8 @@ else
     echo -e "${RED}⚠️  Se encontraron $ISSUES problema(s)${NC}"
     echo ""
     echo "Para reinstalar:"
-    echo "cd ~/v2m"
+    echo "cd ${BACKEND_DIR}"
     echo "rm -rf venv/"
     echo "python3 -m venv venv"
-    echo "source venv/bin/activate"
-    echo "pip install --upgrade pip setuptools wheel"
-    echo "pip install nvidia-cublas-cu12 nvidia-cudnn-cu12 faster-whisper"
+    echo "venv/bin/pip install -r requirements.txt"
 fi

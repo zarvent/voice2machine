@@ -5,7 +5,7 @@
 # recording_flag = "/tmp/v2m_recording.pid"
 # audio_file = "/tmp/v2m_audio.wav"
 # log_file = "/tmp/v2m.log"
-venv_path = "~/v2m/venv"
+# venv_path se auto-detecta relativo al proyecto (apps/backend/venv)
 
 [whisper]
 model = "large-v3-turbo"
