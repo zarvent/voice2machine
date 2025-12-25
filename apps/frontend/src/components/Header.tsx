@@ -4,7 +4,6 @@ import { ConnectionIndicator } from "./ConnectionIndicator";
 
 interface HeaderProps {
     isConnected: boolean;
-    lastPingTime: number | null;
     showDashboard: boolean;
     onToggleDashboard: () => void;
     onOpenSettings: () => void;
@@ -12,7 +11,6 @@ interface HeaderProps {
 
 export const Header = React.memo(({
     isConnected,
-    lastPingTime,
     showDashboard,
     onToggleDashboard,
     onOpenSettings
@@ -25,7 +23,7 @@ export const Header = React.memo(({
             </div>
 
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <ConnectionIndicator isConnected={isConnected} lastPingTime={lastPingTime} />
+                <ConnectionIndicator isConnected={isConnected} />
 
                 <div style={{ width: 1, height: 24, background: 'var(--border-subtle)', margin: '0 8px' }}></div>
 
