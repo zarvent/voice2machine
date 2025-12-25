@@ -98,8 +98,6 @@ export interface BackendState {
     errorMessage: string;
     /** Flag de conexión socket activa */
     isConnected: boolean;
-    /** Timestamp del último heartbeat recibido */
-    lastPingTime: number | null;
     /** Historial local de transcripciones */
     history: HistoryItem[];
 }

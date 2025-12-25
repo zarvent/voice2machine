@@ -62,7 +62,6 @@ export function useBackend(): [BackendState, BackendActions] {
     const [ramHistory, setRamHistory] = useState<number[]>([]);
     const [errorMessage, setErrorMessage] = useState("");
     const [isConnected, setIsConnected] = useState(false);
-    const [lastPingTime, setLastPingTime] = useState<number | null>(null);
     const [history, setHistory] = useState<HistoryItem[]>([]);
 
     // --- EFECTOS DE INICIALIZACIÓN ---
@@ -123,7 +122,6 @@ export function useBackend(): [BackendState, BackendActions] {
         try {
             const response = await invoke<string>("get_status");
             setIsConnected(true);
-            setLastPingTime(Date.now());
 
             const data = parseResponse(response);
 
@@ -285,9 +283,8 @@ export function useBackend(): [BackendState, BackendActions] {
         ramHistory,
         errorMessage,
         isConnected,
-        lastPingTime,
         history
-    }), [status, transcription, telemetry, cpuHistory, ramHistory, errorMessage, isConnected, lastPingTime, history]);
+    }), [status, transcription, telemetry, cpuHistory, ramHistory, errorMessage, isConnected, history]);
 
     const actions: BackendActions = useMemo(() => ({
         startRecording,

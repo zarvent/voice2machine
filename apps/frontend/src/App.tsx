@@ -15,8 +15,7 @@ import "./App.css";
 function App() {
   // Hook personalizado de lógica de negocio (Backend IPC)
   const [backendState, actions] = useBackend();
-  const { transcription, telemetry, cpuHistory, ramHistory, errorMessage, isConnected, lastPingTime, history } = backendState;
-  const status = "processing";
+  const { status, transcription, telemetry, cpuHistory, ramHistory, errorMessage, isConnected, history } = backendState;
 
   // Estado UI local
   const [showSettings, setShowSettings] = useState(false);
@@ -62,7 +61,6 @@ function App() {
     <main className="app-container">
       <Header
         isConnected={isConnected}
-        lastPingTime={lastPingTime}
         showDashboard={showDashboard}
         onToggleDashboard={handleToggleDashboard}
         onOpenSettings={handleOpenSettings}
