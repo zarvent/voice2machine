@@ -304,6 +304,18 @@ export function useBackend(): [BackendState, BackendActions] {
     }
   }, []);
 
+  const shutdownDaemon = useCallback(async () => {
+    setStatus("shutting_down");
+    try {
+      await invoke("shutdown_daemon");
+      setStatus("disconnected");
+      setIsConnected(false);
+    } catch (e) {
+      setErrorMessage(String(e));
+      setStatus("error");
+    }
+  }, []);
+
   const state: BackendState = useMemo(
     () => ({
       status,
@@ -339,6 +351,7 @@ export function useBackend(): [BackendState, BackendActions] {
       clearError,
       retryConnection,
       restartDaemon,
+      shutdownDaemon,
     }),
     [
       startRecording,
@@ -348,6 +361,7 @@ export function useBackend(): [BackendState, BackendActions] {
       clearError,
       retryConnection,
       restartDaemon,
+      shutdownDaemon,
     ]
   );
 

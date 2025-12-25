@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { Header } from "./components/Header";
 import { MicControl } from "./components/MicControl";
 import { TranscriptionArea } from "./components/TranscriptionArea";
+import { DaemonControls } from "./components/DaemonControls";
 import { useBackend } from "./hooks/useBackend";
 import { COPY_FEEDBACK_DURATION_MS } from "./constants";
 import "./App.css";
@@ -143,17 +144,11 @@ function App() {
               />
             </Suspense>
 
-            <div className="sidebar-section">
-              <button
-                onClick={actions.restartDaemon}
-                disabled={status === "restarting"}
-                className="button-secondary btn-full"
-              >
-                {status === "restarting"
-                  ? "Reiniciando..."
-                  : "Reiniciar Daemon"}
-              </button>
-            </div>
+            <DaemonControls
+              status={status}
+              onRestart={actions.restartDaemon}
+              onShutdown={actions.shutdownDaemon}
+            />
 
             {history && history.length > 0 && (
               <div className="history-section-container">

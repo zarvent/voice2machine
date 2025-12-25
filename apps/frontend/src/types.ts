@@ -15,6 +15,7 @@
  * - error: Estado de error recuperable
  * - disconnected: Sin conexión con el daemon backend
  * - restarting: Reiniciando el servicio
+ * - shutting_down: Apagando el servicio
  */
 export type Status =
   | "idle"
@@ -24,7 +25,8 @@ export type Status =
   | "paused"
   | "error"
   | "disconnected"
-  | "restarting";
+  | "restarting"
+  | "shutting_down";
 
 /**
  * Datos de telemetría del sistema para el Dashboard.
@@ -125,6 +127,8 @@ export interface BackendActions {
   retryConnection: () => Promise<void>;
   /** Solicita reinicio completo del proceso daemon */
   restartDaemon: () => Promise<void>;
+  /** Apaga completamente el daemon */
+  shutdownDaemon: () => Promise<void>;
 }
 
 /** Configuración específica para el modelo Whisper */

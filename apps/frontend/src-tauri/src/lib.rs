@@ -188,10 +188,9 @@ fn get_config() -> Result<String, String> {
     send_json_request("GET_CONFIG", None).map(|v| v.to_string())
 }
 
-/// Comando: RESTART_DAEMON (Ejecuta script externo)
+/// Helper: Resuelve la ruta al script del daemon.
 /// En desarrollo usa ruta relativa al proyecto, en producción usa recursos bundled.
-#[tauri::command]
-async fn restart_daemon(app: tauri::AppHandle) -> Result<String, String> {
+fn resolve_daemon_script(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     // Intentar ruta de desarrollo primero (relativa al proyecto)
     let dev_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent() // src-tauri -> frontend
@@ -199,16 +198,21 @@ async fn restart_daemon(app: tauri::AppHandle) -> Result<String, String> {
         .and_then(|p| p.parent()) // apps -> v2m (raíz del proyecto)
         .map(|p| p.join("scripts/v2m-daemon.sh"));
 
-    let script_path = if let Some(path) = dev_path.filter(|p| p.exists()) {
-        path
+    if let Some(path) = dev_path.filter(|p| p.exists()) {
+        Ok(path)
     } else {
         // Fallback a recursos bundled (producción)
         app.path()
             .resolve("scripts/v2m-daemon.sh", BaseDirectory::Resource)
-            .map_err(|e| format!("Error resolviendo ruta del script: {}", e))?
-    };
+            .map_err(|e| format!("Error resolviendo ruta del script: {}", e))
+    }
+}
 
-    // Nota: SysCommand es std::process::Command
+/// Comando: RESTART_DAEMON (Reinicia el daemon)
+#[tauri::command]
+async fn restart_daemon(app: tauri::AppHandle) -> Result<String, String> {
+    let script_path = resolve_daemon_script(&app)?;
+
     let output = SysCommand::new("bash")
         .arg(&script_path)
         .arg("restart")
@@ -220,6 +224,25 @@ async fn restart_daemon(app: tauri::AppHandle) -> Result<String, String> {
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(format!("Fallo al reiniciar daemon: {}", stderr))
+    }
+}
+
+/// Comando: SHUTDOWN_DAEMON (Detiene el daemon)
+#[tauri::command]
+async fn shutdown_daemon(app: tauri::AppHandle) -> Result<String, String> {
+    let script_path = resolve_daemon_script(&app)?;
+
+    let output = SysCommand::new("bash")
+        .arg(&script_path)
+        .arg("stop")
+        .output()
+        .map_err(|e| format!("Error ejecutando script de apagado: {}", e))?;
+
+    if output.status.success() {
+        Ok("Daemon detenido correctamente".to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("Fallo al detener daemon: {}", stderr))
     }
 }
 
@@ -240,8 +263,10 @@ pub fn run() {
             resume_daemon,
             update_config,
             get_config,
-            restart_daemon
+            restart_daemon,
+            shutdown_daemon
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
