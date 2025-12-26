@@ -114,7 +114,9 @@ class Daemon:
         """
         self.running = False
         self.socket_path = Path(SOCKET_PATH)
-        self.pid_file = Path("/tmp/v2m_daemon.pid")
+        # Use secure runtime directory for PID file
+        from v2m.utils.paths import get_secure_runtime_dir
+        self.pid_file = get_secure_runtime_dir() / "v2m_daemon.pid"
         self.command_bus = container.get_command_bus()
 
         # limpieza de procesos zombie crítico
