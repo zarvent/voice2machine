@@ -13,11 +13,15 @@ export const ConnectionIndicator: React.FC<ConnectionIndicatorProps> = ({
     ? new Date(lastPingTime).toLocaleTimeString()
     : "--:--";
 
+  const statusLabel = isConnected ? "Sistema conectado" : "Sistema desconectado";
+  const tooltip = `Estado: ${isConnected ? "Conectado" : "Desconectado"} (Último ping: ${timeString})`;
+
   return (
     <div
-      title={`Estado: ${
-        isConnected ? "Conectado" : "Desconectado"
-      } (Último ping: ${timeString})`}
+      role="status"
+      aria-label={statusLabel}
+      tabIndex={0}
+      title={tooltip}
       className="connection-indicator"
     >
       <div
