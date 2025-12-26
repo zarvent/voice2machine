@@ -137,7 +137,16 @@ export function useBackend(): [BackendState, BackendActions] {
     try {
       const response = await invoke<string>("get_status");
       setIsConnected(true);
-      setLastPingTime(Date.now());
+      const now = Date.now();
+
+      // OPTIMIZACIÓN BOLT: Actualizar lastPingTime con menor frecuencia (cada 5s)
+      // para evitar re-renderizar toda la app 2 veces por segundo.
+      setLastPingTime((prev) => {
+        if (!prev || now - prev > 5000) {
+          return now;
+        }
+        return prev;
+      });
 
       const data = parseResponse(response);
 
