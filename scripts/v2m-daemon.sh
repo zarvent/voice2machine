@@ -69,8 +69,25 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 VENV_PYTHON="${PROJECT_DIR}/venv/bin/python"
-LOG_FILE="/tmp/v2m_daemon.log"
-PID_FILE="/tmp/v2m_daemon.pid"
+
+# --- RUTA SEGURA DE EJECUCIÓN ---
+# Debe coincidir con la lógica de v2m.utils.paths.get_secure_runtime_dir
+if [ -n "${XDG_RUNTIME_DIR}" ]; then
+    RUNTIME_DIR="${XDG_RUNTIME_DIR}/v2m"
+else
+    # Fallback seguro: /tmp/v2m_<uid>
+    CURRENT_UID=$(id -u)
+    RUNTIME_DIR="/tmp/v2m_${CURRENT_UID}"
+fi
+
+# Asegurar que el directorio existe con permisos correctos (0700)
+if [ ! -d "${RUNTIME_DIR}" ]; then
+    mkdir -p "${RUNTIME_DIR}"
+    chmod 700 "${RUNTIME_DIR}"
+fi
+
+LOG_FILE="${RUNTIME_DIR}/v2m_debug.log"
+PID_FILE="${RUNTIME_DIR}/v2m_daemon.pid"
 
 start_daemon() {
     if [ -f "${PID_FILE}" ]; then

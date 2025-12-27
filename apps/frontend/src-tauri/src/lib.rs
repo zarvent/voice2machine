@@ -4,14 +4,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
+use std::path::PathBuf;
 use std::process::Command as SysCommand;
 use tauri::path::BaseDirectory;
 use tauri::Manager;
 
 // --- CONSTANTES DE SEGURIDAD (SEIKETSU/SAFETY) ---
-
-/// Ruta al socket Unix del daemon Python.
-const DAEMON_SOCKET_PATH: &str = "/tmp/v2m.sock";
 
 /// Tamaño máximo de respuesta permitido (1MB) para prevenir ataques de memoria (DoS).
 const MAX_RESPONSE_SIZE: usize = 1024 * 1024;
@@ -46,6 +44,32 @@ struct DaemonResponse {
 
 // --- FUNCIONES CORE ---
 
+/// Obtiene la ruta segura del socket dinámicamente.
+/// Implementa la misma lógica que el backend (prioriza XDG_RUNTIME_DIR, fallback a /tmp con UID).
+fn get_socket_path() -> PathBuf {
+    // 1. Intentar usar XDG_RUNTIME_DIR (estándar en Linux)
+    if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+        return PathBuf::from(runtime_dir).join("v2m/v2m.sock");
+    }
+
+    // 2. Fallback a /tmp/v2m_<uid>/v2m.sock
+    // Obtenemos el UID ejecutando 'id -u' para evitar dependencias externas como libc
+    let uid = SysCommand::new("id")
+        .arg("-u")
+        .output()
+        .ok()
+        .and_then(|output| {
+            if output.status.success() {
+                String::from_utf8(output.stdout).ok().map(|s| s.trim().to_string())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| "1000".to_string()); // Fallback inseguro pero funcional si id falla
+
+    PathBuf::from(format!("/tmp/v2m_{}/v2m.sock", uid))
+}
+
 /// Envía una solicitud JSON al daemon Python a través de un socket Unix.
 ///
 /// # Argumentos
@@ -59,9 +83,11 @@ struct DaemonResponse {
 /// Implementa framing (4 bytes length header) y límites de tamaño de respuesta.
 fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String> {
     // 1. Conexión al Socket
+    let socket_path = get_socket_path();
+
     // Intentamos conectar al archivo del socket Unix.
-    let mut stream = UnixStream::connect(DAEMON_SOCKET_PATH)
-        .map_err(|e| format!("No se pudo conectar al daemon (¿está corriendo?): {}", e))?;
+    let mut stream = UnixStream::connect(&socket_path)
+        .map_err(|e| format!("No se pudo conectar al daemon en {:?} (¿está corriendo?): {}", socket_path, e))?;
 
     // Configurar timeouts para evitar que la UI se congele si el backend muere.
     stream
