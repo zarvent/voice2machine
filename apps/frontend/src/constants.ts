@@ -23,3 +23,6 @@ export const SPARKLINE_HISTORY_LENGTH = 20;
 
 /** ERROR - Tiempo por defecto para autodescartar ciertos errores (opcional) */
 export const ERROR_AUTO_DISMISS_MS = 5000;
+
+/** UI - Frecuencia de actualización de la UI del tiempo de último ping (para reducir re-renders) */
+export const PING_UPDATE_INTERVAL_MS = 5000;
