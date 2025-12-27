@@ -10,6 +10,7 @@ import {
 } from "../types";
 import {
   STATUS_POLL_INTERVAL_MS,
+  PING_UPDATE_INTERVAL_MS,
   HISTORY_STORAGE_KEY,
   MAX_HISTORY_ITEMS,
   SPARKLINE_HISTORY_LENGTH,
@@ -110,6 +111,8 @@ export function useBackend(): [BackendState, BackendActions] {
   const errorRef = useRef<string>(errorMessage);
   // OPTIMIZACIÓN BOLT: Ref para comparar telemetría sin re-renderizar
   const prevTelemetryRef = useRef<TelemetryData | null>(null);
+  // OPTIMIZACIÓN BOLT: Ref para controlar la frecuencia de actualización del tiempo de ping
+  const lastPingTimeRef = useRef<number>(0);
 
   useEffect(() => {
     statusRef.current = status;
@@ -137,7 +140,15 @@ export function useBackend(): [BackendState, BackendActions] {
     try {
       const response = await invoke<string>("get_status");
       setIsConnected(true);
-      setLastPingTime(Date.now());
+
+      // OPTIMIZACIÓN BOLT: Throttling de actualización de UI para lastPingTime
+      // Evita re-renderizar toda la App cada 500ms solo para actualizar un timestamp oculto en un tooltip.
+      // Se actualiza solo cada 5 segundos.
+      const now = Date.now();
+      if (now - lastPingTimeRef.current > PING_UPDATE_INTERVAL_MS) {
+        setLastPingTime(now);
+        lastPingTimeRef.current = now;
+      }
 
       const data = parseResponse(response);
 
