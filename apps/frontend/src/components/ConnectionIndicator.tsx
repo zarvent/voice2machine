@@ -13,16 +13,21 @@ export const ConnectionIndicator: React.FC<ConnectionIndicatorProps> = ({
     ? new Date(lastPingTime).toLocaleTimeString()
     : "--:--";
 
+  const statusText = isConnected ? "Conectado" : "Desconectado";
+  const label = `Estado: ${statusText} (Último ping: ${timeString})`;
+
   return (
     <div
-      title={`Estado: ${
-        isConnected ? "Conectado" : "Desconectado"
-      } (Último ping: ${timeString})`}
+      role="status"
+      tabIndex={0}
+      aria-label={label}
+      title={label}
       className="connection-indicator"
     >
       <div
         className="connection-dot"
         data-status={isConnected ? "connected" : "disconnected"}
+        aria-hidden="true"
       />
     </div>
   );

@@ -15,3 +15,7 @@
 ## 2024-05-23 - [Modal Keyboard Accessibility]
 **Learning:** Modals often lack basic keyboard accessibility features like closing with the `Escape` key. This is a critical expectation for keyboard users and power users alike, and its absence can make the application feel "trapped" or unpolished.
 **Action:** Always add a `keydown` listener for `Escape` in modal components to trigger the close action.
+
+## 2025-12-13 - [Status Indicator Accessibility]
+**Learning:** Purely visual status indicators (like colored dots) are invisible to screen readers and often inaccessible to keyboard users.
+**Action:** Use `role="status"` and `tabIndex={0}` on status containers. Provide a descriptive `aria-label` that includes the full status state (e.g., "Status: Connected") so keyboard users can tab to it and hear the current state.
