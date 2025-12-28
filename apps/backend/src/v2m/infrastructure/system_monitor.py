@@ -26,6 +26,7 @@ Se adhiere al principio de "Single Responsibility" proveyendo solo datos de obse
 import psutil
 import logging
 from typing import Dict, Any, Optional
+from types import ModuleType
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,8 @@ class SystemMonitor:
     """
 
     def __init__(self) -> None:
+        # OPTIMIZACIÓN BOLT: Cachear módulo torch para evitar importación repetida
+        self._torch: Optional[ModuleType] = None
         self._gpu_available = self._check_gpu_availability()
 
         # OPTIMIZACIÓN BOLT: Cachear métricas estáticas (Total RAM, GPU Name)
@@ -48,11 +51,10 @@ class SystemMonitor:
             self._ram_total_gb = 0.0
 
         self._gpu_static_info: Dict[str, Any] = {}
-        if self._gpu_available:
+        if self._gpu_available and self._torch:
             try:
-                import torch
-                device = torch.cuda.current_device()
-                props = torch.cuda.get_device_properties(device)
+                device = self._torch.cuda.current_device()
+                props = self._torch.cuda.get_device_properties(device)
                 self._gpu_static_info = {
                     "name": props.name,
                     "vram_total_mb": round(props.total_memory / (1024 ** 2), 2)
@@ -70,6 +72,8 @@ class SystemMonitor:
         """Verifica si hay una GPU NVIDIA disponible via torch.cuda."""
         try:
             import torch
+            # OPTIMIZACIÓN BOLT: Guardar referencia al módulo para reuso en polling
+            self._torch = torch
             return torch.cuda.is_available()
         except ImportError:
             logger.warning("torch not available, GPU monitoring disabled")
@@ -118,17 +122,17 @@ class SystemMonitor:
             Dict con métricas de GPU: name, vram_used_mb, vram_total_mb, temp_c
         """
         try:
-            import torch
-
-            if not torch.cuda.is_available():
+            # OPTIMIZACIÓN BOLT: Usar referencia cacheada self._torch
+            # Evita búsqueda en sys.modules cada 500ms
+            if not self._torch or not self._torch.cuda.is_available():
                 return {"name": "N/A", "vram_used_mb": 0, "vram_total_mb": 0, "temp_c": 0}
 
-            device = torch.cuda.current_device()
+            device = self._torch.cuda.current_device()
             # Usar estáticos cacheados
             static = self._gpu_static_info
 
             # VRAM metrics en MB (Dinámico)
-            vram_reserved = torch.cuda.memory_reserved(device) / (1024 ** 2)
+            vram_reserved = self._torch.cuda.memory_reserved(device) / (1024 ** 2)
 
             return {
                 "name": static.get("name", "Unknown"),
