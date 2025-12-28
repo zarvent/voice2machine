@@ -5,13 +5,12 @@ use serde_json::{json, Value};
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::process::Command as SysCommand;
+use std::path::PathBuf;
+use std::env;
 use tauri::path::BaseDirectory;
 use tauri::Manager;
 
 // --- CONSTANTES DE SEGURIDAD (SEIKETSU/SAFETY) ---
-
-/// Ruta al socket Unix del daemon Python.
-const DAEMON_SOCKET_PATH: &str = "/tmp/v2m.sock";
 
 /// Tamaño máximo de respuesta permitido (1MB) para prevenir ataques de memoria (DoS).
 const MAX_RESPONSE_SIZE: usize = 1024 * 1024;
@@ -46,6 +45,20 @@ struct DaemonResponse {
 
 // --- FUNCIONES CORE ---
 
+/// Obtiene la ruta del socket de forma dinámica y segura, coincidiendo con la lógica de Python.
+///
+/// Prioriza XDG_RUNTIME_DIR/v2m/v2m.sock
+/// Fallback a /tmp/v2m_<uid>/v2m.sock
+fn get_socket_path() -> PathBuf {
+    if let Ok(xdg_runtime) = env::var("XDG_RUNTIME_DIR") {
+        return PathBuf::from(xdg_runtime).join("v2m").join("v2m.sock");
+    }
+
+    // Fallback usando UID
+    let uid = unsafe { libc::getuid() };
+    PathBuf::from(format!("/tmp/v2m_{}/v2m.sock", uid))
+}
+
 /// Envía una solicitud JSON al daemon Python a través de un socket Unix.
 ///
 /// # Argumentos
@@ -58,17 +71,20 @@ struct DaemonResponse {
 /// # Seguridad
 /// Implementa framing (4 bytes length header) y límites de tamaño de respuesta.
 fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String> {
-    // 1. Conexión al Socket
+    // 1. Obtener ruta dinámica del socket
+    let socket_path = get_socket_path();
+
+    // 2. Conexión al Socket
     // Intentamos conectar al archivo del socket Unix.
-    let mut stream = UnixStream::connect(DAEMON_SOCKET_PATH)
-        .map_err(|e| format!("No se pudo conectar al daemon (¿está corriendo?): {}", e))?;
+    let mut stream = UnixStream::connect(&socket_path)
+        .map_err(|e| format!("No se pudo conectar al daemon en {:?} (¿está corriendo?): {}", socket_path, e))?;
 
     // Configurar timeouts para evitar que la UI se congele si el backend muere.
     stream
         .set_read_timeout(Some(std::time::Duration::from_secs(READ_TIMEOUT_SECS)))
         .map_err(|e| format!("Falló al setear timeout: {}", e))?;
 
-    // 2. Preparación del Payload
+    // 3. Preparación del Payload
     let request = IpcCommand {
         cmd: command.to_string(),
         data,
@@ -79,7 +95,7 @@ fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String
     let payload_bytes = json_payload.as_bytes();
     let payload_len = payload_bytes.len() as u32;
 
-    // 3. Envío con Framing (Length-Prefix)
+    // 4. Envío con Framing (Length-Prefix)
     // Primero enviamos 4 bytes indicando el tamaño del mensaje.
     // Esto asegura que el backend sepa exactamente cuánto leer.
     stream
@@ -91,7 +107,7 @@ fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String
         .write_all(payload_bytes)
         .map_err(|e| format!("Error escribiendo payload: {}", e))?;
 
-    // 4. Lectura de Respuesta
+    // 5. Lectura de Respuesta
     // Leemos los primeros 4 bytes para saber el tamaño de la respuesta.
     let mut len_buf = [0u8; 4];
     stream
@@ -114,7 +130,7 @@ fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String
         .read_exact(&mut response_buf)
         .map_err(|e| format!("Error leyendo cuerpo de respuesta: {}", e))?;
 
-    // 5. Deserialización
+    // 6. Deserialización
     let response_str = String::from_utf8(response_buf)
         .map_err(|e| format!("Respuesta invalida UTF-8: {}", e))?;
 
