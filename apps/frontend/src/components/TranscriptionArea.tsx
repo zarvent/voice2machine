@@ -1,5 +1,5 @@
 import React from 'react';
-import { CopyIcon, SparklesIcon, PauseIcon, PlayIcon } from "../assets/Icons";
+import { CopyIcon, SparklesIcon, PauseIcon, PlayIcon, TrashIcon, LoaderIcon } from "../assets/Icons";
 import { Status } from "../types";
 
 interface TranscriptionAreaProps {
@@ -14,7 +14,7 @@ interface TranscriptionAreaProps {
 
 /**
  * Panel principal de visualización y edición de la transcripción.
- * Contiene el área de texto y la barra de acciones (copiar, refinar, pausar).
+ * Contiene el área de texto y la barra de acciones (copiar, refinar, pausar, limpiar).
  */
 export const TranscriptionArea = React.memo(({
     transcription,
@@ -25,6 +25,10 @@ export const TranscriptionArea = React.memo(({
     onRefine,
     onTogglePause
 }: TranscriptionAreaProps) => {
+    // Calcular conteo de caracteres
+    const charCount = transcription.length;
+    const isProcessing = status === "processing";
+
     return (
         <div className="transcription-panel">
             {/* Barra de herramientas superior */}
@@ -40,17 +44,36 @@ export const TranscriptionArea = React.memo(({
                 <button
                     className="btn-secondary"
                     onClick={onRefine}
+                    // Deshabilitar si no hay texto o si el sistema no está inactivo (permitiendo 'processing' para mostrar estado pero no click)
+                    // Corrección: Debe estar deshabilitado SIEMPRE que no sea 'idle'.
                     disabled={!transcription || status !== "idle"}
                     title="Refinar gramática y estilo con IA"
-                    aria-label="Refinar con Inteligencia Artificial"
+                    aria-label={isProcessing ? "Refinando texto..." : "Refinar con Inteligencia Artificial"}
                 >
-                    <SparklesIcon /> Mejorar con IA
+                     {isProcessing ? (
+                        <div className="spin-anim btn-loader">
+                            <LoaderIcon />
+                        </div>
+                    ) : (
+                        <SparklesIcon />
+                    )}
+                    {isProcessing ? "Mejorando..." : "Mejorar con IA"}
+                </button>
+                <button
+                    className="btn-secondary"
+                    onClick={() => onTranscriptionChange("")}
+                    disabled={!transcription || status === "paused"}
+                    title="Borrar todo el texto"
+                    aria-label="Borrar contenido"
+                >
+                    <TrashIcon /> Limpiar
                 </button>
                 <button
                     className="btn-secondary"
                     onClick={onTogglePause}
                     disabled={status === "disconnected"}
                     aria-pressed={status === "paused"}
+                    aria-label={status === "paused" ? "Reanudar sistema" : "Pausar sistema"}
                 >
                     {status === "paused" ? <PlayIcon /> : <PauseIcon />}
                     {status === "paused" ? "Reanudar" : "Pausar Sistema"}
@@ -58,15 +81,25 @@ export const TranscriptionArea = React.memo(({
             </div>
 
             {/* Área de texto editable */}
-            <textarea
-                className="editor"
-                value={transcription}
-                onChange={(e) => onTranscriptionChange(e.target.value)}
-                placeholder={status === "paused" ? "Sistema pausado..." : "Empieza a hablar para transcribir..."}
-                spellCheck={false}
-                disabled={status === "paused"}
-                aria-label="Texto transcrito"
-            />
+            <div className="editor-container">
+                <textarea
+                    className="editor"
+                    value={transcription}
+                    onChange={(e) => onTranscriptionChange(e.target.value)}
+                    placeholder={status === "paused" ? "Sistema pausado..." : "Empieza a hablar para transcribir..."}
+                    spellCheck={false}
+                    disabled={status === "paused"}
+                    aria-label="Texto transcrito"
+                />
+
+                {/* Contador de caracteres (Micro-UX) */}
+                <div
+                    className="char-count"
+                    aria-live="polite"
+                >
+                    {charCount > 0 && `${charCount} ${charCount === 1 ? 'carácter' : 'caracteres'}`}
+                </div>
+            </div>
         </div>
     );
 });
