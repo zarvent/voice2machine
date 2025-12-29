@@ -44,6 +44,7 @@ CONSTANTES
 """
 
 from enum import Enum
+from v2m.utils.paths import get_secure_runtime_dir
 
 class IPCCommand(str, Enum):
     """
@@ -207,4 +208,6 @@ class IPCResponse:
         )
 
 
-SOCKET_PATH = "/tmp/v2m.sock"
+# Use secure runtime directory for socket path (dynamic resolution)
+# Fixes security vulnerability: Predictable path in world-writable directory
+SOCKET_PATH = str(get_secure_runtime_dir() / "v2m.sock")
