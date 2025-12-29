@@ -176,10 +176,28 @@ textarea.editor {
   resize: none;
   outline: none;
   font-family: var(--font-sans);
+  padding-bottom: 30px; /* Space for character count */
 }
 
 textarea.editor::placeholder {
   color: var(--fg-muted);
+}
+
+.editor-container {
+    position: relative;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.char-count {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: 0.75rem;
+    color: var(--fg-secondary);
+    opacity: 0.7;
+    pointer-events: none;
 }
 
 /* Controls */
@@ -217,6 +235,11 @@ textarea.editor::placeholder {
 .btn-secondary:focus-visible {
   outline: 2px solid var(--fg-primary);
   outline-offset: 2px;
+}
+
+.btn-loader {
+    display: inline-block;
+    margin-right: 6px;
 }
 
 /* Error Banner */
