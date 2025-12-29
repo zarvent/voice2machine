@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AppConfig } from "../types";
 import { SETTINGS_CLOSE_DELAY_MS } from "../constants";
@@ -56,6 +56,31 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
+
+  // Referencias para gestión de foco
+  const tabsRef = useRef<{ [key in TabType]: HTMLButtonElement | null }>({
+    general: null,
+    advanced: null,
+  });
+
+  // Manejo de navegación por teclado entre pestañas (Arrow Keys)
+  const handleTabKeyDown = (e: React.KeyboardEvent, tab: TabType) => {
+    let nextTab: TabType | null = null;
+
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      // Toggle simple entre las dos pestañas existentes
+      nextTab = tab === "general" ? "advanced" : "general";
+    }
+
+    if (nextTab) {
+      e.preventDefault();
+      setActiveTab(nextTab);
+      // Foco manual tras renderizado usando refs
+      setTimeout(() => {
+        tabsRef.current[nextTab]?.focus();
+      }, 0);
+    }
+  };
 
   /** Helper para actualizar estado inmutable profundo */
   const handleChange = <K extends keyof AppConfig>(
@@ -130,21 +155,31 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         <div className="tabs" role="tablist">
           <button
             id="tab-general"
+            ref={(el) => {
+              tabsRef.current.general = el;
+            }}
             role="tab"
             aria-selected={activeTab === "general"}
             aria-controls="panel-general"
+            tabIndex={activeTab === "general" ? 0 : -1}
             className={`tab ${activeTab === "general" ? "active" : ""}`}
             onClick={() => setActiveTab("general")}
+            onKeyDown={(e) => handleTabKeyDown(e, "general")}
           >
             General
           </button>
           <button
             id="tab-advanced"
+            ref={(el) => {
+              tabsRef.current.advanced = el;
+            }}
             role="tab"
             aria-selected={activeTab === "advanced"}
             aria-controls="panel-advanced"
+            tabIndex={activeTab === "advanced" ? 0 : -1}
             className={`tab ${activeTab === "advanced" ? "active" : ""}`}
             onClick={() => setActiveTab("advanced")}
+            onKeyDown={(e) => handleTabKeyDown(e, "advanced")}
           >
             Avanzado
           </button>
