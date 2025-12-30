@@ -105,7 +105,8 @@ from typing import Any, Optional
 MAX_PAYLOAD_SIZE = 1024 * 1024  # 1MB
 
 
-@dataclass
+# OPTIMIZACIÓN BOLT: slots=True reduce memoria y mejora velocidad de acceso
+@dataclass(slots=True)
 class IPCRequest:
     """
     MENSAJE DE REQUEST DEL CLIENTE AL DAEMON (JSON)
@@ -156,7 +157,7 @@ class IPCRequest:
         return cls(cmd=obj["cmd"], data=obj.get("data"))
 
 
-@dataclass
+@dataclass(slots=True)
 class IPCResponse:
     """
     MENSAJE DE RESPONSE DEL DAEMON AL CLIENTE (JSON)
