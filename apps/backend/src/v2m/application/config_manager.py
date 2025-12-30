@@ -24,10 +24,11 @@ ADVERTENCIA:
     Este servicio asegura que se mantenga la estructura básica TOML.
 """
 
-import toml
 import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
+
+import toml
 
 logger = logging.getLogger(__name__)
 
@@ -47,15 +48,15 @@ class ConfigManager:
 
         logger.info("config manager initialized", extra={"path": str(self.config_path)})
 
-    def load_config(self) -> Dict[str, Any]:
+    def load_config(self) -> dict[str, Any]:
         """Lee la configuración actual del disco."""
         try:
             return toml.load(self.config_path)
-        except Exception as e:
+        except Exception:
             logger.error(f"failed to load config from {self.config_path}", exc_info=True)
             raise
 
-    def update_config(self, new_config: Dict[str, Any]) -> None:
+    def update_config(self, new_config: dict[str, Any]) -> None:
         """
         Actualiza el archivo de configuración con nuevos valores.
         Realiza un merge profundo simple (sobrescribe claves existentes).
@@ -92,11 +93,11 @@ class ConfigManager:
 
             logger.info("configuration updated successfully")
 
-        except Exception as e:
+        except Exception:
             logger.error("failed to update config", exc_info=True)
             raise
 
-    def _deep_update(self, target: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
+    def _deep_update(self, target: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]:
         """Actualiza recursivamente un diccionario."""
         for key, value in updates.items():
             if isinstance(value, dict) and key in target and isinstance(target[key], dict):

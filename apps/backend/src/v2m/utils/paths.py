@@ -2,7 +2,7 @@
 import os
 import tempfile
 from pathlib import Path
-from typing import Optional
+
 
 def get_secure_runtime_dir(app_name: str = "v2m") -> Path:
     """

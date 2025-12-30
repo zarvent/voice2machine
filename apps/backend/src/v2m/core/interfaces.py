@@ -43,6 +43,7 @@ example
 
 from abc import ABC, abstractmethod
 
+
 class ClipboardInterface(ABC):
     """
     interfaz abstracta para operaciones del portapapeles del sistema

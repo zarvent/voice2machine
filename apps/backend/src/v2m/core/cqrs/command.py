@@ -46,6 +46,7 @@ example
 
 from abc import ABC
 
+
 class Command(ABC):
     """
     clase base abstracta para todos los comandos de la aplicación

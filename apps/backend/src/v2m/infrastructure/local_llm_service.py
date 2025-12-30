@@ -26,13 +26,15 @@ permitiendo inferencia local en gpu sin depender de apis externas
 """
 
 from __future__ import annotations
+
 import asyncio
 import gc
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, AsyncIterator
+from typing import TYPE_CHECKING
 
 from v2m.application.llm_service import LLMService
-from v2m.config import config, BASE_DIR
+from v2m.config import BASE_DIR, config
 from v2m.core.logging import logger
 from v2m.domain.errors import LLMError
 

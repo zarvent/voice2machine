@@ -126,18 +126,19 @@ class AudioRecorder:
                 self._stream = None
             raise RecordingError(f"falló al iniciar la grabación {e}") from e
 
-    def stop(self, save_path: Path | None = None, return_data: bool = True) -> np.ndarray:
+    def stop(self, save_path: Path | None = None, return_data: bool = True, copy_data: bool = True) -> np.ndarray:
         """
         DETIENE LA GRABACIÓN Y DEVUELVE EL AUDIO CAPTURADO
 
         ARGS:
             save_path: ruta opcional para guardar el audio como archivo wav
-            return_data: si es True retorna una copia del audio grabado default True
+            return_data: si es True retorna el audio grabado default True
                          si es False retorna un array vacío ahorrando memoria
+            copy_data: si es True retorna una copia del buffer (seguro)
+                       si es False retorna una vista (rápido pero unsafe si se graba de nuevo)
 
         RETURNS:
             el audio grabado como un array de numpy float32
-            nota retorna una copia del buffer para evitar corrupción de datos
 
         RAISES:
             RecordingError: si no hay una grabación en curso
@@ -187,7 +188,10 @@ class AudioRecorder:
                  return np.array([], dtype=np.float32).reshape(0, self.channels)
              return np.array([], dtype=np.float32)
 
-        # zero-copy slice retorna vista del buffer no copia
-        # importante el caller debe procesar antes de la próxima grabación
-        # retornamos una copia para evitar corrupción de datos si se reinicia la grabación
-        return audio_view.copy()
+        if copy_data:
+            # retornamos una copia para evitar corrupción de datos si se reinicia la grabación
+            return audio_view.copy()
+
+        # BOLT OPTIMIZACIÓN: Retornamos vista directa para evitar copia de memoria
+        # El caller es responsable de consumir los datos antes de iniciar otra grabación
+        return audio_view

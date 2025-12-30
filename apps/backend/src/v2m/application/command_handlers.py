@@ -28,23 +28,23 @@ y la lógica de negocio real
 import asyncio
 import atexit
 from concurrent.futures import ThreadPoolExecutor
-from typing import Type
-from v2m.core.cqrs.command import Command
-from v2m.core.cqrs.command_handler import CommandHandler
+
 from v2m.application.commands import (
-    StartRecordingCommand,
-    StopRecordingCommand,
-    ProcessTextCommand,
-    UpdateConfigCommand,
     GetConfigCommand,
     PauseDaemonCommand,
-    ResumeDaemonCommand
+    ProcessTextCommand,
+    ResumeDaemonCommand,
+    StartRecordingCommand,
+    StopRecordingCommand,
+    UpdateConfigCommand,
 )
-from v2m.application.transcription_service import TranscriptionService
-from v2m.application.llm_service import LLMService
 from v2m.application.config_manager import ConfigManager
-from v2m.core.interfaces import NotificationInterface, ClipboardInterface
+from v2m.application.llm_service import LLMService
+from v2m.application.transcription_service import TranscriptionService
 from v2m.config import config
+from v2m.core.cqrs.command import Command
+from v2m.core.cqrs.command_handler import CommandHandler
+from v2m.core.interfaces import ClipboardInterface, NotificationInterface
 
 # executor dedicado para operaciones de ml single worker para evitar contención gpu
 # esto es más eficiente que el default threadpoolexecutor de asyncio.to_thread
@@ -86,7 +86,7 @@ class StartRecordingHandler(CommandHandler):
 
         self.notification_service.notify("🎤 voice2machine", "grabación iniciada...")
 
-    def listen_to(self) -> Type[Command]:
+    def listen_to(self) -> type[Command]:
         """
         SE SUSCRIBE AL TIPO DE COMANDO `STARTRECORDINGCOMMAND`
 
@@ -148,10 +148,10 @@ class StopRecordingHandler(CommandHandler):
 
         self.clipboard_service.copy(transcription)
         preview = transcription[:80] # se muestra una vista previa para no saturar la notificación
-        self.notification_service.notify(f"✅ whisper - copiado", f"{preview}...")
+        self.notification_service.notify("✅ whisper - copiado", f"{preview}...")
         return transcription
 
-    def listen_to(self) -> Type[Command]:
+    def listen_to(self) -> type[Command]:
         """
         SE SUSCRIBE AL TIPO DE COMANDO `STOPRECORDINGCOMMAND`
 
@@ -204,7 +204,7 @@ class ProcessTextHandler(CommandHandler):
             self.notification_service.notify(f"✅ {backend_name} - copiado", f"{refined_text[:80]}...")
             return refined_text
 
-        except Exception as e:
+        except Exception:
             # fallback si falla el llm copiamos el texto original
             backend_name = config.llm.backend
             self.notification_service.notify(f"⚠️ {backend_name} falló", "usando texto original...")
@@ -212,7 +212,7 @@ class ProcessTextHandler(CommandHandler):
             self.notification_service.notify("✅ whisper - copiado (crudo)", f"{command.text[:80]}...")
             return command.text
 
-    def listen_to(self) -> Type[Command]:
+    def listen_to(self) -> type[Command]:
         """
         SE SUSCRIBE AL TIPO DE COMANDO `PROCESSTEXTCOMMAND`
 
@@ -237,7 +237,7 @@ class UpdateConfigHandler(CommandHandler):
         # pero config.toml ya está guardado.
         return {"status": "ok", "message": "config updated, restart may be required"}
 
-    def listen_to(self) -> Type[Command]:
+    def listen_to(self) -> type[Command]:
         return UpdateConfigCommand
 
 
@@ -251,7 +251,7 @@ class GetConfigHandler(CommandHandler):
     async def handle(self, command: GetConfigCommand) -> dict:
         return self.config_manager.load_config()
 
-    def listen_to(self) -> Type[Command]:
+    def listen_to(self) -> type[Command]:
         return GetConfigCommand
 
 
@@ -265,7 +265,7 @@ class PauseDaemonHandler(CommandHandler):
         self.notification_service.notify("⏸️ v2m pausa", "daemon pausado")
         return "PAUSED"
 
-    def listen_to(self) -> Type[Command]:
+    def listen_to(self) -> type[Command]:
         return PauseDaemonCommand
 
 
@@ -278,5 +278,5 @@ class ResumeDaemonHandler(CommandHandler):
         self.notification_service.notify("▶️ v2m resume", "daemon reanudado")
         return "RUNNING"
 
-    def listen_to(self) -> Type[Command]:
+    def listen_to(self) -> type[Command]:
         return ResumeDaemonCommand

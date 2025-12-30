@@ -51,9 +51,9 @@ import re
 import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from time import sleep
-from typing import TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, ClassVar
 from weakref import WeakSet
 
 from v2m.core.interfaces import NotificationInterface
@@ -74,8 +74,8 @@ class NotificationResult:
         error: mensaje de error si success es false
     """
     success: bool
-    notification_id: Optional[int] = None
-    error: Optional[str] = None
+    notification_id: int | None = None
+    error: str | None = None
 
 
 class LinuxNotificationService(NotificationInterface):
@@ -108,7 +108,7 @@ class LinuxNotificationService(NotificationInterface):
     """
 
     # --- recursos singleton a nivel de clase ---
-    _executor: ClassVar[Optional[ThreadPoolExecutor]] = None
+    _executor: ClassVar[ThreadPoolExecutor | None] = None
     _instances: ClassVar[WeakSet[LinuxNotificationService]] = WeakSet()
     _lock: ClassVar[threading.Lock] = threading.Lock()
     MAX_POOL_SIZE: ClassVar[int] = 4  # suficiente para ráfaga de notificaciones
@@ -118,7 +118,7 @@ class LinuxNotificationService(NotificationInterface):
     _DBUS_PATH: ClassVar[str] = "/org/freedesktop/Notifications"
     _DBUS_IFACE: ClassVar[str] = "org.freedesktop.Notifications"
 
-    def __init__(self, config: Optional[NotificationsConfig] = None) -> None:
+    def __init__(self, config: NotificationsConfig | None = None) -> None:
         """
         INICIALIZA EL SERVICIO CON CONFIGURACIÓN OPCIONAL
 

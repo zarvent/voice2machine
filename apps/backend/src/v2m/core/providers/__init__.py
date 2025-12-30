@@ -38,9 +38,9 @@ example
         TranscriptionClass = transcription_registry.get(config.transcription.backend)
 """
 
-from v2m.core.providers.provider_registry import ProviderRegistry, ProviderNotFoundError
 from v2m.application.llm_service import LLMService
 from v2m.application.transcription_service import TranscriptionService
+from v2m.core.providers.provider_registry import ProviderNotFoundError, ProviderRegistry
 
 # --- registries globales ---
 # se crean una única vez al importar el módulo
@@ -53,8 +53,8 @@ transcription_registry: ProviderRegistry[TranscriptionService] = ProviderRegistr
 """registry para servicios de transcripción (whisper, futuro: vosk, speechbrain, custom)"""
 
 __all__ = [
-    "ProviderRegistry",
     "ProviderNotFoundError",
+    "ProviderRegistry",
     "llm_registry",
     "transcription_registry",
 ]

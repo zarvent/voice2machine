@@ -50,14 +50,16 @@ NOTAS
 """
 
 from pathlib import Path
-from typing import Literal, Optional, Tuple, Type
+from typing import Literal
+
 from pydantic import BaseModel, Field
 from pydantic_settings import (
     BaseSettings,
-    SettingsConfigDict,
     PydanticBaseSettingsSource,
+    SettingsConfigDict,
     TomlConfigSettingsSource,
 )
+
 from v2m.utils.paths import get_secure_runtime_dir
 
 # --- ruta base del proyecto ---
@@ -181,7 +183,7 @@ class WhisperConfig(BaseModel):
     best_of: int = 2
     temperature: float = 0.0
     vad_filter: bool = True
-    audio_device_index: Optional[int] = None
+    audio_device_index: int | None = None
     vad_parameters: VadParametersConfig = Field(default_factory=VadParametersConfig)
 
     def __getitem__(self, item):
@@ -236,7 +238,7 @@ class GeminiConfig(BaseModel):
     retry_attempts: int = 3
     retry_min_wait: int = 2
     retry_max_wait: int = 10
-    api_key: Optional[str] = Field(default=None)
+    api_key: str | None = Field(default=None)
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -408,12 +410,12 @@ class Settings(BaseSettings):
     @classmethod
     def settings_customise_sources(
         cls,
-        settings_cls: Type[BaseSettings],
+        settings_cls: type[BaseSettings],
         init_settings: PydanticBaseSettingsSource,
         env_settings: PydanticBaseSettingsSource,
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
-    ) -> Tuple[PydanticBaseSettingsSource, ...]:
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
         """
         PERSONALIZA EL ORDEN DE LAS FUENTES DE CONFIGURACIÓN
 

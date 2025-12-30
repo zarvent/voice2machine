@@ -13,11 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
-import subprocess
 import os
+import subprocess
 import time
 from pathlib import Path
-from typing import Optional, Tuple
+
 from v2m.core.interfaces import ClipboardInterface, NotificationInterface
 from v2m.core.logging import logger
 
@@ -34,11 +34,11 @@ class LinuxClipboardAdapter(ClipboardInterface):
         """
         inicializa el adaptador de portapapeles y detecta el entorno gráfico
         """
-        self._backend: Optional[str] = None
+        self._backend: str | None = None
         self._env: dict = {}
         self._detect_environment()
 
-    def _find_xauthority(self) -> Optional[str]:
+    def _find_xauthority(self) -> str | None:
         """
         busca el archivo .xauthority en ubicaciones estándar
 
@@ -155,7 +155,7 @@ class LinuxClipboardAdapter(ClipboardInterface):
         # No definimos DISPLAY, dejamos que xclip intente su default (que es :0)
         self._env = {}
 
-    def _get_clipboard_commands(self) -> Tuple[list, list]:
+    def _get_clipboard_commands(self) -> tuple[list, list]:
         """
         retorna los comandos para copiar y pegar según el backend detectado
 

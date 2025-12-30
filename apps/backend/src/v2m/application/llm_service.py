@@ -23,6 +23,7 @@ esta abstracción no de una implementación concreta como `geminillmservice`
 
 from abc import ABC, abstractmethod
 
+
 class LLMService(ABC):
     """
     CLASE BASE ABSTRACTA PARA LOS SERVICIOS DE MODELOS DE LENGUAJE

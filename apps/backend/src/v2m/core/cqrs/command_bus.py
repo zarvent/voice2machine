@@ -44,9 +44,11 @@ example
         await bus.dispatch(MiComando(datos="valor"))
 """
 
-from typing import Dict, Type, Any
+from typing import Any
+
 from .command import Command
 from .command_handler import CommandHandler
+
 
 class CommandBus:
     """
@@ -81,7 +83,7 @@ class CommandBus:
         al método ``register()`` durante la fase de inicialización de
         la aplicación (normalmente en el contenedor de di)
         """
-        self.handlers: Dict[Type[Command], CommandHandler] = {}
+        self.handlers: dict[type[Command], CommandHandler] = {}
 
     def register(self, handler: CommandHandler) -> None:
         """

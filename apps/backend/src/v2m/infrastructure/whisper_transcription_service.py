@@ -23,15 +23,13 @@ de la lógica de bajo nivel para
 -   realizar la transcripción del audio grabado directamente desde la memoria
 """
 
-import torch
-from typing import Optional
 from faster_whisper import WhisperModel
+
 from v2m.application.transcription_service import TranscriptionService
 from v2m.config import config
-from v2m.domain.errors import RecordingError
 from v2m.core.logging import logger
+from v2m.domain.errors import RecordingError
 from v2m.infrastructure.audio.recorder import AudioRecorder
-
 
 
 class WhisperTranscriptionService(TranscriptionService):
@@ -44,7 +42,7 @@ class WhisperTranscriptionService(TranscriptionService):
 
         no carga el modelo de whisper en este punto para acelerar el inicio de la aplicación
         """
-        self._model: Optional[WhisperModel] = None
+        self._model: WhisperModel | None = None
         self.recorder = AudioRecorder(device_index=config.whisper.audio_device_index)
 
     @property
@@ -127,7 +125,10 @@ class WhisperTranscriptionService(TranscriptionService):
         """
         try:
             # detener grabación y obtener audio sin guardar a disco
-            audio_data = self.recorder.stop()
+            # BOLT OPTIMIZACIÓN: Evitar copia del buffer (copy_data=False)
+            # Faster-Whisper consume el buffer inmediatamente (o lo copia internamente).
+            # Como el sistema bloquea nuevas grabaciones hasta que esto termine, es seguro usar una vista.
+            audio_data = self.recorder.stop(copy_data=False)
         except RecordingError as e:
             logger.error(f"error al detener grabación {e}")
             raise e
