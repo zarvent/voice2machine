@@ -23,15 +23,17 @@ de la lógica de bajo nivel para
 -   realizar la transcripción del audio grabado directamente desde la memoria
 """
 
-import torch
-from typing import Optional
-from faster_whisper import WhisperModel
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import torch
+    from faster_whisper import WhisperModel
+
 from v2m.application.transcription_service import TranscriptionService
 from v2m.config import config
 from v2m.domain.errors import RecordingError
 from v2m.core.logging import logger
 from v2m.infrastructure.audio.recorder import AudioRecorder
-
 
 
 class WhisperTranscriptionService(TranscriptionService):
@@ -44,11 +46,11 @@ class WhisperTranscriptionService(TranscriptionService):
 
         no carga el modelo de whisper en este punto para acelerar el inicio de la aplicación
         """
-        self._model: Optional[WhisperModel] = None
+        self._model: Optional["WhisperModel"] = None
         self.recorder = AudioRecorder(device_index=config.whisper.audio_device_index)
 
     @property
-    def model(self) -> WhisperModel:
+    def model(self) -> "WhisperModel":
         """
         CARGA EL MODELO DE `FASTER-WHISPER` DE FORMA PEREZOSA LAZY LOADING
 
@@ -62,6 +64,11 @@ class WhisperTranscriptionService(TranscriptionService):
         if self._model is None:
             logger.info("cargando modelo de whisper...")
             whisper_config = config.whisper
+
+            # OPTIMIZACIÓN BOLT: Imports diferidos
+            # Mueve ~3s de tiempo de importación al hilo de background
+            # evitando bloquear el inicio del daemon
+            from faster_whisper import WhisperModel
 
             try:
                 self._model = WhisperModel(
