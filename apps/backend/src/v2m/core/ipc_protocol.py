@@ -100,6 +100,7 @@ class IPCCommand(str, Enum):
 import json
 from dataclasses import dataclass, field
 from typing import Any, Optional
+from v2m.utils.paths import get_secure_runtime_dir
 
 # límite de payload para prevenir DoS / OOM
 MAX_PAYLOAD_SIZE = 1024 * 1024  # 1MB
@@ -206,5 +207,6 @@ class IPCResponse:
             error=obj.get("error")
         )
 
-
-SOCKET_PATH = "/tmp/v2m.sock"
+# SECURITY FIX: Use secure runtime directory instead of /tmp
+# Prevents symlink attacks and ensures per-user isolation
+SOCKET_PATH = get_secure_runtime_dir() / "v2m.sock"

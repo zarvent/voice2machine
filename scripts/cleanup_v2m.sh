@@ -33,9 +33,19 @@ fi
 echo -e "${YELLOW}🧹 V2M Cleanup Script${NC}"
 echo "======================================"
 
+# --- RUTAS SEGURAS ---
+if [ -n "${XDG_RUNTIME_DIR}" ]; then
+    RUNTIME_DIR="${XDG_RUNTIME_DIR}/v2m"
+else
+    # Fallback seguro a /tmp/v2m_<uid>
+    UID_VAL=$(id -u)
+    RUNTIME_DIR="/tmp/v2m_${UID_VAL}"
+fi
+
 # 1. Buscar procesos v2m
 echo -e "\n${YELLOW}[1/4]${NC} Buscando procesos v2m..."
-PIDS=$(pgrep -f "v2m" || true)
+# Excluir este script para no matarse a sí mismo (pgrep -f busca en cmdline)
+PIDS=$(pgrep -f "v2m" | grep -v "$$" || true)
 
 if [[ -z "$PIDS" ]]; then
     echo -e "${GREEN}✅ No se encontraron procesos v2m corriendo${NC}"
@@ -45,38 +55,53 @@ else
 
     if [[ "$FORCE" == "true" ]]; then
         echo -e "\n${YELLOW}Matando procesos...${NC}"
-        pkill -9 -f "v2m" || true
+        # Usar kill en lugar de pkill para ser más preciso con los PIDs encontrados
+        echo "$PIDS" | xargs kill -9 || true
         echo -e "${GREEN}✅ Procesos eliminados${NC}"
     else
         echo -e "\n${YELLOW}Usa --force para eliminarlos automáticamente${NC}"
         read -p "¿Matar estos procesos? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            pkill -9 -f "v2m" || true
+            echo "$PIDS" | xargs kill -9 || true
             echo -e "${GREEN}✅ Procesos eliminados${NC}"
         fi
     fi
 fi
 
-# 2. Limpiar socket huérfano
-echo -e "\n${YELLOW}[2/4]${NC} Verificando socket Unix..."
-if [[ -S /tmp/v2m.sock ]]; then
-    echo -e "${YELLOW}Socket encontrado, eliminando...${NC}"
-    rm -f /tmp/v2m.sock
-    echo -e "${GREEN}✅ Socket eliminado${NC}"
-else
-    echo -e "${GREEN}✅ No hay socket huérfano${NC}"
+# 2. Limpiar socket huérfano (incluyendo ruta segura y legacy)
+echo -e "\n${YELLOW}[2/4]${NC} Verificando sockets Unix..."
+
+# Limpiar ruta segura
+SOCKET_PATH="${RUNTIME_DIR}/v2m.sock"
+if [[ -S "${SOCKET_PATH}" ]]; then
+    echo -e "${YELLOW}Socket encontrado en ${SOCKET_PATH}, eliminando...${NC}"
+    rm -f "${SOCKET_PATH}"
 fi
 
-# 3. Limpiar PID file
-echo -e "\n${YELLOW}[3/4]${NC} Verificando PID file..."
-if [[ -f /tmp/v2m_daemon.pid ]]; then
-    echo -e "${YELLOW}PID file encontrado, eliminando...${NC}"
-    rm -f /tmp/v2m_daemon.pid
-    echo -e "${GREEN}✅ PID file eliminado${NC}"
-else
-    echo -e "${GREEN}✅ No hay PID file huérfano${NC}"
+# Limpiar ruta legacy (por si acaso hubo una actualización desde versión vulnerable)
+if [[ -S /tmp/v2m.sock ]]; then
+    echo -e "${YELLOW}Socket LEGACY encontrado en /tmp/v2m.sock, eliminando...${NC}"
+    rm -f /tmp/v2m.sock
 fi
+
+echo -e "${GREEN}✅ Sockets limpios${NC}"
+
+# 3. Limpiar PID file (seguro y legacy)
+echo -e "\n${YELLOW}[3/4]${NC} Verificando PID files..."
+
+PID_PATH="${RUNTIME_DIR}/v2m_daemon.pid"
+if [[ -f "${PID_PATH}" ]]; then
+    echo -e "${YELLOW}PID file encontrado en ${PID_PATH}, eliminando...${NC}"
+    rm -f "${PID_PATH}"
+fi
+
+if [[ -f /tmp/v2m_daemon.pid ]]; then
+    echo -e "${YELLOW}PID file LEGACY encontrado en /tmp/v2m_daemon.pid, eliminando...${NC}"
+    rm -f /tmp/v2m_daemon.pid
+fi
+
+echo -e "${GREEN}✅ PID files limpios${NC}"
 
 # 4. Verificar VRAM
 echo -e "\n${YELLOW}[4/4]${NC} Verificando uso de VRAM..."

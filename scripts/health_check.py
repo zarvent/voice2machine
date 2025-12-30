@@ -26,12 +26,15 @@ Uso:
 
 import sys
 import argparse
+import os
+import socket
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend" / "src"))
 
 import psutil
 import subprocess
 from typing import List, Tuple
+from v2m.utils.paths import get_secure_runtime_dir
 
 # Colores ANSI
 class Colors:
@@ -41,6 +44,10 @@ class Colors:
     BLUE = '\033[0;34m'
     NC = '\033[0m'
 
+# SECURITY FIX: Use secure runtime paths
+RUNTIME_DIR = get_secure_runtime_dir()
+SOCKET_PATH = RUNTIME_DIR / 'v2m.sock'
+PID_PATH = RUNTIME_DIR / 'v2m_daemon.pid'
 
 def get_v2m_processes() -> List[psutil.Process]:
     """Encuentra todos los procesos relacionados con v2m."""
@@ -72,15 +79,14 @@ def get_gpu_memory() -> Tuple[int, int]:
 
 def check_daemon_socket() -> bool:
     """Verifica si el socket del daemon existe."""
-    return Path('/tmp/v2m.sock').exists()
+    return SOCKET_PATH.exists()
 
 
 def check_pid_file() -> int | None:
     """Lee el PID file si existe."""
-    pid_file = Path('/tmp/v2m_daemon.pid')
-    if pid_file.exists():
+    if PID_PATH.exists():
         try:
-            return int(pid_file.read_text().strip())
+            return int(PID_PATH.read_text().strip())
         except ValueError:
             return None
     return None
@@ -89,14 +95,28 @@ def check_pid_file() -> int | None:
 def is_daemon_responsive() -> bool:
     """Verifica si el daemon responde a PING."""
     try:
-        import socket
         s = socket.socket(socket.AF_UNIX)
         s.settimeout(2)
-        s.connect('/tmp/v2m.sock')
-        s.send(b'PING')
-        response = s.recv(1024).decode()
-        s.close()
-        return response == 'PONG'
+        s.connect(str(SOCKET_PATH))
+
+        # Implementar protocolo v2 (framing length-prefix)
+        # Enviar PING
+        # Python IPCRequest requires JSON: {"cmd": "PING"}
+        import json
+        request = json.dumps({"cmd": "PING"}).encode('utf-8')
+        length = len(request)
+        s.send(length.to_bytes(4, byteorder='big') + request)
+
+        # Recibir respuesta
+        len_data = s.recv(4)
+        if not len_data:
+            return False
+
+        resp_len = int.from_bytes(len_data, byteorder='big')
+        resp_data = s.recv(resp_len)
+        response = json.loads(resp_data.decode('utf-8'))
+
+        return response.get('status') == 'success' and response.get('data', {}).get('message') == 'PONG'
     except Exception:
         return False
 
@@ -126,6 +146,7 @@ def main():
 
     print(f"{Colors.BLUE}{'=' * 50}")
     print(f"🏥 V2M Health Check")
+    print(f"📂 Runtime Dir: {RUNTIME_DIR}")
     print(f"{'=' * 50}{Colors.NC}\n")
 
     # 1. Verificar procesos
@@ -138,18 +159,21 @@ def main():
     else:
         print(f"{Colors.YELLOW}⚠️  {len(procs)} proceso(s) v2m encontrado(s):{Colors.NC}")
         for proc in procs:
-            mem_mb = proc.memory_info().rss / 1024 / 1024
-            cmdline_short = ' '.join(proc.cmdline()[:3])
-            print(f"  PID {proc.pid}: {cmdline_short}... (RAM: {mem_mb:.0f}MB)")
+            try:
+                mem_mb = proc.memory_info().rss / 1024 / 1024
+                cmdline_short = ' '.join(proc.cmdline()[:3])
+                print(f"  PID {proc.pid}: {cmdline_short}... (RAM: {mem_mb:.0f}MB)")
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
         daemon_running = True
 
     # 2. Verificar socket
     print(f"\n{Colors.YELLOW}[2/4] Verificando socket Unix...{Colors.NC}")
     socket_exists = check_daemon_socket()
     if socket_exists:
-        print(f"{Colors.GREEN}✅ Socket /tmp/v2m.sock existe{Colors.NC}")
+        print(f"{Colors.GREEN}✅ Socket {SOCKET_PATH} existe{Colors.NC}")
     else:
-        print(f"{Colors.YELLOW}⚠️  Socket no encontrado{Colors.NC}")
+        print(f"{Colors.YELLOW}⚠️  Socket no encontrado en {SOCKET_PATH}{Colors.NC}")
 
     # 3. Verificar PID file
     print(f"\n{Colors.YELLOW}[3/4] Verificando PID file...{Colors.NC}")
@@ -206,8 +230,8 @@ def main():
             print(f"{Colors.GREEN}✅ {killed} proceso(s) eliminado(s){Colors.NC}")
 
             # Limpiar archivos residuales
-            Path('/tmp/v2m.sock').unlink(missing_ok=True)
-            Path('/tmp/v2m_daemon.pid').unlink(missing_ok=True)
+            SOCKET_PATH.unlink(missing_ok=True)
+            PID_PATH.unlink(missing_ok=True)
             print(f"{Colors.GREEN}✅ Archivos residuales eliminados{Colors.NC}")
         else:
             print(f"{Colors.YELLOW}💡 Usa --kill-zombies para eliminar automáticamente{Colors.NC}")

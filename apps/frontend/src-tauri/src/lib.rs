@@ -2,22 +2,32 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::env;
+use std::fs;
 use std::io::{Read, Write};
+use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::UnixStream;
+use std::path::PathBuf;
 use std::process::Command as SysCommand;
+use std::sync::OnceLock;
 use tauri::path::BaseDirectory;
 use tauri::Manager;
 
 // --- CONSTANTES DE SEGURIDAD (SEIKETSU/SAFETY) ---
 
-/// Ruta al socket Unix del daemon Python.
-const DAEMON_SOCKET_PATH: &str = "/tmp/v2m.sock";
+/// Nombre del socket del daemon.
+const SOCKET_FILENAME: &str = "v2m.sock";
+/// Nombre de la carpeta de runtime.
+const APP_RUNTIME_DIR_NAME: &str = "v2m";
 
 /// Tamaño máximo de respuesta permitido (1MB) para prevenir ataques de memoria (DoS).
 const MAX_RESPONSE_SIZE: usize = 1024 * 1024;
 
 /// Timeout de lectura para evitar bloqueos infinitos (en segundos).
 const READ_TIMEOUT_SECS: u64 = 5;
+
+// Cache global para la ruta del socket para evitar resolverla en cada request.
+static SOCKET_PATH_CACHE: OnceLock<PathBuf> = OnceLock::new();
 
 // --- ESTRUCTURAS DE DATOS ---
 
@@ -44,6 +54,50 @@ struct DaemonResponse {
     error: Option<String>,
 }
 
+// --- FUNCIONES DE UTILERÍA (SEGURIDAD) ---
+
+/// Obtiene el directorio de runtime seguro para el usuario actual.
+///
+/// Implementa la lógica de seguridad:
+/// 1. Prioriza XDG_RUNTIME_DIR (estándar seguro en Linux).
+/// 2. Fallback a /tmp/v2m_<uid> con permisos 0700.
+fn get_secure_runtime_dir() -> PathBuf {
+    // 1. Intentar usar XDG_RUNTIME_DIR
+    if let Ok(xdg_dir) = env::var("XDG_RUNTIME_DIR") {
+        let path = PathBuf::from(xdg_dir).join(APP_RUNTIME_DIR_NAME);
+        // Intentar crear el directorio si no existe (normalmente ya existe)
+        let _ = fs::create_dir_all(&path);
+        return path;
+    }
+
+    // 2. Fallback a /tmp/v2m_<uid>
+    let uid = unsafe { libc::getuid() };
+    let temp_dir = env::temp_dir();
+    let runtime_dir = temp_dir.join(format!("{}_{}", APP_RUNTIME_DIR_NAME, uid));
+
+    // Asegurar que el directorio existe con permisos restrictivos (0700)
+    if !runtime_dir.exists() {
+        // Ignoramos errores aquí; si falla, la conexión fallará más adelante
+        if fs::create_dir_all(&runtime_dir).is_ok() {
+            // Establecer permisos 0700 (rwx------)
+            let mut perms = fs::metadata(&runtime_dir).unwrap().permissions();
+            perms.set_mode(0o700);
+            let _ = fs::set_permissions(&runtime_dir, perms);
+        }
+    }
+
+    runtime_dir
+}
+
+/// Resuelve la ruta completa del socket del daemon.
+/// Utiliza cache para eficiencia.
+fn get_socket_path() -> &'static PathBuf {
+    SOCKET_PATH_CACHE.get_or_init(|| {
+        let dir = get_secure_runtime_dir();
+        dir.join(SOCKET_FILENAME)
+    })
+}
+
 // --- FUNCIONES CORE ---
 
 /// Envía una solicitud JSON al daemon Python a través de un socket Unix.
@@ -58,10 +112,13 @@ struct DaemonResponse {
 /// # Seguridad
 /// Implementa framing (4 bytes length header) y límites de tamaño de respuesta.
 fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, String> {
+    // 0. Resolver ruta segura del socket
+    let socket_path = get_socket_path();
+
     // 1. Conexión al Socket
     // Intentamos conectar al archivo del socket Unix.
-    let mut stream = UnixStream::connect(DAEMON_SOCKET_PATH)
-        .map_err(|e| format!("No se pudo conectar al daemon (¿está corriendo?): {}", e))?;
+    let mut stream = UnixStream::connect(socket_path)
+        .map_err(|e| format!("No se pudo conectar al daemon en {:?} (¿está corriendo?): {}", socket_path, e))?;
 
     // Configurar timeouts para evitar que la UI se congele si el backend muere.
     stream
@@ -269,4 +326,3 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

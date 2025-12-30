@@ -76,6 +76,7 @@ from v2m.application.commands import (
 )
 from v2m.config import config
 from v2m.infrastructure.system_monitor import SystemMonitor
+from v2m.utils.paths import get_secure_runtime_dir
 
 class Daemon:
     """
@@ -114,7 +115,8 @@ class Daemon:
         """
         self.running = False
         self.socket_path = Path(SOCKET_PATH)
-        self.pid_file = Path("/tmp/v2m_daemon.pid")
+        # SECURITY FIX: Use secure runtime directory for PID file
+        self.pid_file = get_secure_runtime_dir() / "v2m_daemon.pid"
         self.command_bus = container.get_command_bus()
 
         # limpieza de procesos zombie crítico
@@ -412,10 +414,16 @@ class Daemon:
                     pass
 
             # fase 3 limpiar todos los archivos residuales
+            # SECURITY FIX: Clean up files in secure directory
+            secure_dir = get_secure_runtime_dir()
             residual_files = [
                 self.pid_file,
                 self.socket_path,
+                config.paths.recording_flag, # This now points to secure dir via config
+                # Legacy paths just in case
                 Path("/tmp/v2m_recording.pid"),
+                Path("/tmp/v2m_daemon.pid"),
+                Path("/tmp/v2m.sock")
             ]
             for f in residual_files:
                 if f.exists():

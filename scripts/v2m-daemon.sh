@@ -32,10 +32,6 @@
 #   status   - te muestra el estado actual y prueba la conexión
 #   logs     - te muestra los registros del servicio
 #
-# ARCHIVOS
-#   /tmp/v2m_daemon.log  - archivo donde se guardan los registros
-#   /tmp/v2m_daemon.pid  - archivo que guarda el identificador del proceso
-#
 # VARIABLES DE ENTORNO
 #   LD_LIBRARY_PATH - se configura sola para que funcione con cuda
 #   PYTHONPATH      - se configura para incluir el código fuente
@@ -69,8 +65,23 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 VENV_PYTHON="${PROJECT_DIR}/venv/bin/python"
-LOG_FILE="/tmp/v2m_daemon.log"
-PID_FILE="/tmp/v2m_daemon.pid"
+
+# --- SEGURIDAD: RUTAS DINÁMICAS (SEIKETSU) ---
+# Determinamos el directorio de ejecución seguro igual que el backend
+if [ -n "${XDG_RUNTIME_DIR}" ]; then
+    RUNTIME_DIR="${XDG_RUNTIME_DIR}/v2m"
+else
+    # Fallback seguro a /tmp/v2m_<uid>
+    UID_VAL=$(id -u)
+    RUNTIME_DIR="/tmp/v2m_${UID_VAL}"
+fi
+
+# Aseguramos que el directorio existe con permisos restrictivos
+mkdir -p "${RUNTIME_DIR}"
+chmod 0700 "${RUNTIME_DIR}" 2>/dev/null
+
+LOG_FILE="${RUNTIME_DIR}/v2m.log"
+PID_FILE="${RUNTIME_DIR}/v2m_daemon.pid"
 
 start_daemon() {
     if [ -f "${PID_FILE}" ]; then
@@ -85,6 +96,7 @@ start_daemon() {
     fi
 
     echo "🚀 iniciando el servicio de v2m..."
+    echo "📂 directorio de runtime: ${RUNTIME_DIR}"
 
     cd "${PROJECT_DIR}"
     export PYTHONPATH="${PROJECT_DIR}/src"
@@ -131,6 +143,8 @@ start_daemon() {
     "${VENV_PYTHON}" -m v2m.main --daemon > "${LOG_FILE}" 2>&1 &
 
     DAEMON_PID=$!
+    # Nota: El script de python también escribe el PID, pero lo hacemos aquí
+    # para tenerlo inmediatamente disponible
     echo "${DAEMON_PID}" > "${PID_FILE}"
 
     # esperamos un momento para asegurarnos de que arrancó bien
@@ -184,6 +198,7 @@ status_daemon() {
         PID=$(cat "${PID_FILE}")
         if ps -p "${PID}" > /dev/null 2>&1; then
             echo "✅ el servicio está corriendo (pid: ${PID})"
+            echo "📂 logs en: ${LOG_FILE}"
 
             # mostramos información del proceso
             ps -p "${PID}" -o pid,ppid,user,%cpu,%mem,etime,cmd

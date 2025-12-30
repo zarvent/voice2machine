@@ -55,9 +55,6 @@
 #   - notify-send para mostrar notificaciones en el escritorio
 #   - entorno virtual de python en ./venv
 #
-# ARCHIVOS
-#   /tmp/v2m_recording.pid - indica que se está grabando
-#
 # NOTAS
 #   - el servicio arranca solo si no está activo
 #   - verás notificaciones sobre lo que está pasando
@@ -77,8 +74,22 @@ NOTIFY_EXPIRE_TIME=3000
 # --- RUTAS DERIVADAS ---
 VENV_PATH="${PROJECT_DIR}/venv"
 MAIN_SCRIPT="${PROJECT_DIR}/src/v2m/main.py"
-RECORDING_FLAG="/tmp/v2m_recording.pid"
 DAEMON_SCRIPT="${SCRIPT_DIR}/v2m-daemon.sh"
+
+# --- SEGURIDAD: RUTAS DINÁMICAS (SEIKETSU) ---
+# Determinamos el directorio de ejecución seguro igual que el backend
+if [ -n "${XDG_RUNTIME_DIR}" ]; then
+    RUNTIME_DIR="${XDG_RUNTIME_DIR}/v2m"
+else
+    # Fallback seguro a /tmp/v2m_<uid>
+    UID_VAL=$(id -u)
+    RUNTIME_DIR="/tmp/v2m_${UID_VAL}"
+fi
+
+# NOTA: RECORDING_FLAG se usa para chequeos rápidos de "en proceso"
+# aunque ahora confiamos más en GET_STATUS del daemon
+RECORDING_FLAG="${RUNTIME_DIR}/v2m_recording.pid"
+
 
 # --- FUNCIÓN PRINCIPAL ---
 # --- FUNCIÓN PRINCIPAL ---
