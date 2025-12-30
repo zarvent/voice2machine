@@ -19,3 +19,7 @@
 ## 2025-12-13 - [Status Indicator Accessibility]
 **Learning:** Purely visual status indicators (like colored dots) are invisible to screen readers and often inaccessible to keyboard users.
 **Action:** Use `role="status"` and `tabIndex={0}` on status containers. Provide a descriptive `aria-label` that includes the full status state (e.g., "Status: Connected") so keyboard users can tab to it and hear the current state.
+
+## 2025-05-27 - [Toggle Switch Interaction]
+**Learning:** Replacing native small checkboxes with larger toggle switches not only improves the "delight" factor but significantly aids motor accessibility by increasing the click target size. When doing so, ensuring the underlying `input` remains accessible (focus management) is critical.
+**Action:** Use CSS-only toggle switches that wrap a standard `checkbox` input. Maintain keyboard focus visibility on the input element but visualize it on the slider.
