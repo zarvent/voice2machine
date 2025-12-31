@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CopyIcon, SparklesIcon, PauseIcon, PlayIcon, TrashIcon, LoaderIcon } from "../assets/Icons";
 import { Status } from "../types";
 
@@ -28,6 +28,24 @@ export const TranscriptionArea = React.memo(({
     // Calcular conteo de caracteres
     const charCount = transcription.length;
     const isProcessing = status === "processing";
+    const [confirmClear, setConfirmClear] = useState(false);
+
+    // Resetear confirmación después de 3 segundos
+    useEffect(() => {
+        if (confirmClear) {
+            const timer = setTimeout(() => setConfirmClear(false), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [confirmClear]);
+
+    const handleClearClick = () => {
+        if (confirmClear) {
+            onTranscriptionChange("");
+            setConfirmClear(false);
+        } else {
+            setConfirmClear(true);
+        }
+    };
 
     return (
         <div className="transcription-panel">
@@ -61,12 +79,13 @@ export const TranscriptionArea = React.memo(({
                 </button>
                 <button
                     className="btn-secondary"
-                    onClick={() => onTranscriptionChange("")}
+                    onClick={handleClearClick}
                     disabled={!transcription || status === "paused"}
-                    title="Borrar todo el texto"
-                    aria-label="Borrar contenido"
+                    title={confirmClear ? "Click otra vez para confirmar" : "Borrar todo el texto"}
+                    aria-label={confirmClear ? "Confirmar borrado" : "Borrar contenido"}
+                    style={confirmClear ? { borderColor: "var(--error)", color: "var(--error)" } : undefined}
                 >
-                    <TrashIcon /> Limpiar
+                    <TrashIcon /> {confirmClear ? "¿Seguro?" : "Limpiar"}
                 </button>
                 <button
                     className="btn-secondary"
