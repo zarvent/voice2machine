@@ -69,7 +69,7 @@ export const TranscriptionEditor: React.FC<TranscriptionEditorProps> =
             <div className="editor-container">
               {/* Traffic lights header */}
               <div className="editor-header">
-                <div className="traffic-lights">
+                <div className="traffic-lights" aria-hidden="true">
                   <div className="light red" />
                   <div className="light yellow" />
                   <div className="light green" />

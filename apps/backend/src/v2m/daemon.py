@@ -212,7 +212,7 @@ class Daemon:
                      response = IPCResponse(status="error", error="el daemon está pausado")
                 else:
                     await self.command_bus.dispatch(StartRecordingCommand())
-                    response = IPCResponse(status="success", data={"message": "grabación iniciada"})
+                    response = IPCResponse(status="success", data={"state": "recording", "message": "grabación iniciada"})
 
             elif cmd_name == IPCCommand.STOP_RECORDING:
                 if self.paused:
@@ -220,7 +220,7 @@ class Daemon:
                 else:
                     result = await self.command_bus.dispatch(StopRecordingCommand())
                     if result:
-                        response = IPCResponse(status="success", data={"transcription": result})
+                        response = IPCResponse(status="success", data={"state": "idle", "transcription": result})
                     else:
                         response = IPCResponse(status="error", error="no se detectó voz en el audio")
 

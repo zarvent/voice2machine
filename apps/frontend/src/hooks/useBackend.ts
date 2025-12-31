@@ -87,7 +87,7 @@ export function useBackend(): [BackendState, BackendActions] {
   const statusRef = useRef<Status>(status);
   const prevTelemetryRef = useRef<TelemetryData | null>(null);
   const lastPingTimeRef = useRef<number>(0);
-  const lastEventTimeRef = useRef<number>(0);
+  const lastEventTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
     statusRef.current = status;
@@ -98,8 +98,8 @@ export function useBackend(): [BackendState, BackendActions] {
     try {
       const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
       if (saved) setHistory(JSON.parse(saved));
-    } catch {
-      /* ignore */
+    } catch (e) {
+      console.error("Failed to load history from localStorage:", e);
     }
   }, []);
 
@@ -214,13 +214,13 @@ export function useBackend(): [BackendState, BackendActions] {
   const startRecording = useCallback(async () => {
     if (statusRef.current === "paused") return;
     try {
-      await invoke<DaemonState>("start_recording");
-      setStatus("recording");
+      const data = await invoke<DaemonState>("start_recording");
+      handleStateUpdate(data);
     } catch (e) {
       setErrorMessage(extractError(e));
       setStatus("error");
     }
-  }, []);
+  }, [handleStateUpdate]);
 
   const stopRecording = useCallback(async () => {
     setStatus("transcribing"); // Optimistic UI
