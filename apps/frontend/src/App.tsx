@@ -44,15 +44,16 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [lastCopied, setLastCopied] = useState(false);
 
-  // Optimized session stats with O(n) word count
+  // Separate word count memoization to avoid O(n) on every timer tick
+  const wordCount = useMemo(() => countWords(transcription), [transcription]);
   const sessionStats = useMemo(
     () => ({
       duration: timer.formatted,
-      words: countWords(transcription),
+      words: wordCount,
       confidence: "High",
       confidencePercent: 98,
     }),
-    [transcription, timer.formatted]
+    [wordCount, timer.formatted]
   );
 
   const handleCopy = useCallback(() => {
