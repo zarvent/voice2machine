@@ -25,6 +25,7 @@ Se adhiere al principio de "Single Responsibility" proveyendo solo datos de obse
 
 import psutil
 import logging
+import time
 from typing import Dict, Any, Optional
 from types import ModuleType
 
@@ -36,10 +37,17 @@ class SystemMonitor:
     Provee métricas de RAM, CPU y GPU (si está disponible).
     """
 
+    # Frecuencia máxima de actualización de métricas GPU (segundos)
+    GPU_UPDATE_INTERVAL = 2.0
+
     def __init__(self) -> None:
         # OPTIMIZACIÓN BOLT: Cachear módulo torch para evitar importación repetida
         self._torch: Optional[ModuleType] = None
         self._gpu_available = self._check_gpu_availability()
+
+        # Cache para throttling de GPU
+        self._last_gpu_update: float = 0.0
+        self._cached_gpu_metrics: Optional[Dict[str, Any]] = None
 
         # OPTIMIZACIÓN BOLT: Cachear métricas estáticas (Total RAM, GPU Name)
         # Esto evita syscalls y llamadas a driver redundantes en cada polling (500ms)
@@ -118,9 +126,19 @@ class SystemMonitor:
         """
         Retorna uso real de GPU usando torch.cuda.
 
+        OPTIMIZACIÓN BOLT: Throttle de 2 segundos.
+        Las llamadas a torch.cuda.memory_reserved pueden ser síncronas y costosas
+        en algunos drivers. No necesitamos resolución de sub-segundo para telemetría.
+
         Returns:
             Dict con métricas de GPU: name, vram_used_mb, vram_total_mb, temp_c
         """
+        now = time.time()
+
+        # Devolver cache si no ha pasado el intervalo
+        if self._cached_gpu_metrics and (now - self._last_gpu_update < self.GPU_UPDATE_INTERVAL):
+            return self._cached_gpu_metrics
+
         try:
             # OPTIMIZACIÓN BOLT: Usar referencia cacheada self._torch
             # Evita búsqueda en sys.modules cada 500ms
@@ -132,14 +150,21 @@ class SystemMonitor:
             static = self._gpu_static_info
 
             # VRAM metrics en MB (Dinámico)
+            # Nota: memory_reserved es rápido, pero aun así implica una llamada a CUDA runtime
             vram_reserved = self._torch.cuda.memory_reserved(device) / (1024 ** 2)
 
-            return {
+            metrics = {
                 "name": static.get("name", "Unknown"),
                 "vram_used_mb": round(vram_reserved, 2),
                 "vram_total_mb": static.get("vram_total_mb", 0),
                 "temp_c": 0  # torch no expone temperatura, requiere pynvml
             }
+
+            # Actualizar cache
+            self._cached_gpu_metrics = metrics
+            self._last_gpu_update = now
+
+            return metrics
         except Exception as e:
             logger.error(f"failed to get GPU metrics: {e}", exc_info=True)
             return {"name": "Error", "vram_used_mb": 0, "vram_total_mb": 0, "temp_c": 0}
