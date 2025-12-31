@@ -29,6 +29,40 @@
   --error: #ef4444;
 
   /* ========================================
+   * SLATE & BLUE PALETTE (Advanced Screen)
+   * ======================================== */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-light: rgba(59, 130, 246, 0.1);
+
+  --color-bg-app: #f8fafc;
+  --color-bg-surface: #ffffff;
+  --color-bg-sidebar: #ffffff;
+  --color-bg-editor: #ffffff;
+  --color-bg-header-bar: rgba(255, 255, 255, 0.8);
+
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+  --color-line-number: #94a3b8;
+
+  --color-accent-success: #10b981;
+  --color-accent-success-light: rgba(16, 185, 129, 0.1);
+  --color-accent-danger: #ef4444;
+  --color-accent-indigo: #6366f1;
+  --color-accent-indigo-light: rgba(99, 102, 241, 0.1);
+
+  /* ========================================
+   * LAYOUT DIMENSIONS
+   * ======================================== */
+  --sidebar-width: 260px;
+  --header-height: 64px;
+  --action-bar-height: 96px;
+
+  /* ========================================
    * TIPOGRAFÍA
    * ======================================== */
   --font-sans: "Inter", -apple-system, system-ui, sans-serif;
@@ -40,10 +74,15 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 12px;
+  --radius-xl: 16px;
 
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-glow: 0 0 15px -3px rgba(59, 130, 246, 0.3);
+  --shadow-glow-success: 0 0 15px -3px rgba(16, 185, 129, 0.3);
 
   /* ========================================
    * TRANSICIONES
@@ -73,5 +112,23 @@
 
     --accent-primary: #ffffff;
     --accent-fg: #000000;
+
+    /* Slate Dark Mode */
+    --color-bg-app: #0f172a;
+    --color-bg-surface: #1e293b;
+    --color-bg-sidebar: #1e293b;
+    --color-bg-editor: #1e293b;
+    --color-bg-header-bar: rgba(30, 41, 59, 0.8);
+
+    --color-border: #334155;
+    --color-border-strong: #475569;
+
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #94a3b8;
+    --color-text-muted: #64748b;
+    --color-line-number: #64748b;
+
+    --color-accent-success-light: rgba(16, 185, 129, 0.2);
+    --color-accent-indigo-light: rgba(99, 102, 241, 0.2);
   }
 }
