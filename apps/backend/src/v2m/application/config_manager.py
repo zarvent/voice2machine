@@ -37,6 +37,10 @@ class ConfigManager:
     Actúa como una fachada para las operaciones de IO de configuración.
     """
 
+    # SECCIONES PROTEGIDAS: No se pueden modificar via IPC por seguridad
+    # paths: rutas del sistema (evita overwrites)
+    PROTECTED_SECTIONS = {"paths"}
+
     def __init__(self, config_path: str = "config.toml") -> None:
         self.config_path = Path(config_path)
         if not self.config_path.is_absolute():
@@ -64,18 +68,18 @@ class ConfigManager:
             new_config: Diccionario parcial o completo con nuevas configuraciones.
 
         Raises:
-            ValueError: Si new_config no es un diccionario válido.
+            ValueError: Si new_config no es un diccionario válido o contiene secciones protegidas.
             Exception: Si falla la serialización TOML o escritura del archivo.
         """
         # Validar estructura básica antes de procesar
         if not isinstance(new_config, dict):
             raise ValueError("Config updates must be a dictionary")
 
+        # SECURITY FIX: Validar que no se intenten modificar secciones protegidas
+        self._validate_security(new_config)
+
         try:
             current_config = self.load_config()
-
-            # Backup del config actual para rollback en caso de error
-            backup_config = current_config.copy()
 
             # Merge recursivo simple para no borrar secciones enteras si solo se manda una clave
             self._deep_update(current_config, new_config)
@@ -95,6 +99,37 @@ class ConfigManager:
         except Exception as e:
             logger.error("failed to update config", exc_info=True)
             raise
+
+    def _validate_security(self, updates: Dict[str, Any]) -> None:
+        """
+        Valida que las actualizaciones no violen políticas de seguridad.
+
+        Args:
+            updates: El diccionario de actualizaciones.
+
+        Raises:
+            ValueError: Si se detecta un intento de modificar secciones protegidas.
+        """
+        for section in updates.keys():
+            if section in self.PROTECTED_SECTIONS:
+                logger.warning(f"SECURITY: Attempted to update protected section '{section}'")
+                raise ValueError(f"Security violation: Cannot update protected section '{section}' via IPC")
+
+        # Validación adicional para path traversal en llm.local.model_path
+        if "llm" in updates and "local" in updates["llm"]:
+             local_config = updates["llm"]["local"]
+             if "model_path" in local_config:
+                 path_str = local_config["model_path"]
+                 # Verificar path traversal básico
+                 if ".." in path_str or path_str.startswith("/"):
+                     logger.warning(f"SECURITY: Potential path traversal in model_path: {path_str}")
+                     # Permitimos rutas absolutas solo si están en whitelist (opcional)
+                     # Por ahora, bloqueamos todo lo que parezca sospechoso o fuera de models/
+                     # Pero para ser estrictos, solo permitimos nombres de archivo o rutas relativas simples
+                     # Ojo: el usuario podría querer poner un modelo en /mnt/data...
+                     # Para este parche, bloqueamos '..'
+                     if ".." in path_str:
+                         raise ValueError("Security violation: Path traversal detected in model_path")
 
     def _deep_update(self, target: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
         """Actualiza recursivamente un diccionario."""
