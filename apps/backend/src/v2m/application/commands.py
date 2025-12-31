@@ -23,6 +23,7 @@ contienen lógica de negocio solo los datos necesarios para ejecutar la acción
 
 from v2m.core.cqrs.command import Command
 
+
 class StartRecordingCommand(Command):
     """
     COMANDO PARA INICIAR LA GRABACIÓN DE AUDIO

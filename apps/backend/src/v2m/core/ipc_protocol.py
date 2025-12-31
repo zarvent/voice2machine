@@ -45,6 +45,7 @@ CONSTANTES
 
 from enum import Enum
 
+
 class IPCCommand(str, Enum):
     """
     ENUMERACIÓN DE LOS COMANDOS IPC DISPONIBLES
@@ -98,8 +99,8 @@ class IPCCommand(str, Enum):
 # =============================================================================
 
 import json
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 # límite de payload para prevenir DoS / OOM
 MAX_PAYLOAD_SIZE = 1024 * 1024  # 1MB
@@ -132,7 +133,7 @@ class IPCRequest:
             # '{"cmd": "PROCESS_TEXT", "data": {"text": "hola mundo"}}'
     """
     cmd: str
-    data: Optional[dict[str, Any]] = None
+    data: dict[str, Any] | None = None
 
     def to_json(self) -> str:
         """serializa el request a JSON string"""
@@ -184,8 +185,8 @@ class IPCResponse:
             # '{"status": "error", "data": null, "error": "no se detectó voz"}'
     """
     status: str  # "success" | "error"
-    data: Optional[dict[str, Any]] = None
-    error: Optional[str] = None
+    data: dict[str, Any] | None = None
+    error: str | None = None
 
     def to_json(self) -> str:
         """serializa el response a JSON string"""

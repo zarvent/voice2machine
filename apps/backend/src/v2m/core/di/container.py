@@ -57,27 +57,26 @@ example
         await bus.dispatch(MiComando())
 """
 
-from v2m.core.cqrs.command_bus import CommandBus
-from v2m.application.command_handlers import StartRecordingHandler, StopRecordingHandler, ProcessTextHandler
-from v2m.infrastructure.linux_adapters import LinuxClipboardAdapter
-from v2m.infrastructure.notification_service import LinuxNotificationService
-from v2m.application.transcription_service import TranscriptionService
-from v2m.application.llm_service import LLMService
-from v2m.core.interfaces import NotificationInterface, ClipboardInterface
-from v2m.core.providers import llm_registry, transcription_registry, ProviderNotFoundError
-
-
-from v2m.config import config
-from v2m.core.logging import logger
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+
+from v2m.application.command_handlers import ProcessTextHandler, StartRecordingHandler, StopRecordingHandler
+from v2m.application.llm_service import LLMService
+from v2m.application.transcription_service import TranscriptionService
+from v2m.config import config
+from v2m.core.cqrs.command_bus import CommandBus
+from v2m.core.interfaces import ClipboardInterface, NotificationInterface
+from v2m.core.logging import logger
+from v2m.core.providers import ProviderNotFoundError, llm_registry, transcription_registry
+from v2m.infrastructure.gemini_llm_service import GeminiLLMService
+from v2m.infrastructure.linux_adapters import LinuxClipboardAdapter
+from v2m.infrastructure.local_llm_service import LocalLLMService
+from v2m.infrastructure.notification_service import LinuxNotificationService
 
 # --- AUTO-REGISTRO DE PROVIDERS ---
 # los imports fuerzan el registro en los registries globales
 # esto permite que el container resuelva providers dinámicamente desde config
 from v2m.infrastructure.whisper_transcription_service import WhisperTranscriptionService
-from v2m.infrastructure.gemini_llm_service import GeminiLLMService
-from v2m.infrastructure.local_llm_service import LocalLLMService
 
 # registrar providers explícitamente (más claro que auto-registro vía decorador)
 transcription_registry.register("whisper", WhisperTranscriptionService)

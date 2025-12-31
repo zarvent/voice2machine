@@ -23,10 +23,11 @@ para métricas de GPU si están disponibles.
 Se adhiere al principio de "Single Responsibility" proveyendo solo datos de observación.
 """
 
-import psutil
 import logging
-from typing import Dict, Any, Optional
 from types import ModuleType
+from typing import Any
+
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class SystemMonitor:
 
     def __init__(self) -> None:
         # OPTIMIZACIÓN BOLT: Cachear módulo torch para evitar importación repetida
-        self._torch: Optional[ModuleType] = None
+        self._torch: ModuleType | None = None
         self._gpu_available = self._check_gpu_availability()
 
         # OPTIMIZACIÓN BOLT: Cachear métricas estáticas (Total RAM, GPU Name)
@@ -50,7 +51,7 @@ class SystemMonitor:
             logger.warning(f"failed to cache ram info: {e}")
             self._ram_total_gb = 0.0
 
-        self._gpu_static_info: Dict[str, Any] = {}
+        self._gpu_static_info: dict[str, Any] = {}
         if self._gpu_available and self._torch:
             try:
                 device = self._torch.cuda.current_device()
@@ -82,7 +83,7 @@ class SystemMonitor:
             logger.warning(f"failed to check GPU availability: {e}")
             return False
 
-    def get_system_metrics(self) -> Dict[str, Any]:
+    def get_system_metrics(self) -> dict[str, Any]:
         """
         Obtiene una instantánea de las métricas actuales del sistema.
 
@@ -99,7 +100,7 @@ class SystemMonitor:
 
         return metrics
 
-    def _get_ram_usage(self) -> Dict[str, float]:
+    def _get_ram_usage(self) -> dict[str, float]:
         """Retorna uso de memoria RAM en GB y porcentaje."""
         mem = psutil.virtual_memory()
         return {
@@ -108,13 +109,13 @@ class SystemMonitor:
             "percent": mem.percent
         }
 
-    def _get_cpu_usage(self) -> Dict[str, Any]:
+    def _get_cpu_usage(self) -> dict[str, Any]:
         """Retorna uso de CPU global."""
         return {
             "percent": psutil.cpu_percent(interval=None)
         }
 
-    def _get_gpu_usage(self) -> Dict[str, Any]:
+    def _get_gpu_usage(self) -> dict[str, Any]:
         """
         Retorna uso real de GPU usando torch.cuda.
 

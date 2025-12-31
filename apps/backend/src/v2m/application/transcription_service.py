@@ -24,6 +24,7 @@ intercambiada sin afectar la lógica de negocio
 
 from abc import ABC, abstractmethod
 
+
 class TranscriptionService(ABC):
     """
     CLASE BASE ABSTRACTA PARA LOS SERVICIOS DE TRANSCRIPCIÓN

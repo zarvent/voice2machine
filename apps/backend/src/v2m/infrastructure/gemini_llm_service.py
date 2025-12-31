@@ -21,16 +21,17 @@ de toda la lógica de comunicación con el servicio de google gemini incluyendo
 la autenticación la construcción de la solicitud y el manejo de reintentos
 """
 
-from v2m.application.llm_service import LLMService
-from v2m.config import config, BASE_DIR
-from google import genai
 import os
-from dotenv import load_dotenv
-from pathlib import Path
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from v2m.domain.errors import LLMError
-from v2m.core.logging import logger
+
 import httpx
+from google import genai
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+from v2m.application.llm_service import LLMService
+from v2m.config import BASE_DIR, config
+from v2m.core.logging import logger
+from v2m.domain.errors import LLMError
+
 
 class GeminiLLMService(LLMService):
     """
@@ -69,7 +70,7 @@ class GeminiLLMService(LLMService):
         # cargar prompt del sistema
         prompt_path = BASE_DIR / "prompts" / "refine_system.txt"
         try:
-            with open(prompt_path, "r", encoding="utf-8") as f:
+            with open(prompt_path, encoding="utf-8") as f:
                 self.system_instruction = f.read()
         except FileNotFoundError:
             logger.warning("prompt del sistema no encontrado usando default")

@@ -71,7 +71,7 @@ __license__ = "MIT"
 
 # Exportaciones públicas del paquete
 __all__ = [
-    "__version__",
     "__author__",
     "__license__",
+    "__version__",
 ]

@@ -48,7 +48,9 @@ NOTE
 
 import logging
 import sys
+
 from pythonjsonlogger import jsonlogger
+
 
 def setup_logging() -> logging.Logger:
     """

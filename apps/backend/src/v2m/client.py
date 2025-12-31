@@ -45,9 +45,10 @@ NOTE
     iniciar con ``python -m v2m.main --daemon``
 """
 
+import argparse
 import asyncio
 import sys
-import argparse
+
 from v2m.core.ipc_protocol import SOCKET_PATH, IPCCommand, IPCRequest, IPCResponse
 
 

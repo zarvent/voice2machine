@@ -47,35 +47,30 @@ NOTE
 """
 
 import asyncio
+import atexit
+import json
 import os
 import signal
 import sys
-import atexit
-import psutil
 from pathlib import Path
-from typing import Callable, Dict
 
-from v2m.core.logging import logger
-from v2m.core.ipc_protocol import (
-    SOCKET_PATH,
-    IPCCommand,
-    IPCRequest,
-    IPCResponse,
-    MAX_PAYLOAD_SIZE
-)
-import json
-from v2m.core.di.container import container
+import psutil
+
 from v2m.application.commands import (
-    StartRecordingCommand,
-    StopRecordingCommand,
-    ProcessTextCommand,
-    UpdateConfigCommand,
     GetConfigCommand,
     PauseDaemonCommand,
-    ResumeDaemonCommand
+    ProcessTextCommand,
+    ResumeDaemonCommand,
+    StartRecordingCommand,
+    StopRecordingCommand,
+    UpdateConfigCommand,
 )
 from v2m.config import config
+from v2m.core.di.container import container
+from v2m.core.ipc_protocol import MAX_PAYLOAD_SIZE, SOCKET_PATH, IPCCommand, IPCRequest, IPCResponse
+from v2m.core.logging import logger
 from v2m.infrastructure.system_monitor import SystemMonitor
+
 
 class Daemon:
     """
@@ -202,7 +197,7 @@ class Daemon:
             logger.warning(f"json inválido, rechazando: {e}")
             response = IPCResponse(
                 status="error",
-                error=f"formato JSON inválido: {str(e)}"
+                error=f"formato JSON inválido: {e!s}"
             )
             # FRAMING: enviar header de 4 bytes + payload
             resp_bytes = response.to_json().encode("utf-8")

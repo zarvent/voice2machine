@@ -50,8 +50,9 @@ example
 """
 
 from abc import ABC, abstractmethod
-from typing import Type
+
 from .command import Command
+
 
 class CommandHandler(ABC):
     """
@@ -94,7 +95,7 @@ class CommandHandler(ABC):
         """
         raise NotImplementedError
 
-    def listen_to(self) -> Type[Command]:
+    def listen_to(self) -> type[Command]:
         """
         especifica a qué tipo de comando se suscribe este handler
 
