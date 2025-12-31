@@ -52,6 +52,7 @@
 #
 # DEPENDENCIAS
 #   - v2m-daemon.sh para controlar el servicio
+
 #   - notify-send para mostrar notificaciones en el escritorio
 #   - entorno virtual de python en ./venv
 #

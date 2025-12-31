@@ -46,13 +46,13 @@ NOTE
     a menos que se modifique el nivel del logger
 """
 
-import logging
+import logging as _logging
 import sys
 
 from pythonjsonlogger import jsonlogger
 
 
-def setup_logging() -> logging.Logger:
+def setup_logging() -> _logging.Logger:
     """
     CONFIGURA Y RETORNA UN LOGGER ESTRUCTURADO EN FORMATO JSON
 
@@ -77,8 +77,8 @@ def setup_logging() -> logging.Logger:
             from v2m.core.logging import logger
             logger.info("aplicación iniciada")
     """
-    logger = logging.getLogger("v2m")
-    logger.setLevel(logging.INFO)
+    logger = _logging.getLogger("v2m")
+    logger.setLevel(_logging.INFO)
 
     # previene que se añadan múltiples handlers si este módulo se importa más de una vez
     if logger.hasHandlers():
@@ -86,7 +86,7 @@ def setup_logging() -> logging.Logger:
 
     # --- configuración del handler y el formatter ---
     # se utiliza un streamhandler para enviar logs a stdout
-    handler = logging.StreamHandler(sys.stdout)
+    handler = _logging.StreamHandler(sys.stdout)
     # se usa jsonformatter para asegurar que todos los logs sean objetos json
     formatter = jsonlogger.JsonFormatter(
         "%(asctime)s %(name)s %(levelname)s %(message)s"
