@@ -6,43 +6,39 @@ import {
   Suspense,
   useMemo,
 } from "react";
-import { Sidebar } from "./components/Sidebar";
-import { TranscriptionEditor } from "./components/TranscriptionEditor";
-import { ActionBar } from "./components/ActionBar";
+import { Sidebar, NavItem } from "./components/Sidebar";
+import { Studio } from "./components/Studio";
+import { Overview } from "./components/Overview";
+import { Transcriptions } from "./components/Transcriptions";
+import { SnippetsLibrary } from "./components/SnippetsLibrary";
 import { useBackend } from "./hooks/useBackend";
 import { useTimer } from "./hooks/useTimer";
-import { COPY_FEEDBACK_DURATION_MS } from "./constants";
+import { useSnippets } from "./hooks/useSnippets";
+import { countWords } from "./utils";
 import "./App.css";
 
 const Settings = lazy(() =>
   import("./components/Settings").then((m) => ({ default: m.Settings }))
 );
 
-/** O(n) single-pass word counter - no intermediate arrays */
-function countWords(text: string): number {
-  let count = 0;
-  let inWord = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text.charCodeAt(i);
-    // Space, tab, newline, carriage return
-    const isSpace = c === 32 || c === 9 || c === 10 || c === 13;
-    if (isSpace) {
-      inWord = false;
-    } else if (!inWord) {
-      inWord = true;
-      count++;
-    }
-  }
-  return count;
-}
-
 function App() {
   const [backendState, actions] = useBackend();
-  const { status, transcription, errorMessage } = backendState;
+  const {
+    status,
+    transcription,
+    errorMessage,
+    isConnected,
+    lastPingTime,
+    telemetry,
+    cpuHistory,
+    ramHistory,
+    history,
+  } = backendState;
   const timer = useTimer(status);
+  const { addSnippet } = useSnippets();
 
+  const [activeView, setActiveView] = useState<NavItem>("studio");
   const [showSettings, setShowSettings] = useState(false);
-  const [lastCopied, setLastCopied] = useState(false);
 
   // Separate word count memoization to avoid O(n) on every timer tick
   const wordCount = useMemo(() => countWords(transcription), [transcription]);
@@ -55,23 +51,6 @@ function App() {
     }),
     [wordCount, timer.formatted]
   );
-
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(transcription);
-    setLastCopied(true);
-    setTimeout(() => setLastCopied(false), COPY_FEEDBACK_DURATION_MS);
-  }, [transcription]);
-
-  const handleDownload = useCallback(() => {
-    const blob = new Blob([transcription], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement("a"), {
-      href: url,
-      download: `transcription_${new Date().toISOString().slice(0, 10)}.txt`,
-    });
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [transcription]);
 
   // Direct refs to stable action methods (no wrapper overhead)
   const handleStartRecording = actions.startRecording;
@@ -102,64 +81,110 @@ function App() {
 
   const handleOpenSettings = useCallback(() => setShowSettings(true), []);
 
-  // Determine read-only state
-  const isReadOnly = status !== "recording";
+  const handleNavChange = useCallback((nav: NavItem) => {
+    setActiveView(nav);
+  }, []);
+
+  // Save snippet to library
+  const handleSaveSnippet = useCallback(
+    (snippet: { title: string; text: string }) => {
+      addSnippet(snippet);
+    },
+    []
+  );
+
+  // Use snippet in Studio (from SnippetsLibrary or Transcriptions)
+  const handleUseSnippet = useCallback(
+    (text: string) => {
+      actions.setTranscription(text);
+      setActiveView("studio");
+    },
+    [actions]
+  );
+
+  // Delete history item
+  const handleDeleteHistoryItem = useCallback((id: string) => {
+    // This requires adding a deleteHistoryItem action to useBackend
+    // For now, we just log it
+    console.log("[App] Delete history item:", id);
+  }, []);
+
+  // Select history item -> open in Studio
+  const handleSelectHistoryItem = useCallback(
+    (item: { text: string }) => {
+      actions.setTranscription(item.text);
+      setActiveView("studio");
+    },
+    [actions]
+  );
+
+  // Render active view content
+  const renderView = () => {
+    switch (activeView) {
+      case "studio":
+        return (
+          <Studio
+            status={status}
+            transcription={transcription}
+            timerFormatted={timer.formatted}
+            errorMessage={errorMessage}
+            onStartRecording={handleStartRecording}
+            onStopRecording={handleStopRecording}
+            onClearError={actions.clearError}
+            onSaveSnippet={handleSaveSnippet}
+          />
+        );
+
+      case "overview":
+        return (
+          <Overview
+            status={status}
+            isConnected={isConnected}
+            lastPingTime={lastPingTime}
+            telemetry={telemetry}
+            cpuHistory={cpuHistory}
+            ramHistory={ramHistory}
+            onRestart={actions.restartDaemon}
+            onShutdown={actions.shutdownDaemon}
+            onResume={actions.togglePause}
+          />
+        );
+
+      case "transcriptions":
+        return (
+          <Transcriptions
+            history={history}
+            onDeleteItem={handleDeleteHistoryItem}
+            onSelectItem={handleSelectHistoryItem}
+          />
+        );
+
+      case "snippets":
+        return <SnippetsLibrary onUseSnippet={handleUseSnippet} />;
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="app-layout">
       {/* Sidebar with navigation and stats */}
       <Sidebar
         sessionStats={sessionStats}
-        activeNav="overview"
+        activeNav={activeView}
+        onNavChange={handleNavChange}
         onOpenSettings={handleOpenSettings}
       />
 
       {/* Main content area */}
-      <main className="main-content">
-        {/* Transcription Editor */}
-        <TranscriptionEditor
-          text={transcription}
-          status={status}
-          isReadOnly={isReadOnly}
-        />
-
-        {/* Action Bar */}
-        <ActionBar
-          status={status}
-          transcription={transcription}
-          timerFormatted={timer.formatted}
-          llmProgress={status === "processing" ? 45 : null}
-          onStartRecording={handleStartRecording}
-          onStopRecording={handleStopRecording}
-          onCopy={handleCopy}
-          onDownload={handleDownload}
-          copyFeedback={lastCopied}
-        />
-
-        {/* Floating error notification */}
-        {status === "error" && errorMessage && (
-          <div
-            className="error-banner error-toast-container"
-            role="alert"
-            aria-live="assertive"
-          >
-            {errorMessage}
-            <button
-              onClick={actions.clearError}
-              className="btn-close-error"
-              aria-label="Cerrar mensaje de error"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-      </main>
+      <main className="main-content">{renderView()}</main>
 
       {/* Settings Modal */}
       {showSettings && (
         <Suspense
           fallback={
-            <div className="modal-overlay modal-loading">Cargando...</div>
+            <div className="modal-overlay modal-loading">Loading...</div>
           }
         >
           <Settings onClose={() => setShowSettings(false)} />
