@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import {
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import type {
   BackendState,
   BackendActions,
   Status,
-  TelemetryData,
-  DaemonResponse,
   HistoryItem,
 } from "../types";
+import type { DaemonState, TelemetryData, IpcError } from "../types/ipc";
 import {
   STATUS_POLL_INTERVAL_MS,
   PING_UPDATE_INTERVAL_MS,
@@ -16,49 +16,63 @@ import {
   SPARKLINE_HISTORY_LENGTH,
 } from "../constants";
 
-/**
- * Compara dos objetos TelemetryData campo por campo para evitar serialización JSON costosa.
- * @returns true si son idénticos, false si hay cambios.
- */
+// --- OPTIMIZED HELPERS ---
+
+/** O(1) telemetry comparison - avoids JSON.stringify */
 function isTelemetryEqual(
   a: TelemetryData | null,
   b: TelemetryData | null
 ): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
-
-  // CPU - Comparación directa de número
   if (a.cpu.percent !== b.cpu.percent) return false;
-
-  // RAM - Comparación de campos
-  if (a.ram.percent !== b.ram.percent) return false;
-  if (a.ram.used_gb !== b.ram.used_gb) return false;
-  if (a.ram.total_gb !== b.ram.total_gb) return false;
-
-  // GPU - Manejo de opcionalidad
-  const aGpu = a.gpu;
-  const bGpu = b.gpu;
-  // Si uno tiene GPU y el otro no
-  if (!!aGpu !== !!bGpu) return false;
-  // Si ambos tienen, comparar valores
-  if (aGpu && bGpu) {
-    if (aGpu.vram_used_mb !== bGpu.vram_used_mb) return false;
-    if (aGpu.temp_c !== bGpu.temp_c) return false;
-  }
-
+  if (a.ram.percent !== b.ram.percent || a.ram.used_gb !== b.ram.used_gb)
+    return false;
+  if (!!a.gpu !== !!b.gpu) return false;
+  if (
+    a.gpu &&
+    b.gpu &&
+    (a.gpu.vram_used_mb !== b.gpu.vram_used_mb || a.gpu.temp_c !== b.gpu.temp_c)
+  )
+    return false;
   return true;
 }
 
+/** Map daemon state string to Status type */
+function mapDaemonState(state: string): Status {
+  switch (state) {
+    case "recording":
+      return "recording";
+    case "paused":
+      return "paused";
+    case "restarting":
+      return "restarting";
+    case "disconnected":
+      return "disconnected";
+    default:
+      return "idle";
+  }
+}
+
+/** Extract error message from IpcError or string */
+function extractError(e: unknown): string {
+  if (typeof e === "object" && e !== null && "message" in e) {
+    return (e as IpcError).message;
+  }
+  return String(e);
+}
+
 /**
- * HOOK PRINCIPAL DE COMUNICACIÓN CON BACKEND (DAEMON)
+ * OPTIMIZED BACKEND HOOK - Event-driven with typed IPC
  *
- * Gestiona toda la lógica de estado, conexión IPC, manejo de errores y polling.
- * Actúa como la capa "Controlador" en el patrón MVC del frontend.
- *
- * @returns [state, actions] - Tupla con el estado actual y las acciones disponibles
+ * Architecture:
+ * - Initial GET_STATUS on mount for hydration
+ * - Tauri event listener for push updates (v2m://state-update)
+ * - Fallback polling only when events not received (disconnection recovery)
+ * - Typed invoke() calls - no JSON.parse overhead
  */
 export function useBackend(): [BackendState, BackendActions] {
-  // --- ESTADO LOCAL ---
+  // --- STATE ---
   const [status, setStatus] = useState<Status>("disconnected");
   const [transcription, setTranscription] = useState("");
   const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
@@ -69,232 +83,195 @@ export function useBackend(): [BackendState, BackendActions] {
   const [lastPingTime, setLastPingTime] = useState<number | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  // --- EFECTOS DE INICIALIZACIÓN ---
+  // --- REFS (avoid stale closures) ---
+  const statusRef = useRef<Status>(status);
+  const prevTelemetryRef = useRef<TelemetryData | null>(null);
+  const lastPingTimeRef = useRef<number>(0);
+  const lastEventTimeRef = useRef<number>(0);
 
-  // Cargar historial persistido al montar
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  // --- HISTORY PERSISTENCE ---
   useEffect(() => {
     try {
       const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
-      if (saved) {
-        setHistory(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error("Failed to load history", e);
+      if (saved) setHistory(JSON.parse(saved));
+    } catch {
+      /* ignore */
     }
   }, []);
 
-  // --- HELPERS INTERNOS ---
-
-  /** Guarda una nueva entrada en el historial y lo persiste */
   const addToHistory = useCallback(
     (text: string, source: "recording" | "refinement") => {
       if (!text.trim()) return;
-
       const newItem: HistoryItem = {
         id: crypto.randomUUID(),
         timestamp: Date.now(),
         text,
         source,
       };
-
       setHistory((prev) => {
-        const newHistory = [newItem, ...prev].slice(0, MAX_HISTORY_ITEMS);
-        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(newHistory));
-        return newHistory;
+        const updated = [newItem, ...prev].slice(0, MAX_HISTORY_ITEMS);
+        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated));
+        return updated;
       });
     },
     []
   );
 
-  // Refs para acceso síncrono en closures de intervalos
-  const statusRef = useRef<Status>(status);
-  const errorRef = useRef<string>(errorMessage);
-  // OPTIMIZACIÓN BOLT: Ref para comparar telemetría sin re-renderizar
-  const prevTelemetryRef = useRef<TelemetryData | null>(null);
-  // OPTIMIZACIÓN BOLT: Ref para controlar la frecuencia de actualización del tiempo de ping
-  const lastPingTimeRef = useRef<number>(0);
+  // --- STATE UPDATE HANDLER (shared by poll and events) ---
+  const handleStateUpdate = useCallback((data: DaemonState) => {
+    lastEventTimeRef.current = Date.now();
+    setIsConnected(true);
 
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
-  useEffect(() => {
-    errorRef.current = errorMessage;
-  }, [errorMessage]);
-
-  /** Parsea respuesta JSON del daemon de forma segura */
-  const parseResponse = useCallback((json: string): DaemonResponse => {
-    try {
-      return JSON.parse(json);
-    } catch {
-      return {};
+    // Throttle ping time updates (5s)
+    const now = Date.now();
+    if (now - lastPingTimeRef.current > PING_UPDATE_INTERVAL_MS) {
+      setLastPingTime(now);
+      lastPingTimeRef.current = now;
     }
+
+    // Update telemetry with diff check
+    if (
+      data.telemetry &&
+      !isTelemetryEqual(prevTelemetryRef.current, data.telemetry)
+    ) {
+      prevTelemetryRef.current = data.telemetry;
+      setTelemetry(data.telemetry);
+      setCpuHistory((h) =>
+        [...h, data.telemetry!.cpu.percent].slice(-SPARKLINE_HISTORY_LENGTH)
+      );
+      setRamHistory((h) =>
+        [...h, data.telemetry!.ram.percent].slice(-SPARKLINE_HISTORY_LENGTH)
+      );
+    }
+
+    // Update transcription if present
+    if (data.transcription !== undefined) {
+      setTranscription(data.transcription);
+    }
+    if (data.refined_text !== undefined) {
+      setTranscription(data.refined_text);
+    }
+
+    // Map state - preserve transitional states
+    const newStatus = mapDaemonState(data.state);
+    setStatus((prev) => {
+      if (
+        (prev === "transcribing" || prev === "processing") &&
+        newStatus === "idle"
+      ) {
+        return prev; // Don't interrupt transitional state
+      }
+      return newStatus;
+    });
   }, []);
 
-  // --- LÓGICA DE POLLING (Sondeo) ---
-
-  /**
-   * Consulta el estado del daemon periódicamente.
-   * Es la fuente de verdad para la sincronización UI <-> Backend.
-   */
+  // --- POLL FUNCTION (for initial load and fallback) ---
   const pollStatus = useCallback(async () => {
     try {
-      const response = await invoke<string>("get_status");
-      setIsConnected(true);
-
-      // OPTIMIZACIÓN BOLT: Throttling de actualización de UI para lastPingTime
-      // Evita re-renderizar toda la App cada 500ms solo para actualizar un timestamp oculto en un tooltip.
-      // Se actualiza solo cada 5 segundos.
-      const now = Date.now();
-      if (now - lastPingTimeRef.current > PING_UPDATE_INTERVAL_MS) {
-        setLastPingTime(now);
-        lastPingTimeRef.current = now;
-      }
-
-      const data = parseResponse(response);
-
-      // 1. Actualizar telemetría siempre (incluso si estamos grabando)
-      // OPTIMIZACIÓN BOLT: Single Pass Update & React Batching
-      // Comparamos usando ref para evitar efectos secundarios en setTelemetry.
-      // Las actualizaciones secuenciales se agrupan automáticamente en React 18+.
-      if (data.telemetry) {
-        const newTelemetry = data.telemetry;
-        const prev = prevTelemetryRef.current;
-
-        // Si la estructura cambió o es la primera vez
-        if (!isTelemetryEqual(prev, newTelemetry)) {
-          prevTelemetryRef.current = newTelemetry;
-
-          setTelemetry(newTelemetry);
-          setCpuHistory((h) =>
-            [...h, newTelemetry.cpu.percent].slice(-SPARKLINE_HISTORY_LENGTH)
-          );
-          setRamHistory((h) =>
-            [...h, newTelemetry.ram.percent].slice(-SPARKLINE_HISTORY_LENGTH)
-          );
-        }
-      }
-
-      // 2. Mapear estado interno del daemon a estados de UI
-      let daemonStatus: Status = "idle";
-      if (data.state === "recording") daemonStatus = "recording";
-      else if (data.state === "paused") daemonStatus = "paused";
-      else daemonStatus = "idle"; // Fallback por defecto
-
-      const currentStatus = statusRef.current;
-
-      // 3. Lógica de preservación de estado optimista "Transitional State"
-      // Si la UI dice "transcribing" (procesando), no volvamos a "idle"
-      // hasta que la acción termine explícitamente y actualice el estado.
-      // Esto evita parpadeos en la UI.
-      if (
-        (currentStatus === "transcribing" || currentStatus === "processing") &&
-        daemonStatus === "idle"
-      ) {
-        return;
-      }
-
-      // 4. Actualizar estado solo si cambió
-      setStatus((prev) => {
-        // Preservar estados transicionales
-        if (
-          (prev === "transcribing" || prev === "processing") &&
-          daemonStatus === "idle"
-        )
-          return prev;
-        // Mapeo directo
-        if (daemonStatus === "recording") return "recording";
-        if (daemonStatus === "paused") return "paused";
-
-        // Recuperación tras desconexión
-        if (prev === "disconnected") return daemonStatus;
-
-        return prev !== daemonStatus ? daemonStatus : prev;
-      });
-
-      // Auto-limpiar errores al reconectar si todo está bien
-      if (errorRef.current && statusRef.current === "disconnected")
-        setErrorMessage("");
-    } catch (e) {
-      // Manejo de desconexión (daemon caído o cerrado)
+      const data = await invoke<DaemonState>("get_status");
+      handleStateUpdate(data);
+      if (statusRef.current === "disconnected") setErrorMessage("");
+    } catch {
       setIsConnected(false);
       setStatus("disconnected");
     }
-  }, [parseResponse]);
+  }, [handleStateUpdate]);
 
-  // Configurar intervalo de polling
+  // --- EVENT LISTENER (primary update mechanism) ---
   useEffect(() => {
-    pollStatus(); // Fetch inicial inmediato
-    const intervalId = window.setInterval(pollStatus, STATUS_POLL_INTERVAL_MS);
-    return () => clearInterval(intervalId);
-  }, [pollStatus]);
+    let unlisten: UnlistenFn | null = null;
 
-  // --- ACCIONES PÚBLICAS ---
+    // Initial fetch
+    pollStatus();
+
+    // Subscribe to push events
+    listen<DaemonState>("v2m://state-update", (event) => {
+      handleStateUpdate(event.payload);
+    }).then((fn) => {
+      unlisten = fn;
+    });
+
+    // Fallback polling - only if no events received in 2 seconds
+    const fallbackInterval = setInterval(() => {
+      const timeSinceLastEvent = Date.now() - lastEventTimeRef.current;
+      if (timeSinceLastEvent > STATUS_POLL_INTERVAL_MS * 4) {
+        pollStatus();
+      }
+    }, STATUS_POLL_INTERVAL_MS);
+
+    return () => {
+      unlisten?.();
+      clearInterval(fallbackInterval);
+    };
+  }, [pollStatus, handleStateUpdate]);
+
+  // --- ACTIONS (typed invoke, no JSON.parse) ---
 
   const startRecording = useCallback(async () => {
     if (statusRef.current === "paused") return;
     try {
-      await invoke("start_recording");
+      await invoke<DaemonState>("start_recording");
       setStatus("recording");
     } catch (e) {
-      setErrorMessage(String(e));
+      setErrorMessage(extractError(e));
       setStatus("error");
     }
   }, []);
 
   const stopRecording = useCallback(async () => {
-    setStatus("transcribing"); // UI Optimista
+    setStatus("transcribing"); // Optimistic UI
     try {
-      const result = await invoke<string>("stop_recording");
-      const data = parseResponse(result);
-
+      const data = await invoke<DaemonState>("stop_recording");
       if (data.transcription) {
         setTranscription(data.transcription);
         addToHistory(data.transcription, "recording");
         setStatus("idle");
       } else {
-        setErrorMessage("No se detectó voz en el audio");
+        setErrorMessage("No speech detected in audio");
         setStatus("error");
       }
     } catch (e) {
-      setErrorMessage(String(e));
+      setErrorMessage(extractError(e));
       setStatus("error");
     }
-  }, [addToHistory, parseResponse]);
+  }, [addToHistory]);
 
   const processText = useCallback(async () => {
     if (!transcription) return;
-    setStatus("processing"); // UI Optimista
+    setStatus("processing"); // Optimistic UI
     try {
-      const result = await invoke<string>("process_text", {
+      const data = await invoke<DaemonState>("process_text", {
         text: transcription,
       });
-      const data = parseResponse(result);
-
       if (data.refined_text) {
         setTranscription(data.refined_text);
         addToHistory(data.refined_text, "refinement");
         setStatus("idle");
       } else {
-        setErrorMessage("Respuesta inesperada del LLM");
+        setErrorMessage("Unexpected LLM response");
         setStatus("error");
       }
     } catch (e) {
-      setErrorMessage(String(e));
+      setErrorMessage(extractError(e));
       setStatus("error");
     }
-  }, [transcription, addToHistory, parseResponse]);
+  }, [transcription, addToHistory]);
 
   const togglePause = useCallback(async () => {
     try {
       if (statusRef.current === "paused") {
-        await invoke("resume_daemon");
+        await invoke<DaemonState>("resume_daemon");
         setStatus("idle");
       } else {
-        await invoke("pause_daemon");
+        await invoke<DaemonState>("pause_daemon");
         setStatus("paused");
       }
     } catch (e) {
-      setErrorMessage(String(e));
+      setErrorMessage(extractError(e));
     }
   }, []);
 
@@ -307,10 +284,10 @@ export function useBackend(): [BackendState, BackendActions] {
   const restartDaemon = useCallback(async () => {
     setStatus("restarting");
     try {
-      await invoke("restart_daemon");
-      // El polling se encargará de detectar cuando vuelva a estar ONLINE
+      await invoke<DaemonState>("restart_daemon");
+      // Event listener will detect when daemon is back online
     } catch (e) {
-      setErrorMessage(String(e));
+      setErrorMessage(extractError(e));
       setStatus("error");
     }
   }, []);
@@ -318,14 +295,15 @@ export function useBackend(): [BackendState, BackendActions] {
   const shutdownDaemon = useCallback(async () => {
     setStatus("shutting_down");
     try {
-      await invoke("shutdown_daemon");
+      await invoke<DaemonState>("shutdown_daemon");
       setStatus("disconnected");
       setIsConnected(false);
     } catch (e) {
-      setErrorMessage(String(e));
+      setErrorMessage(extractError(e));
       setStatus("error");
     }
   }, []);
+  // --- MEMOIZED RETURN VALUES ---
 
   const state: BackendState = useMemo(
     () => ({

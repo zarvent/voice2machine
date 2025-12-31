@@ -1,63 +1,80 @@
-import { useState, useCallback, useEffect, lazy, Suspense } from "react";
-import { Header } from "./components/Header";
-import { MicControl } from "./components/MicControl";
-import { TranscriptionArea } from "./components/TranscriptionArea";
-import { DaemonControls } from "./components/DaemonControls";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  lazy,
+  Suspense,
+  useMemo,
+} from "react";
+import { Sidebar } from "./components/Sidebar";
+import { TranscriptionEditor } from "./components/TranscriptionEditor";
+import { ActionBar } from "./components/ActionBar";
 import { useBackend } from "./hooks/useBackend";
+import { useTimer } from "./hooks/useTimer";
 import { COPY_FEEDBACK_DURATION_MS } from "./constants";
 import "./App.css";
 
-// Lazy loading para componentes pesados (code splitting)
-const Dashboard = lazy(() =>
-  import("./components/Dashboard").then((m) => ({ default: m.Dashboard }))
-);
 const Settings = lazy(() =>
   import("./components/Settings").then((m) => ({ default: m.Settings }))
 );
 
-/**
- * COMPONENTE RAÍZ DE LA APLICACIÓN
- * Orquesta el estado global, el layout principal y la integración de componentes.
- */
-function App() {
-  // Hook personalizado de lógica de negocio (Backend IPC)
-  const [backendState, actions] = useBackend();
-  const {
-    status,
-    transcription,
-    telemetry,
-    cpuHistory,
-    ramHistory,
-    errorMessage,
-    isConnected,
-    lastPingTime,
-    history,
-  } = backendState;
+/** O(n) single-pass word counter - no intermediate arrays */
+function countWords(text: string): number {
+  let count = 0;
+  let inWord = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    // Space, tab, newline, carriage return
+    const isSpace = c === 32 || c === 9 || c === 10 || c === 13;
+    if (isSpace) {
+      inWord = false;
+    } else if (!inWord) {
+      inWord = true;
+      count++;
+    }
+  }
+  return count;
+}
 
-  // Estado UI local
+function App() {
+  const [backendState, actions] = useBackend();
+  const { status, transcription, errorMessage } = backendState;
+  const timer = useTimer(status);
+
   const [showSettings, setShowSettings] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(true);
   const [lastCopied, setLastCopied] = useState(false);
 
-  /** Maneja el copiado al portapapeles con feedback visual */
+  // Optimized session stats with O(n) word count
+  const sessionStats = useMemo(
+    () => ({
+      duration: timer.formatted,
+      words: countWords(transcription),
+      confidence: "High",
+      confidencePercent: 98,
+    }),
+    [transcription, timer.formatted]
+  );
+
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(transcription);
     setLastCopied(true);
     setTimeout(() => setLastCopied(false), COPY_FEEDBACK_DURATION_MS);
   }, [transcription]);
 
-  /** Maneja doble click o enter en histórico */
-  const restoreHistoryItem = useCallback(
-    (text: string) => {
-      actions.setTranscription(text);
-    },
-    [actions]
-  );
+  const handleDownload = useCallback(() => {
+    const blob = new Blob([transcription], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement("a"), {
+      href: url,
+      download: `transcription_${new Date().toISOString().slice(0, 10)}.txt`,
+    });
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [transcription]);
 
-  const handleToggleRecord = useCallback(() => {
-    if (status === "recording") actions.stopRecording();
-    else actions.startRecording();
-  }, [status, actions]);
+  // Direct refs to stable action methods (no wrapper overhead)
+  const handleStartRecording = actions.startRecording;
+  const handleStopRecording = actions.stopRecording;
 
   // Global shortcut for toggling recording (Ctrl+Space)
   useEffect(() => {
@@ -70,115 +87,74 @@ function App() {
           status === "disconnected" ||
           status === "paused";
         if (!isDisabled) {
-          handleToggleRecord();
+          if (status === "recording") {
+            handleStopRecording();
+          } else {
+            handleStartRecording();
+          }
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleToggleRecord, status]);
+  }, [handleStartRecording, handleStopRecording, status]);
 
-  const handleToggleDashboard = useCallback(
-    () => setShowDashboard((prev) => !prev),
-    []
-  );
   const handleOpenSettings = useCallback(() => setShowSettings(true), []);
 
+  // Determine read-only state
+  const isReadOnly = status !== "recording";
+
   return (
-    <main className="app-container">
-      <Header
-        isConnected={isConnected}
-        lastPingTime={lastPingTime}
-        showDashboard={showDashboard}
-        onToggleDashboard={handleToggleDashboard}
+    <div className="app-layout">
+      {/* Sidebar with navigation and stats */}
+      <Sidebar
+        sessionStats={sessionStats}
+        activeNav="overview"
         onOpenSettings={handleOpenSettings}
       />
 
-      <div className="workspace">
-        {/* --- ÁREA PRINCIPAL DE TRABAJO --- */}
-        <div className="app-main-content">
-          <TranscriptionArea
-            transcription={transcription}
-            status={status}
-            lastCopied={lastCopied}
-            onTranscriptionChange={actions.setTranscription}
-            onCopy={handleCopy}
-            onRefine={actions.processText}
-            onTogglePause={actions.togglePause}
-          />
+      {/* Main content area */}
+      <main className="main-content">
+        {/* Transcription Editor */}
+        <TranscriptionEditor
+          text={transcription}
+          status={status}
+          isReadOnly={isReadOnly}
+        />
 
-          <MicControl status={status} onToggleRecord={handleToggleRecord} />
+        {/* Action Bar */}
+        <ActionBar
+          status={status}
+          transcription={transcription}
+          timerFormatted={timer.formatted}
+          llmProgress={status === "processing" ? 45 : null}
+          onStartRecording={handleStartRecording}
+          onStopRecording={handleStopRecording}
+          onCopy={handleCopy}
+          onDownload={handleDownload}
+          copyFeedback={lastCopied}
+        />
 
-          {/* Notificación de error flotante */}
-          {status === "error" && errorMessage && (
-            <div
-              className="error-banner error-toast-container"
-              role="alert"
-              aria-live="assertive"
+        {/* Floating error notification */}
+        {status === "error" && errorMessage && (
+          <div
+            className="error-banner error-toast-container"
+            role="alert"
+            aria-live="assertive"
+          >
+            {errorMessage}
+            <button
+              onClick={actions.clearError}
+              className="btn-close-error"
+              aria-label="Cerrar mensaje de error"
             >
-              {errorMessage}
-              <button
-                onClick={actions.clearError}
-                className="btn-close-error"
-                aria-label="Cerrar mensaje de error"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* --- BARRA LATERAL (DASHBOARD) --- */}
-        {showDashboard && (
-          <aside className="sidebar-dashboard">
-            <div className="sidebar-header">Métricas del Sistema</div>
-
-            <Suspense
-              fallback={<div className="sidebar-loading">Cargando...</div>}
-            >
-              <Dashboard
-                visible={true}
-                telemetry={telemetry}
-                cpuHistory={cpuHistory}
-                ramHistory={ramHistory}
-              />
-            </Suspense>
-
-            <DaemonControls
-              status={status}
-              onRestart={actions.restartDaemon}
-              onShutdown={actions.shutdownDaemon}
-            />
-
-            {history && history.length > 0 && (
-              <div className="history-section-container">
-                <div className="history-title">Historial</div>
-                <div className="history-list">
-                  {history.map((item) => (
-                    <div
-                      key={item.id}
-                      role="button"
-                      tabIndex={0}
-                      className="history-item"
-                      onClick={() => restoreHistoryItem(item.text)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && restoreHistoryItem(item.text)
-                      }
-                      title="Click para restaurar"
-                    >
-                      <div className="history-time">
-                        {new Date(item.timestamp).toLocaleTimeString()}
-                      </div>
-                      <div className="history-text">{item.text}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </aside>
+              ✕
+            </button>
+          </div>
         )}
-      </div>
+      </main>
 
+      {/* Settings Modal */}
       {showSettings && (
         <Suspense
           fallback={
@@ -188,7 +164,7 @@ function App() {
           <Settings onClose={() => setShowSettings(false)} />
         </Suspense>
       )}
-    </main>
+    </div>
   );
 }
 

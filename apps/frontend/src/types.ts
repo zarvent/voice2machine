@@ -5,6 +5,19 @@
  * @module Types
  */
 
+// Import and re-export IPC types
+import type {
+  TelemetryData as TelemetryDataType,
+  CpuInfo,
+  RamInfo,
+  GpuInfo,
+  DaemonState,
+  IpcError,
+} from "./types/ipc";
+
+export type TelemetryData = TelemetryDataType;
+export type { CpuInfo, RamInfo, GpuInfo, DaemonState, IpcError };
+
 /**
  * Estados posibles del sistema (Máquina de estados finita simplificada).
  * - idle: Esperando acción
@@ -27,45 +40,6 @@ export type Status =
   | "disconnected"
   | "restarting"
   | "shutting_down";
-
-/**
- * Datos de telemetría del sistema para el Dashboard.
- */
-export interface TelemetryData {
-  /** Información de Memoria RAM */
-  ram: {
-    /** GB usados actualmente */
-    used_gb: number;
-    /** Total de GB disponibles en sistema */
-    total_gb: number;
-    /** Porcentaje de uso (0-100) */
-    percent: number;
-  };
-  /** Información de CPU */
-  cpu: {
-    /** Porcentaje de uso global (0-100) */
-    percent: number;
-  };
-  /** Información de GPU (Opcional, solo si hay GPU NVIDIA/AMD detectada) */
-  gpu?: {
-    /** VRAM usada en MB */
-    vram_used_mb: number;
-    /** Temperatura en grados Celsius */
-    temp_c: number;
-  };
-}
-
-/**
- * Estructura de respuesta cruda (JSON) recibida desde el daemon Python.
- * Mapea directamente la salida del backend.
- */
-export interface DaemonResponse {
-  state?: string;
-  transcription?: string;
-  refined_text?: string;
-  message?: string;
-  telemetry?: TelemetryData;
-}
 
 /**
  * Item individual del historial de transcripciones.

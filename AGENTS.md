@@ -1,6 +1,8 @@
 # Voice2Machine (V2M)
 
-Local-first voice dictation tool that converts speech-to-text using local GPU (Whisper) with optional LLM post-processing (Gemini).
+## Why
+
+Local-first voice dictation tool that converts speech-to-text using local GPU (Whisper) with optional LLM post-processing (Gemini). Designed for developers who want fast, private transcription without cloud dependencies.
 
 ---
 
@@ -98,20 +100,9 @@ v2m/
 
 - Always use strict type hints for all arguments and return values
 - Follow `ruff` configuration in `pyproject.toml`
-- Use domain-specific exceptions (e.g., `MicrophoneNotFoundError`)
+- Use domain-specific exceptions (see `src/v2m/domain/errors.py`)
 - Run `ruff check --fix` and `ruff format` before committing
-
-```python
-# ✅ Good - strict types, descriptive names, proper error handling
-async def transcribe_audio(audio_path: Path, model: str = "large-v3") -> Transcription:
-    if not audio_path.exists():
-        raise AudioFileNotFoundError(f"file not found: {audio_path}")
-    return await whisper_service.transcribe(audio_path, model)
-
-# ❌ Bad - no types, vague names, no error handling
-async def proc(p):
-    return await ws.t(p)
-```
+- Reference: `apps/backend/src/v2m/application/` for handler patterns
 
 ### TypeScript/React
 
@@ -120,22 +111,7 @@ async def proc(p):
 - Error banners MUST use `role="alert"` and `aria-live="assertive"`
 - Modals MUST close on `Escape` key
 - Use `React.memo`, `useCallback`, `useMemo` to prevent unnecessary re-renders
-
-```typescript
-// ✅ Good - aria-label, memo, keyboard handling
-const RecordButton: React.FC<Props> = React.memo(({ onToggle, recording }) => (
-  <button
-    onClick={onToggle}
-    onKeyDown={(e) => e.key === "Escape" && onToggle()}
-    aria-label={recording ? "stop recording" : "start recording"}
-  >
-    {recording ? "⏹️" : "🎙️"}
-  </button>
-));
-
-// ❌ Bad - no aria-label, no memo
-const BadButton = ({ onClick }) => <button onClick={onClick}>🎙️</button>;
-```
+- Reference: `apps/frontend/src/components/` for component patterns
 
 ---
 
@@ -242,3 +218,14 @@ git commit -m "feat(backend): add whisper-turbo model support"
 ## Monorepo Note
 
 Nested `AGENTS.md` files are supported. Place package-specific instructions in subdirectories, and the nearest `AGENTS.md` will take precedence for that context.
+
+---
+
+## Extended Documentation
+
+For task-specific details, read these files when relevant:
+
+- `docs/arquitectura.md` — hexagonal architecture patterns and domain flow
+- `docs/configuracion.md` — config.toml schema and environment variables
+- `docs/troubleshooting.md` — common issues and solutions
+- `docs/instalacion.md` — detailed installation steps
