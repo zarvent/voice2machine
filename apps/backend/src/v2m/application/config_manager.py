@@ -61,16 +61,47 @@ class ConfigManager:
         Actualiza el archivo de configuración con nuevos valores.
         Realiza un merge profundo simple (sobrescribe claves existentes).
 
+        SECURITY:
+            - Bloquea actualizaciones a la sección [paths].
+            - Valida rutas de archivos para evitar path traversal.
+
         Args:
             new_config: Diccionario parcial o completo con nuevas configuraciones.
 
         Raises:
-            ValueError: Si new_config no es un diccionario válido.
+            ValueError: Si new_config no es un diccionario válido o si se intenta modificar secciones protegidas.
             Exception: Si falla la serialización TOML o escritura del archivo.
         """
         # Validar estructura básica antes de procesar
         if not isinstance(new_config, dict):
             raise ValueError("Config updates must be a dictionary")
+
+        # SECURITY CHECK 1: Bloquear acceso a sección 'paths'
+        if "paths" in new_config:
+            logger.warning("security violation: attempt to modify [paths] section")
+            raise ValueError("Security violation: modification of [paths] section is not allowed")
+
+        # SECURITY CHECK 2: Validar path traversal en llm.local.model_path
+        if "llm" in new_config and "local" in new_config["llm"]:
+             local_config = new_config["llm"]["local"]
+             if "model_path" in local_config:
+                 path_str = str(local_config["model_path"])
+
+                 # Normalizar la ruta para resolver '..'
+                 # Usamos os.path.normpath para resolver los '..' sintácticamente
+                 import os
+                 normalized_path = os.path.normpath(path_str)
+
+                 # Verificar si contiene '..' después de normalizar (indica intento de salir del root)
+                 has_traversal = ".." in normalized_path.split(os.sep)
+
+                 # Bloquear rutas absolutas por defecto (política de seguridad estricta)
+                 # Los modelos deben estar contenidos dentro del proyecto para portabilidad y seguridad
+                 is_absolute = os.path.isabs(normalized_path)
+
+                 if has_traversal or is_absolute:
+                     logger.warning(f"security violation: unsafe model path '{path_str}' -> '{normalized_path}'")
+                     raise ValueError("Security violation: model_path must be a relative path without traversal (use 'models/' directory)")
 
         try:
             current_config = self.load_config()
