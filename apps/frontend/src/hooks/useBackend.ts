@@ -18,23 +18,38 @@ import {
 
 // --- OPTIMIZED HELPERS ---
 
-/** O(1) telemetry comparison - avoids JSON.stringify */
+/**
+ * O(1) Fuzzy telemetry comparison.
+ * Ignores negligible changes (epsilon) to prevent excessive re-renders.
+ */
 function isTelemetryEqual(
   a: TelemetryData | null,
   b: TelemetryData | null
 ): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
-  if (a.cpu.percent !== b.cpu.percent) return false;
-  if (a.ram.percent !== b.ram.percent || a.ram.used_gb !== b.ram.used_gb)
-    return false;
+
+  const EPSILON_PERCENT = 0.5; // 0.5% change threshold
+  const EPSILON_RAM_GB = 0.1; // 100MB change threshold
+  const EPSILON_VRAM_MB = 50; // 50MB change threshold
+
+  // CPU
+  if (Math.abs(a.cpu.percent - b.cpu.percent) > EPSILON_PERCENT) return false;
+
+  // RAM
+  if (Math.abs(a.ram.percent - b.ram.percent) > EPSILON_PERCENT) return false;
+  if (Math.abs(a.ram.used_gb - b.ram.used_gb) > EPSILON_RAM_GB) return false;
+
+  // GPU
   if (!!a.gpu !== !!b.gpu) return false;
   if (
     a.gpu &&
     b.gpu &&
-    (a.gpu.vram_used_mb !== b.gpu.vram_used_mb || a.gpu.temp_c !== b.gpu.temp_c)
+    (Math.abs(a.gpu.vram_used_mb - b.gpu.vram_used_mb) > EPSILON_VRAM_MB ||
+      Math.abs(a.gpu.temp_c - b.gpu.temp_c) > 1)
   )
     return false;
+
   return true;
 }
 
