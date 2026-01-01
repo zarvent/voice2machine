@@ -74,10 +74,13 @@ function App() {
     else backendActions.startRecording();
   }, [status, backendActions]);
 
-  // Global shortcut for toggling recording (Ctrl+Space)
+  // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.code === "Space") {
+      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+
+      // Ctrl+Space - Toggle recording
+      if (isCtrlOrMeta && e.code === "Space") {
         e.preventDefault();
         const isDisabled =
           status === "transcribing" ||
@@ -87,11 +90,30 @@ function App() {
         if (!isDisabled) {
           handleToggleRecord();
         }
+        return;
+      }
+
+      // Ctrl+T - New note
+      if (isCtrlOrMeta && e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        notesActions.createNote();
+        return;
+      }
+
+      // Ctrl+W - Close current note
+      if (isCtrlOrMeta && e.key.toLowerCase() === "w") {
+        e.preventDefault();
+        const activeNote = notesActions.getActiveNote();
+        if (activeNote && notesState.notes.length > 1) {
+          notesActions.deleteNote(activeNote.id);
+        }
+        return;
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleToggleRecord, status]);
+  }, [handleToggleRecord, status, notesActions, notesState.notes.length]);
 
   const handleToggleDashboard = useCallback(
     () => setShowDashboard((prev) => !prev),

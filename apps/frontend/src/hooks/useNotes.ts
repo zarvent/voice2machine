@@ -69,6 +69,8 @@ export interface NotesActions {
   updateActiveNoteContent: (content: string) => void;
   /** Renombra una nota */
   renameNote: (noteId: string, newTitle: string) => void;
+  /** Reordena las notas (para drag & drop) */
+  reorderNotes: (notes: Note[]) => void;
   /** Obtiene la nota activa */
   getActiveNote: () => Note | null;
 }
@@ -162,6 +164,13 @@ export function useNotes(): [NotesState, NotesActions] {
     });
   }, []);
 
+  const reorderNotes = useCallback((newNotes: Note[]) => {
+    setState((prev) => ({
+      ...prev,
+      notes: newNotes,
+    }));
+  }, []);
+
   const getActiveNote = useCallback((): Note | null => {
     return state.notes.find((n) => n.id === state.activeNoteId) || null;
   }, [state.notes, state.activeNoteId]);
@@ -173,6 +182,7 @@ export function useNotes(): [NotesState, NotesActions] {
       setActiveNote,
       updateActiveNoteContent,
       renameNote,
+      reorderNotes,
       getActiveNote,
     }),
     [
@@ -181,6 +191,7 @@ export function useNotes(): [NotesState, NotesActions] {
       setActiveNote,
       updateActiveNoteContent,
       renameNote,
+      reorderNotes,
       getActiveNote,
     ]
   );

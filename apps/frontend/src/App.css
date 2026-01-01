@@ -94,6 +94,37 @@ header {
   letter-spacing: -0.01em;
 }
 
+/* GitHub Button - Elegant and subtle */
+.btn-github {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--fg-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s var(--ease);
+}
+
+.btn-github:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+  color: var(--fg-primary);
+}
+
+.btn-github svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-github-text {
+  font-family: var(--font-sans);
+}
+
 /* Minimalist Button */
 .btn-icon {
   background: transparent;
@@ -1130,6 +1161,28 @@ textarea.editor::placeholder {
   right: 0;
   height: 1px;
   background: var(--bg-panel);
+}
+
+/* Drag & Drop states */
+.tab--dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.tab--drag-over {
+  border-color: var(--accent-primary);
+  background: var(--bg-surface-hover);
+}
+
+.tab--drag-over::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--accent-primary);
+  border-radius: 1px;
 }
 
 .tab-title {

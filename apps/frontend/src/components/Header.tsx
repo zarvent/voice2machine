@@ -37,11 +37,12 @@ export const Header = React.memo(
             href="https://github.com/zarvent/voice2machine"
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-icon"
-            title="Code on GitHub"
-            aria-label="Code on GitHub"
+            className="btn-github"
+            title="Ver código fuente en GitHub"
+            aria-label="Ver código fuente en GitHub"
           >
             <GithubIcon />
+            <span className="btn-github-text">GitHub</span>
           </a>
 
           <button

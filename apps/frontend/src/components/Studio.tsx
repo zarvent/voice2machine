@@ -37,6 +37,7 @@ export const Studio = React.memo(
           onCreateNote={notesActions.createNote}
           onCloseNote={notesActions.deleteNote}
           onRenameNote={notesActions.renameNote}
+          onReorderNotes={notesActions.reorderNotes}
           maxNotes={MAX_NOTES}
         />
 
