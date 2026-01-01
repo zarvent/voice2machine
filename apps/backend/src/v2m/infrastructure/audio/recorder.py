@@ -118,6 +118,12 @@ class AudioRecorder:
             wf.setframerate(self.sample_rate)
             wf.writeframes(audio_int16.tobytes())
 
+    def _get_audio_slice(self, num_samples: int) -> np.ndarray:
+        """Extract audio slice from buffer based on channel configuration."""
+        if self.channels > 1:
+            return self._buffer[:num_samples, :]
+        return self._buffer[:num_samples]
+
     def start(self):
         """
         INICIA LA GRABACIÓN DE AUDIO
@@ -245,7 +251,7 @@ class AudioRecorder:
         if recorded_samples == 0:
             return self._empty_audio_array()
 
-        audio_view = self._buffer[:recorded_samples, :] if self.channels > 1 else self._buffer[:recorded_samples]
+        audio_view = self._get_audio_slice(recorded_samples)
 
         if save_path:
             self._save_wav(audio_view, save_path)
