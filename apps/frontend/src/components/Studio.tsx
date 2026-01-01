@@ -643,14 +643,24 @@ export const Studio: React.FC<StudioProps> = React.memo(
                 <button
                   className="studio-record-btn"
                   onClick={() => onStartRecording("replace")}
-                  aria-label={hasContent ? "Start new recording (replaces current)" : "Start recording"}
-                  title={hasContent ? "Start new recording (replaces current content)" : "Start recording"}
+                  aria-label={
+                    hasContent
+                      ? "Start new recording (replaces current)"
+                      : "Start recording"
+                  }
+                  title={
+                    hasContent
+                      ? "Start new recording (replaces current content)"
+                      : "Start recording"
+                  }
                 >
                   <span className="record-btn-pulse" />
                   <span className="record-btn-icon">
                     <MicIcon />
                   </span>
-                  <span className="record-btn-text">{hasContent ? "New" : "Record"}</span>
+                  <span className="record-btn-text">
+                    {hasContent ? "New" : "Record"}
+                  </span>
                 </button>
               </>
             )}

@@ -218,21 +218,24 @@ export function useBackend(): [BackendState, BackendActions] {
 
   // --- ACTIONS (typed invoke, no JSON.parse) ---
 
-  const startRecording = useCallback(async (mode: "replace" | "append" = "replace") => {
-    if (statusRef.current === "paused") return;
-    try {
-      // Store mode and current transcription for append
-      recordingModeRef.current = mode;
-      if (mode === "append") {
-        transcriptionBeforeAppendRef.current = transcription;
+  const startRecording = useCallback(
+    async (mode: "replace" | "append" = "replace") => {
+      if (statusRef.current === "paused") return;
+      try {
+        // Store mode and current transcription for append
+        recordingModeRef.current = mode;
+        if (mode === "append") {
+          transcriptionBeforeAppendRef.current = transcription;
+        }
+        const data = await invoke<DaemonState>("start_recording");
+        handleStateUpdate(data);
+      } catch (e) {
+        setErrorMessage(extractError(e));
+        setStatus("error");
       }
-      const data = await invoke<DaemonState>("start_recording");
-      handleStateUpdate(data);
-    } catch (e) {
-      setErrorMessage(extractError(e));
-      setStatus("error");
-    }
-  }, [handleStateUpdate, transcription]);
+    },
+    [handleStateUpdate, transcription]
+  );
 
   const stopRecording = useCallback(async () => {
     setStatus("transcribing"); // Optimistic UI
@@ -240,7 +243,10 @@ export function useBackend(): [BackendState, BackendActions] {
       const data = await invoke<DaemonState>("stop_recording");
       if (data.transcription) {
         // Handle append mode: combine previous + new transcription
-        if (recordingModeRef.current === "append" && transcriptionBeforeAppendRef.current) {
+        if (
+          recordingModeRef.current === "append" &&
+          transcriptionBeforeAppendRef.current
+        ) {
           const combined = `${transcriptionBeforeAppendRef.current}\n\n${data.transcription}`;
           setTranscription(combined);
           addToHistory(combined, "recording");
