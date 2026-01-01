@@ -31,13 +31,28 @@ import psutil
 
 logger = logging.getLogger(__name__)
 
+# Intenta importar el monitor Rust
+try:
+    from v2m_engine import SystemMonitor as RustSystemMonitor
+    HAS_RUST_MONITOR = True
+    logger.info("🚀 monitor de sistema rust v2m_engine cargado")
+except ImportError:
+    HAS_RUST_MONITOR = False
+    logger.warning("⚠️ monitor de sistema rust no disponible, usando fallback python")
+
 class SystemMonitor:
     """
     Monitor de recursos del sistema para observabilidad en tiempo real.
     Provee métricas de RAM, CPU y GPU (si está disponible).
+
+    Utiliza `v2m_engine` (Rust) para métricas de CPU/RAM si está disponible,
+    fallback a `psutil` en Python.
     """
 
     def __init__(self) -> None:
+        # Motor Rust (Opcional)
+        self._rust_monitor = RustSystemMonitor() if HAS_RUST_MONITOR else None
+
         # OPTIMIZACIÓN BOLT: Cachear módulo torch para evitar importación repetida
         self._torch: ModuleType | None = None
         self._gpu_available = self._check_gpu_availability()
@@ -45,8 +60,13 @@ class SystemMonitor:
         # OPTIMIZACIÓN BOLT: Cachear métricas estáticas (Total RAM, GPU Name)
         # Esto evita syscalls y llamadas a driver redundantes en cada polling (500ms)
         try:
-            mem = psutil.virtual_memory()
-            self._ram_total_gb = round(mem.total / (1024**3), 2)
+            if self._rust_monitor:
+                self._rust_monitor.update()
+                total_bytes, _, _ = self._rust_monitor.get_ram_usage()
+                self._ram_total_gb = round(total_bytes / (1024**3), 2)
+            else:
+                mem = psutil.virtual_memory()
+                self._ram_total_gb = round(mem.total / (1024**3), 2)
         except Exception as e:
             logger.warning(f"failed to cache ram info: {e}")
             self._ram_total_gb = 0.0
@@ -90,6 +110,10 @@ class SystemMonitor:
         Returns:
             Dict con claves 'ram', 'cpu', 'gpu' (opcional)
         """
+        if self._rust_monitor:
+            # Actualizar snapshot en Rust
+            self._rust_monitor.update()
+
         metrics = {
             "ram": self._get_ram_usage(),
             "cpu": self._get_cpu_usage(),
@@ -102,6 +126,14 @@ class SystemMonitor:
 
     def _get_ram_usage(self) -> dict[str, float]:
         """Retorna uso de memoria RAM en GB y porcentaje."""
+        if self._rust_monitor:
+            total, used, percent = self._rust_monitor.get_ram_usage()
+            return {
+                "total_gb": self._ram_total_gb,
+                "used_gb": round(used / (1024**3), 2),
+                "percent": round(percent, 1)
+            }
+
         mem = psutil.virtual_memory()
         return {
             "total_gb": self._ram_total_gb, # Usar valor cacheado
@@ -111,6 +143,11 @@ class SystemMonitor:
 
     def _get_cpu_usage(self) -> dict[str, Any]:
         """Retorna uso de CPU global."""
+        if self._rust_monitor:
+            return {
+                "percent": round(self._rust_monitor.get_cpu_usage(), 1)
+            }
+
         return {
             "percent": psutil.cpu_percent(interval=None)
         }
