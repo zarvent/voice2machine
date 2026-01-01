@@ -248,17 +248,21 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             </div>
 
             <div className="form-group form-group--row">
-              <label className="label" htmlFor="vad-filter">
+              <label className="label" htmlFor="vad-filter" id="vad-filter-label">
                 Filtro de Silencio (VAD)
               </label>
-              <input
-                id="vad-filter"
-                type="checkbox"
-                checked={config.whisper?.vad_filter ?? true}
-                onChange={(e) =>
-                  handleChange("whisper", "vad_filter", e.target.checked)
-                }
-              />
+              <label className="toggle-switch">
+                <input
+                  id="vad-filter"
+                  type="checkbox"
+                  checked={config.whisper?.vad_filter ?? true}
+                  onChange={(e) =>
+                    handleChange("whisper", "vad_filter", e.target.checked)
+                  }
+                  aria-labelledby="vad-filter-label"
+                />
+                <span className="toggle-track" />
+              </label>
             </div>
 
             <div className="form-group">
