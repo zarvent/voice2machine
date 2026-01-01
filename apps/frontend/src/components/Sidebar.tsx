@@ -24,6 +24,7 @@ import {
   SettingsIcon,
   DragHandleIcon,
   StudioIcon,
+  GithubIcon,
 } from "../assets/Icons";
 
 export type NavItem =
@@ -288,6 +289,20 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
               </span>
             </div>
           </div>
+        </div>
+
+        {/* GitHub Footer */}
+        <div className="sidebar-footer">
+          <a
+            href="https://github.com/zarvent/voice2machine"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="github-link"
+            aria-label="View source on GitHub"
+          >
+            <GithubIcon />
+            <span>GitHub</span>
+          </a>
         </div>
       </aside>
     );

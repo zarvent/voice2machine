@@ -18,9 +18,11 @@ import {
   FileTextIcon,
   FileCodeIcon,
   FileJsonIcon,
-  LockIcon,
   PlusIcon,
+  TranslateIcon,
 } from "../assets/Icons";
+import { TabBar } from "./TabBar";
+import { useNoteTabs } from "../hooks/useNoteTabs";
 
 // ============================================
 // TYPES
@@ -51,6 +53,8 @@ interface StudioProps {
   onClearError: () => void;
   /** Callback to save snippet to library */
   onSaveSnippet?: (snippet: Omit<SnippetItem, "id" | "timestamp">) => void;
+  /** Callback to update transcription in parent state */
+  onTranscriptionChange?: (text: string) => void;
 }
 
 // ============================================
@@ -184,8 +188,23 @@ export const Studio: React.FC<StudioProps> = React.memo(
     onStopRecording,
     onClearError,
     onSaveSnippet,
+    onTranscriptionChange,
   }) => {
-    // --- State ---
+    // --- Tabs State ---
+    const {
+      tabs,
+      activeTabId,
+      activeTab,
+      addTab,
+      removeTab,
+      setActiveTab,
+      updateTabContent,
+      updateTabTitle,
+      updateTabLanguage,
+      reorderTabs,
+    } = useNoteTabs();
+
+    // --- Local State ---
     const [noteTitle, setNoteTitle] = useState(generateDefaultTitle);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [copyState, setCopyState] = useState<CopyState>("idle");
@@ -193,12 +212,28 @@ export const Studio: React.FC<StudioProps> = React.memo(
     const [showSaveDialog, setShowSaveDialog] = useState(false);
     const [snippetTitle, setSnippetTitle] = useState("");
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const [exportToast, setExportToast] = useState<string | null>(null);
+    const [localContent, setLocalContent] = useState(transcription);
 
     // --- Refs ---
     const titleInputRef = useRef<HTMLInputElement>(null);
     const exportMenuRef = useRef<HTMLDivElement>(null);
     const editorRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const copyTimeoutRef = useRef<number | null>(null);
+
+    // Sync transcription from props to local content
+    useEffect(() => {
+      setLocalContent(transcription);
+    }, [transcription]);
+
+    // Sync active tab title with noteTitle
+    useEffect(() => {
+      if (activeTab) {
+        setNoteTitle(activeTab.title);
+        setLocalContent(activeTab.content || transcription);
+      }
+    }, [activeTabId, activeTab, transcription]);
 
     // --- Derived state (memoized) ---
     const statusFlags = useMemo(
@@ -221,15 +256,21 @@ export const Studio: React.FC<StudioProps> = React.memo(
       isBusy,
       isError,
     } = statusFlags;
-    const hasContent = transcription.length > 0;
+
+    // Use localContent for display, transcription for recording sync
+    const displayContent = isRecording ? transcription : localContent;
+    const hasContent = displayContent.length > 0;
     const wordCount = useMemo(
-      () => (hasContent ? countWords(transcription) : 0),
-      [transcription, hasContent]
+      () => (hasContent ? countWords(displayContent) : 0),
+      [displayContent, hasContent]
     );
     const lines = useMemo(
-      () => (transcription ? transcription.split("\n") : [""]),
-      [transcription]
+      () => (displayContent ? displayContent.split("\n") : [""]),
+      [displayContent]
     );
+
+    // Current language from active tab
+    const currentLanguage = activeTab?.language ?? "es";
 
     // --- Effects ---
 
@@ -344,16 +385,17 @@ export const Studio: React.FC<StudioProps> = React.memo(
 
         switch (format) {
           case "md":
-            content = `# ${noteTitle}\n\n${transcription}\n\n---\n\n*Exported from Voice2Machine on ${new Date().toLocaleString()}*`;
+            content = `# ${noteTitle}\n\n${displayContent}\n\n---\n\n*Exported from Voice2Machine on ${new Date().toLocaleString()}*`;
             break;
           case "json":
             content = JSON.stringify(
               {
                 title: noteTitle,
-                content: transcription,
+                content: displayContent,
                 metadata: {
                   wordCount,
-                  characterCount: transcription.length,
+                  characterCount: displayContent.length,
+                  language: currentLanguage,
                   exportedAt: new Date().toISOString(),
                   source: "voice2machine",
                 },
@@ -363,7 +405,7 @@ export const Studio: React.FC<StudioProps> = React.memo(
             );
             break;
           default:
-            content = transcription;
+            content = displayContent;
         }
 
         const { mimeType } = EXPORT_FORMATS[format];
@@ -373,13 +415,67 @@ export const Studio: React.FC<StudioProps> = React.memo(
         const link = document.createElement("a");
         link.href = url;
         link.download = `${filename}.${format}`;
+
+        // Fix: Append to body, click, then remove for better browser compatibility
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
 
         URL.revokeObjectURL(url);
         setShowExportMenu(false);
+
+        // Show success toast
+        setExportToast(`Exported as ${filename}.${format}`);
+        setTimeout(() => setExportToast(null), 3000);
       },
-      [transcription, noteTitle, wordCount, hasContent]
+      [displayContent, noteTitle, wordCount, hasContent, currentLanguage]
     );
+
+    // Handle content editing
+    const handleContentChange = useCallback(
+      (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newContent = e.target.value;
+        setLocalContent(newContent);
+
+        // Update active tab content
+        if (activeTabId) {
+          updateTabContent(activeTabId, newContent);
+        }
+
+        // Notify parent if callback provided
+        onTranscriptionChange?.(newContent);
+      },
+      [activeTabId, updateTabContent, onTranscriptionChange]
+    );
+
+    // Handle title change updates
+    const handleTitleChangeForTab = useCallback(
+      (newTitle: string) => {
+        setNoteTitle(newTitle);
+        if (activeTabId) {
+          updateTabTitle(activeTabId, newTitle);
+        }
+      },
+      [activeTabId, updateTabTitle]
+    );
+
+    // Handle translate button (conceptual - placeholder)
+    const handleTranslate = useCallback(() => {
+      const targetLang = currentLanguage === "es" ? "en" : "es";
+
+      // Update language in tab
+      if (activeTabId) {
+        updateTabLanguage(activeTabId, targetLang);
+      }
+
+      // TODO: Integrate with LLM for actual translation
+      console.log(
+        `[Studio] Translation requested: ${currentLanguage} -> ${targetLang}`
+      );
+
+      // For now, just toggle the language indicator
+      // Future: Call backend translateText API
+    }, [currentLanguage, activeTabId, updateTabLanguage]);
 
     const handleSaveToLibrary = useCallback(() => {
       if (!hasContent) return;
@@ -388,11 +484,12 @@ export const Studio: React.FC<StudioProps> = React.memo(
     }, [hasContent, noteTitle]);
 
     const handleConfirmSave = useCallback(() => {
-      if (!onSaveSnippet || !transcription.trim()) return;
+      if (!onSaveSnippet || !displayContent.trim()) return;
 
       onSaveSnippet({
         title: snippetTitle || noteTitle,
-        text: transcription,
+        text: displayContent,
+        language: currentLanguage,
       });
 
       setSaveSuccess(true);
@@ -401,7 +498,13 @@ export const Studio: React.FC<StudioProps> = React.memo(
         setSnippetTitle("");
         setSaveSuccess(false);
       }, 1000);
-    }, [onSaveSnippet, transcription, snippetTitle, noteTitle]);
+    }, [
+      onSaveSnippet,
+      displayContent,
+      snippetTitle,
+      noteTitle,
+      currentLanguage,
+    ]);
 
     const handleCancelSave = useCallback(() => {
       setShowSaveDialog(false);
@@ -421,7 +524,7 @@ export const Studio: React.FC<StudioProps> = React.memo(
                 type="text"
                 className="studio-title-input"
                 value={noteTitle}
-                onChange={(e) => setNoteTitle(e.target.value)}
+                onChange={(e) => handleTitleChangeForTab(e.target.value)}
                 onBlur={handleTitleSubmit}
                 onKeyDown={handleTitleKeyDown}
                 placeholder="Enter note title..."
@@ -512,6 +615,22 @@ export const Studio: React.FC<StudioProps> = React.memo(
               )}
             </div>
 
+            {/* Translate Button */}
+            <button
+              className="studio-btn studio-btn-translate"
+              onClick={handleTranslate}
+              disabled={!hasContent || isBusy}
+              aria-label={`Translate to ${
+                currentLanguage === "es" ? "English" : "Spanish"
+              }`}
+              title={`Translate to ${
+                currentLanguage === "es" ? "English" : "Spanish"
+              }`}
+            >
+              <TranslateIcon />
+              <span>{currentLanguage === "es" ? "EN" : "ES"}</span>
+            </button>
+
             {/* Save to Library */}
             <button
               className="studio-btn studio-btn-save"
@@ -524,6 +643,16 @@ export const Studio: React.FC<StudioProps> = React.memo(
             </button>
           </div>
         </header>
+
+        {/* === Tab Bar === */}
+        <TabBar
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onTabSelect={setActiveTab}
+          onTabClose={removeTab}
+          onTabAdd={() => addTab()}
+          onTabReorder={reorderTabs}
+        />
 
         {/* === Editor Area === */}
         <div className="studio-editor-wrapper">
@@ -563,35 +692,58 @@ export const Studio: React.FC<StudioProps> = React.memo(
                     </div>
                   )}
                   {!isRecording && !isBusy && (
-                    <div className="studio-readonly-badge">
-                      <LockIcon />
-                      <span>read-only</span>
+                    <div className="studio-editable-badge">
+                      <EditIcon />
+                      <span>editable</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Content */}
-              <div className="studio-editor-content">
-                {lines.map((line, i) => (
-                  <div key={i} className="studio-line">
-                    <span className="studio-line-number">{i + 1}</span>
-                    <span className="studio-line-content">
-                      {line || <span className="empty-line">&nbsp;</span>}
-                    </span>
+              {/* Content - Editable textarea when not recording */}
+              {isRecording || isBusy ? (
+                /* Read-only view during recording/processing */
+                <div className="studio-editor-content">
+                  {lines.map((line, i) => (
+                    <div key={i} className="studio-line">
+                      <span className="studio-line-number">{i + 1}</span>
+                      <span className="studio-line-content">
+                        {line || <span className="empty-line">&nbsp;</span>}
+                      </span>
+                    </div>
+                  ))}
+                  {isRecording && (
+                    <div className="studio-line studio-cursor-line">
+                      <span className="studio-line-number">
+                        {lines.length + 1}
+                      </span>
+                      <span className="studio-line-content">
+                        <span className="studio-cursor-blink" />
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Editable textarea when idle */
+                <div className="studio-editor-with-lines">
+                  <div className="studio-line-numbers" aria-hidden="true">
+                    {lines.map((_, i) => (
+                      <span key={i}>{i + 1}</span>
+                    ))}
+                    {/* Extra line for when typing at end */}
+                    <span>{lines.length + 1}</span>
                   </div>
-                ))}
-                {isRecording && (
-                  <div className="studio-line studio-cursor-line">
-                    <span className="studio-line-number">
-                      {lines.length + 1}
-                    </span>
-                    <span className="studio-line-content">
-                      <span className="studio-cursor-blink" />
-                    </span>
-                  </div>
-                )}
-              </div>
+                  <textarea
+                    ref={textareaRef}
+                    className="studio-editable-area"
+                    value={localContent}
+                    onChange={handleContentChange}
+                    placeholder="Start typing or record to transcribe..."
+                    aria-label="Note content"
+                    spellCheck="true"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -749,13 +901,13 @@ export const Studio: React.FC<StudioProps> = React.memo(
 
                     <div className="snippet-preview-box">
                       <p className="snippet-preview-text">
-                        {transcription.slice(0, 200)}
-                        {transcription.length > 200 ? "..." : ""}
+                        {displayContent.slice(0, 200)}
+                        {displayContent.length > 200 ? "..." : ""}
                       </p>
                       <div className="snippet-preview-meta">
                         <span>{wordCount} words</span>
                         <span>•</span>
-                        <span>{transcription.length} characters</span>
+                        <span>{displayContent.length} characters</span>
                       </div>
                     </div>
                   </div>
@@ -778,6 +930,14 @@ export const Studio: React.FC<StudioProps> = React.memo(
                 </>
               )}
             </div>
+          </div>
+        )}
+
+        {/* === Export Success Toast === */}
+        {exportToast && (
+          <div className="export-toast" role="status" aria-live="polite">
+            <CheckIcon />
+            <span>{exportToast}</span>
           </div>
         )}
       </div>
