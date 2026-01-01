@@ -125,25 +125,26 @@ const EmptyState: React.FC<{
     <div className="empty-state-icon">
       <MicIcon />
     </div>
-    <h2 className="empty-state-title">Ready to capture your thoughts</h2>
+    <h2 className="empty-state-title">Capture your thoughts</h2>
     <p className="empty-state-description">
-      Start recording to transcribe speech to text in real-time.
+      Just speak. Your voice becomes text, instantly.
       <br />
-      Your transcription will appear here.
+      Local, private, and fast.
     </p>
     {isIdle && (
       <button
-        className="empty-state-cta"
+        className="studio-empty-cta"
         onClick={() => onStartRecording("replace")}
         aria-label="Start recording"
       >
         <MicIcon />
-        <span>Start Recording</span>
+        <span>Start Capture</span>
       </button>
     )}
-    <div className="empty-state-shortcut">
+    <div className="studio-empty-shortcut">
+      <span className="shortcut-label">Press</span>
       <kbd>{RECORD_SHORTCUT}</kbd>
-      <span>to toggle recording</span>
+      <span className="shortcut-label">to capture</span>
     </div>
   </div>
 ));
@@ -517,7 +518,10 @@ export const Studio: React.FC<StudioProps> = React.memo(
       <div className={`studio-workspace ${isRecording ? "is-recording" : ""}`}>
         {/* === Header Bar === */}
         <header className="studio-header">
-          <div className="studio-title-section">
+          <div
+            className="studio-title-section"
+            style={{ minWidth: 0, flex: 1, marginRight: "var(--space-md)" }}
+          >
             {isEditingTitle ? (
               <input
                 ref={titleInputRef}
@@ -527,25 +531,43 @@ export const Studio: React.FC<StudioProps> = React.memo(
                 onChange={(e) => handleTitleChangeForTab(e.target.value)}
                 onBlur={handleTitleSubmit}
                 onKeyDown={handleTitleKeyDown}
-                placeholder="Enter note title..."
+                placeholder="Name your thought..."
                 aria-label="Note title"
                 maxLength={100}
+                style={{ width: "100%" }}
               />
             ) : (
               <button
                 className="studio-title-display"
                 onClick={() => setIsEditingTitle(true)}
                 aria-label="Click to edit note title"
+                style={{
+                  maxWidth: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                }}
               >
-                <h1 className="studio-title-text">{noteTitle}</h1>
-                <span className="studio-title-edit-icon">
+                <h1
+                  className="studio-title-text"
+                  style={{
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {noteTitle}
+                </h1>
+                <span
+                  className="studio-title-edit-icon"
+                  style={{ flexShrink: 0 }}
+                >
                   <EditIcon />
                 </span>
               </button>
             )}
             <span className="studio-title-hint">
               <span className="hint-dot" />
-              Preview only — export to create file
+              Draft
             </span>
           </div>
 

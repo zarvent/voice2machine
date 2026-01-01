@@ -91,7 +91,7 @@ function App() {
     (snippet: { title: string; text: string }) => {
       addSnippet(snippet);
     },
-    []
+    [addSnippet]
   );
 
   // Use snippet in Studio (from SnippetsLibrary or Transcriptions)
