@@ -20,7 +20,7 @@ import React, { useState, useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { invoke } from "@tauri-apps/api/core";
-import { AppConfigSchema, AppConfigSchemaInputType } from "../../schemas/config";
+import { AppConfigSchema, type AppConfigSchemaInputType } from "../../schemas/config";
 import { SettingsLayout } from "./SettingsLayout";
 import { GeneralSection } from "./GeneralSection";
 import { AdvancedSection } from "./AdvancedSection";
@@ -92,7 +92,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       }
     };
     loadConfig();
-  }, [methods]);
+  }, []);
 
   // Handle ESC key
   useEffect(() => {

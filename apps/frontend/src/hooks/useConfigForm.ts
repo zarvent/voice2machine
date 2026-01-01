@@ -17,10 +17,10 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { useForm, UseFormReturn } from "react-hook-form";
+import { useForm, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { invoke } from "@tauri-apps/api/core";
-import { AppConfigSchema, AppConfigSchemaInputType } from "../schemas/config";
+import { AppConfigSchema, type AppConfigSchemaInputType } from "../schemas/config";
 
 interface UseConfigFormReturn {
   // Use Input type for the form to handle optional/defaults correctly
@@ -67,7 +67,7 @@ export function useConfigForm(onSaveSuccess?: () => void): UseConfigFormReturn {
     };
     loadConfig();
     return () => { mounted = false; };
-  }, [form]);
+  }, []);
 
   const saveConfig = useCallback(async () => {
     // getValues returns the current form state (Input type)
