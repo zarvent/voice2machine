@@ -1,5 +1,5 @@
 import React from "react";
-import { TelemetryData } from "../types";
+import type { TelemetryData } from "../types";
 
 interface DashboardProps {
   visible: boolean;

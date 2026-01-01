@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Status } from "../types";
+import type { Status } from "../types";
 import { LoaderIcon } from "../assets/Icons";
 
 interface DaemonControlsProps {

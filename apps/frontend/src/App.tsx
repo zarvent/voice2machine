@@ -6,7 +6,8 @@ import {
   Suspense,
   useMemo,
 } from "react";
-import { Sidebar, NavItem } from "./components/Sidebar";
+import { Sidebar } from "./components/Sidebar";
+import type { NavItem } from "./components/Sidebar";
 import { Studio } from "./components/Studio";
 import { Overview } from "./components/Overview";
 import { Transcriptions } from "./components/Transcriptions";

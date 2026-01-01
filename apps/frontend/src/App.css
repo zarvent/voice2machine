@@ -1,79 +1,7 @@
-/* Clean Minimalist Design System (Vercel/Notion inspired) */
-:root {
-  /* Semantic Colors - Light Mode */
-  --bg-app: #ffffff;
-  --bg-panel: #ffffff;
-  --bg-surface: #fafafa;
-  --bg-surface-hover: #f4f4f5;
-  --bg-surface-elevated: #ffffff;
-
-  --fg-primary: #171717;
-  --fg-secondary: #525252;
-  --fg-muted: #a1a1aa;
-  --fg-inverted: #ffffff;
-
-  --border-subtle: #e5e5e5;
-  --border-strong: #d4d4d4;
-  --border-focus: #3b82f6;
-
-  --accent-primary: #171717;
-  --accent-secondary: #3b82f6;
-  --accent-fg: #ffffff;
-
-  --success: #10b981;
-  --success-bg: rgba(16, 185, 129, 0.1);
-  --warning: #f59e0b;
-  --warning-bg: rgba(245, 158, 11, 0.1);
-  --error: #ef4444;
-  --error-bg: rgba(239, 68, 68, 0.1);
-
-  /* Typography */
-  --font-sans: "Inter", -apple-system, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
-
-  /* Spacing & Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-full: 9999px;
-
-  /* Shadows - Light Mode */
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.06);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
-
-  /* Transitions */
-  --ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --duration-fast: 0.1s;
-  --duration-normal: 0.2s;
-}
-
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-app: #0a0a0a;
-    --bg-panel: #0f0f0f;
-    --bg-surface: #141414;
-    --bg-surface-hover: #1f1f1f;
-    --bg-surface-elevated: #1a1a1a;
-
-    --fg-primary: #fafafa;
-    --fg-secondary: #a1a1aa;
-    --fg-muted: #71717a;
-    --fg-inverted: #0a0a0a;
-
-    --border-subtle: #262626;
-    --border-strong: #3f3f46;
-    --border-focus: #60a5fa;
-
-    --accent-primary: #fafafa;
-    --accent-secondary: #60a5fa;
-    --accent-fg: #0a0a0a;
-  }
-}
+/**
+ * App.css - Component Styles
+ * Design tokens are defined in styles/variables.css
+ */
 
 body {
   margin: 0;
@@ -253,7 +181,8 @@ body {
   line-height: 1.4;
 }
 
-.select, .input {
+.select,
+.input {
   width: 100%;
   padding: 10px 12px;
   border-radius: var(--radius-md);
@@ -264,7 +193,8 @@ body {
   transition: border-color 0.15s;
 }
 
-.select:focus, .input:focus {
+.select:focus,
+.input:focus {
   outline: none;
   border-color: var(--border-focus);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
@@ -296,7 +226,7 @@ body {
   background-color: var(--border-strong);
   border-radius: 99px;
   position: relative;
-  transition: .3s;
+  transition: 0.3s;
 }
 
 .toggle-switch input:checked + .toggle-track {
@@ -312,7 +242,7 @@ body {
   bottom: 3px;
   background-color: white;
   border-radius: 50%;
-  transition: .3s;
+  transition: 0.3s;
   box-shadow: var(--shadow-sm);
 }
 
@@ -376,13 +306,23 @@ body {
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Responsive */
@@ -437,9 +377,15 @@ body {
 }
 
 @keyframes pulse {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
 }
 
 .input-error {
@@ -455,7 +401,9 @@ body {
 
 /* Accessibility: Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

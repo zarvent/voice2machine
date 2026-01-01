@@ -117,11 +117,10 @@ const saveTabs = (tabs: NoteTab[], activeId: string | null): void => {
 // ============================================
 
 export function useNoteTabs(): UseNoteTabsReturn {
-  // Initialize from localStorage
-  const [tabs, setTabs] = useState<NoteTab[]>(() => loadTabs().tabs);
-  const [activeTabId, setActiveTabId] = useState<string | null>(
-    () => loadTabs().activeId
-  );
+  // Initialize from localStorage (single parse)
+  const [state] = useState(loadTabs);
+  const [tabs, setTabs] = useState<NoteTab[]>(state.tabs);
+  const [activeTabId, setActiveTabId] = useState<string | null>(state.activeId);
 
   // Ref to avoid stale closure in keyboard handler
   const tabsRef = useRef(tabs);

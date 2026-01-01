@@ -18,7 +18,7 @@
 
 import React from "react";
 import { useFormContext } from "react-hook-form";
-import { AppConfigSchemaInputType } from "../../schemas/config";
+import type { AppConfigSchemaInputType } from "../../schemas/config";
 
 export const GeneralSection: React.FC = () => {
   const { register, watch } = useFormContext<AppConfigSchemaInputType>();
@@ -80,7 +80,8 @@ export const GeneralSection: React.FC = () => {
             disabled
           />
           <small className="text-xs text-muted mt-1 block">
-            configure <code>GOOGLE_API_KEY</code> en su archivo <code>.env</code>
+            configure <code>GOOGLE_API_KEY</code> en su archivo{" "}
+            <code>.env</code>
           </small>
         </div>
       )}

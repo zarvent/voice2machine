@@ -18,10 +18,13 @@
 
 import React from "react";
 import { useFormContext } from "react-hook-form";
-import { AppConfigSchemaInputType } from "../../schemas/config";
+import type { AppConfigSchemaInputType } from "../../schemas/config";
 
 export const AdvancedSection: React.FC = () => {
-  const { register, formState: { errors } } = useFormContext<AppConfigSchemaInputType>();
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext<AppConfigSchemaInputType>();
 
   return (
     <div className="settings-section">
@@ -31,7 +34,8 @@ export const AdvancedSection: React.FC = () => {
           precisión de cómputo (quantization)
         </label>
         <p className="form-hint">
-          afecta el uso de vram y la velocidad (int8 es más ligero pero ligeramente menos preciso)
+          afecta el uso de vram y la velocidad (int8 es más ligero pero
+          ligeramente menos preciso)
         </p>
         <select
           id="compute-type"
@@ -74,11 +78,14 @@ export const AdvancedSection: React.FC = () => {
           máximo de tokens (llm local)
         </label>
         <p className="form-hint">
-          longitud máxima de la respuesta generada (valores altos pueden ralentizar)
+          longitud máxima de la respuesta generada (valores altos pueden
+          ralentizar)
         </p>
         <input
           id="max-tokens"
-          className={`input ${errors.llm?.local?.max_tokens ? "input-error" : ""}`}
+          className={`input ${
+            errors.llm?.local?.max_tokens ? "input-error" : ""
+          }`}
           type="number"
           step="64"
           {...register("llm.local.max_tokens", { valueAsNumber: true })}
