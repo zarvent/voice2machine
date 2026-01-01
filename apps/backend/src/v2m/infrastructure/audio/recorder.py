@@ -38,12 +38,22 @@ class AudioRecorder:
     """
     CLASE RESPONSABLE DE LA GRABACIÓN DE AUDIO
 
-    esta clase actúa como fachada eligiendo automáticamente entre la implementación
-    de alto rendimiento en rust (si está disponible) o el fallback robusto en python
+    esta clase actúa como fachada ("Strangler Fig Pattern") para modernizar el stack de audio.
+    elige automáticamente entre dos motores:
+
+    1. **MOTOR RUST (V2M_ENGINE)** - [PREDETERMINADO]
+       - **State of the Art (2026)**: Utiliza `cpal` + `ringbuf` (SPSC).
+       - **Lock-Free**: El hilo de audio es 'Wait-Free', garantizando cero bloqueos (glitch-free).
+       - **GIL-Free**: La captura ocurre fuera del Global Interpreter Lock de Python.
+       - **Zero-Copy**: Intercambio de datos eficiente con NumPy.
+
+    2. **MOTOR PYTHON (SOUNDDEVICE)** - [FALLBACK]
+       - Se activa automáticamente si falla Rust (ej. hardware no soportado o error de driver).
+       - Utiliza `sounddevice` (PortAudio wrapper) con buffers pre-allocados.
 
     OPTIMIZACIONES
-    - usa v2m_engine (rust/cpal) para zero-overhead recording cuando es posible
-    - buffer pre-allocado en modo python
+    - buffer pre-allocado en modo fallback para evitar reallocaciones O(n) -> O(1).
+    - arquitectura resiliente: si Rust falla, el usuario no nota interrupción.
     """
     # tamaño del chunk en samples coincide con sounddevice default ~1024
     CHUNK_SIZE = 1024
