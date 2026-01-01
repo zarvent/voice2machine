@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { Header } from "./components/Header";
 import { MicControl } from "./components/MicControl";
-import { TranscriptionArea } from "./components/TranscriptionArea";
+import { Studio } from "./components/Studio";
 import { DaemonControls } from "./components/DaemonControls";
 import { useBackend } from "./hooks/useBackend";
-import { COPY_FEEDBACK_DURATION_MS } from "./constants";
+import { useNotes } from "./hooks/useNotes";
 import "./App.css";
 
 // Lazy loading para componentes pesados (code splitting)
@@ -20,11 +20,10 @@ const Settings = lazy(() =>
  * Orquesta el estado global, el layout principal y la integración de componentes.
  */
 function App() {
-  // Hook personalizado de lógica de negocio (Backend IPC)
-  const [backendState, actions] = useBackend();
+  // Hook de comunicación con Backend (daemon Python)
+  const [backendState, backendActions] = useBackend();
   const {
     status,
-    transcription,
     telemetry,
     cpuHistory,
     ramHistory,
@@ -34,30 +33,46 @@ function App() {
     history,
   } = backendState;
 
+  // Hook de gestión de notas del Studio
+  const [notesState, notesActions] = useNotes();
+
   // Estado UI local
   const [showSettings, setShowSettings] = useState(false);
   const [showDashboard, setShowDashboard] = useState(true);
-  const [lastCopied, setLastCopied] = useState(false);
 
-  /** Maneja el copiado al portapapeles con feedback visual */
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(transcription);
-    setLastCopied(true);
-    setTimeout(() => setLastCopied(false), COPY_FEEDBACK_DURATION_MS);
-  }, [transcription]);
+  // Sincronizar transcripción del backend con la nota activa
+  useEffect(() => {
+    const activeNote = notesActions.getActiveNote();
+    if (backendState.transcription && activeNote) {
+      // Solo actualizar si hay nueva transcripción del backend
+      if (backendState.transcription !== activeNote.content) {
+        notesActions.updateActiveNoteContent(backendState.transcription);
+      }
+    }
+  }, [backendState.transcription, notesActions]);
+
+  /** Maneja el proceso de refinar con IA (usa contenido de nota activa) */
+  const handleRefine = useCallback(async () => {
+    const activeNote = notesActions.getActiveNote();
+    if (activeNote?.content) {
+      // Sincronizar el contenido de la nota activa al backend antes de procesar
+      backendActions.setTranscription(activeNote.content);
+      await backendActions.processText();
+    }
+  }, [notesActions, backendActions]);
 
   /** Maneja doble click o enter en histórico */
   const restoreHistoryItem = useCallback(
     (text: string) => {
-      actions.setTranscription(text);
+      notesActions.updateActiveNoteContent(text);
     },
-    [actions]
+    [notesActions]
   );
 
   const handleToggleRecord = useCallback(() => {
-    if (status === "recording") actions.stopRecording();
-    else actions.startRecording();
-  }, [status, actions]);
+    if (status === "recording") backendActions.stopRecording();
+    else backendActions.startRecording();
+  }, [status, backendActions]);
 
   // Global shortcut for toggling recording (Ctrl+Space)
   useEffect(() => {
@@ -95,16 +110,14 @@ function App() {
       />
 
       <div className="workspace">
-        {/* --- ÁREA PRINCIPAL DE TRABAJO --- */}
+        {/* --- ÁREA PRINCIPAL DE TRABAJO (STUDIO) --- */}
         <div className="app-main-content">
-          <TranscriptionArea
-            transcription={transcription}
+          <Studio
+            notesState={notesState}
+            notesActions={notesActions}
             status={status}
-            lastCopied={lastCopied}
-            onTranscriptionChange={actions.setTranscription}
-            onCopy={handleCopy}
-            onRefine={actions.processText}
-            onTogglePause={actions.togglePause}
+            onRefine={handleRefine}
+            onTogglePause={backendActions.togglePause}
           />
 
           <MicControl status={status} onToggleRecord={handleToggleRecord} />
@@ -118,7 +131,7 @@ function App() {
             >
               {errorMessage}
               <button
-                onClick={actions.clearError}
+                onClick={backendActions.clearError}
                 className="btn-close-error"
                 aria-label="Cerrar mensaje de error"
               >
@@ -146,8 +159,8 @@ function App() {
 
             <DaemonControls
               status={status}
-              onRestart={actions.restartDaemon}
-              onShutdown={actions.shutdownDaemon}
+              onRestart={backendActions.restartDaemon}
+              onShutdown={backendActions.shutdownDaemon}
             />
 
             {history && history.length > 0 && (

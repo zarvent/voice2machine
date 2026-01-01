@@ -7,7 +7,7 @@
 export const STATUS_POLL_INTERVAL_MS = 500;
 
 /** STORAGE - Clave para persistir el historial de transcripciones en localStorage */
-export const HISTORY_STORAGE_KEY = 'v2m_history_v1';
+export const HISTORY_STORAGE_KEY = "v2m_history_v1";
 
 /** HISTORY - Cantidad máxima de items a guardar en el historial para no saturar memoria */
 export const MAX_HISTORY_ITEMS = 50;
@@ -26,3 +26,12 @@ export const ERROR_AUTO_DISMISS_MS = 5000;
 
 /** UI - Frecuencia de actualización de la UI del tiempo de último ping (para reducir re-renders) */
 export const PING_UPDATE_INTERVAL_MS = 5000;
+
+/** STUDIO - Clave para persistir notas del Studio en localStorage */
+export const NOTES_STORAGE_KEY = "v2m_notes_v1";
+
+/** STUDIO - Número máximo de notas que pueden estar abiertas simultáneamente */
+export const MAX_NOTES = 10;
+
+/** STUDIO - Título por defecto para nuevas notas */
+export const DEFAULT_NOTE_TITLE = "Nueva Nota";

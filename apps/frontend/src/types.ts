@@ -83,6 +83,35 @@ export interface HistoryItem {
 }
 
 /**
+ * Representa una nota individual en el Studio.
+ * Las notas son entidades independientes que pueden contener transcripciones.
+ */
+export interface Note {
+  /** UUID único de la nota */
+  id: string;
+  /** Título editable de la nota */
+  title: string;
+  /** Contenido de texto de la nota */
+  content: string;
+  /** Timestamp de creación (ms) */
+  createdAt: number;
+  /** Timestamp de última modificación (ms) */
+  updatedAt: number;
+  /** Idioma actual del contenido (para futuro tracking) */
+  language?: "es" | "en";
+}
+
+/**
+ * Estado global del sistema de notas del Studio.
+ */
+export interface NotesState {
+  /** Array de todas las notas abiertas */
+  notes: Note[];
+  /** ID de la nota actualmente activa (visible en editor) */
+  activeNoteId: string | null;
+}
+
+/**
  * Estado global del backend expuesto a la UI mediante useBackend.
  */
 export interface BackendState {
