@@ -17,7 +17,9 @@ export interface RamInfo {
 
 /** GPU telemetry (optional - only if NVIDIA/AMD detected) */
 export interface GpuInfo {
+  name: string;
   vram_used_mb: number;
+  vram_total_mb: number;
   temp_c: number;
 }
 

@@ -109,8 +109,13 @@ export const Dashboard = React.memo(
         {telemetry.gpu && (
           <div className="dashboard-card dashboard-card-full">
             <div>
-              <div className="label">GPU VRAM</div>
-              <div className="gpu-value">{telemetry.gpu.vram_used_mb} MB</div>
+              <div className="label">
+                GPU VRAM ({telemetry.gpu.name || "GPU"})
+              </div>
+              <div className="gpu-value">
+                {telemetry.gpu.vram_used_mb.toFixed(0)} /{" "}
+                {telemetry.gpu.vram_total_mb.toFixed(0)} MB
+              </div>
             </div>
             <div className="gpu-temp">
               <div className="label">Temp</div>

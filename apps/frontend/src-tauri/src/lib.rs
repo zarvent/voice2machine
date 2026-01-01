@@ -65,9 +65,15 @@ pub struct RamInfo {
     pub percent: f32,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct GpuInfo {
-    pub vram_used_mb: u32,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub vram_used_mb: f32,
+    #[serde(default)]
+    pub vram_total_mb: f32,
+    #[serde(default)]
     pub temp_c: u32,
 }
 

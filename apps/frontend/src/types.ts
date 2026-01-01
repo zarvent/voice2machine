@@ -86,7 +86,7 @@ export interface BackendState {
  */
 export interface BackendActions {
   /** Inicia la grabación de micrófono */
-  startRecording: () => Promise<void>;
+  startRecording: (mode?: "replace" | "append") => Promise<void>;
   /** Detiene grabación y dispara transcripción */
   stopRecording: () => Promise<void>;
   /** Envía el texto actual al LLM para refinamiento */
