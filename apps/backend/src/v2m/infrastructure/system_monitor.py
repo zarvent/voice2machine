@@ -164,11 +164,14 @@ class SystemMonitor:
             # VRAM metrics en MB (Dinámico)
             vram_reserved = self._torch.cuda.memory_reserved(device) / (1024**2)
 
+            # SOTA 2026: Usar Rust para temperatura nativa via NVML
+            gpu_temp = self._rust_monitor.get_gpu_temp() if self._rust_monitor else 0
+
             return {
                 "name": static.get("name", "Unknown"),
                 "vram_used_mb": round(vram_reserved, 2),
                 "vram_total_mb": static.get("vram_total_mb", 0),
-                "temp_c": 0,  # torch no expone temperatura, requiere pynvml
+                "temp_c": gpu_temp,
             }
         except Exception as e:
             logger.error(f"failed to get GPU metrics: {e}", exc_info=True)
