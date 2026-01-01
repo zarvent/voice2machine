@@ -3425,6 +3425,50 @@ textarea.editor::placeholder {
 .studio-primary-action {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+}
+
+/* --- Append Recording Button --- */
+.studio-append-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  color: var(--fg-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease);
+}
+
+.studio-append-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+.studio-append-btn:active {
+  transform: translateY(0);
+}
+
+.append-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.append-btn-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.append-btn-text {
+  /* Text styling inherited */
 }
 
 /* --- Recording Buttons --- */

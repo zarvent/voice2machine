@@ -240,9 +240,13 @@ export const Overview: React.FC<OverviewProps> = React.memo(
               {telemetry.gpu && (
                 <div className="telemetry-item">
                   <div className="telemetry-header">
-                    <span className="telemetry-label">GPU</span>
+                    <span className="telemetry-label">
+                      GPU ({telemetry.gpu.name || "GPU"})
+                    </span>
                     <span className="telemetry-value mono">
-                      {telemetry.gpu.vram_used_mb} MB | {telemetry.gpu.temp_c}°C
+                      {telemetry.gpu.vram_used_mb.toFixed(0)} /{" "}
+                      {telemetry.gpu.vram_total_mb.toFixed(0)} MB |{" "}
+                      {telemetry.gpu.temp_c}°C
                     </span>
                   </div>
                   <div className="telemetry-bar">
@@ -250,7 +254,11 @@ export const Overview: React.FC<OverviewProps> = React.memo(
                       className="telemetry-fill gpu"
                       style={{
                         width: `${Math.min(
-                          (telemetry.gpu.vram_used_mb / 8192) * 100,
+                          telemetry.gpu.vram_total_mb > 0
+                            ? (telemetry.gpu.vram_used_mb /
+                                telemetry.gpu.vram_total_mb) *
+                                100
+                            : 0,
                           100
                         )}%`,
                       }}

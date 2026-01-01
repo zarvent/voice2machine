@@ -49,7 +49,12 @@ function mapDaemonState(state: string): Status {
       return "restarting";
     case "disconnected":
       return "disconnected";
+    case "idle":
+    case "running":
+      return "idle";
     default:
+      // Log unexpected states for debugging
+      console.warn(`[useBackend] Unexpected daemon state: ${state}`);
       return "idle";
   }
 }
@@ -88,6 +93,8 @@ export function useBackend(): [BackendState, BackendActions] {
   const prevTelemetryRef = useRef<TelemetryData | null>(null);
   const lastPingTimeRef = useRef<number>(0);
   const lastEventTimeRef = useRef<number>(Date.now());
+  const recordingModeRef = useRef<"replace" | "append">("replace");
+  const transcriptionBeforeAppendRef = useRef<string>("");
 
   useEffect(() => {
     statusRef.current = status;
@@ -211,24 +218,45 @@ export function useBackend(): [BackendState, BackendActions] {
 
   // --- ACTIONS (typed invoke, no JSON.parse) ---
 
-  const startRecording = useCallback(async () => {
-    if (statusRef.current === "paused") return;
-    try {
-      const data = await invoke<DaemonState>("start_recording");
-      handleStateUpdate(data);
-    } catch (e) {
-      setErrorMessage(extractError(e));
-      setStatus("error");
-    }
-  }, [handleStateUpdate]);
+  const startRecording = useCallback(
+    async (mode: "replace" | "append" = "replace") => {
+      if (statusRef.current === "paused") return;
+      try {
+        // Store mode and current transcription for append
+        recordingModeRef.current = mode;
+        if (mode === "append") {
+          transcriptionBeforeAppendRef.current = transcription;
+        }
+        const data = await invoke<DaemonState>("start_recording");
+        handleStateUpdate(data);
+      } catch (e) {
+        setErrorMessage(extractError(e));
+        setStatus("error");
+      }
+    },
+    [handleStateUpdate, transcription]
+  );
 
   const stopRecording = useCallback(async () => {
     setStatus("transcribing"); // Optimistic UI
     try {
       const data = await invoke<DaemonState>("stop_recording");
       if (data.transcription) {
-        setTranscription(data.transcription);
-        addToHistory(data.transcription, "recording");
+        // Handle append mode: combine previous + new transcription
+        if (
+          recordingModeRef.current === "append" &&
+          transcriptionBeforeAppendRef.current
+        ) {
+          const combined = `${transcriptionBeforeAppendRef.current}\n\n${data.transcription}`;
+          setTranscription(combined);
+          addToHistory(combined, "recording");
+        } else {
+          setTranscription(data.transcription);
+          addToHistory(data.transcription, "recording");
+        }
+        // Reset mode
+        recordingModeRef.current = "replace";
+        transcriptionBeforeAppendRef.current = "";
         setStatus("idle");
       } else {
         setErrorMessage("No speech detected in audio");

@@ -19,6 +19,7 @@ import {
   FileCodeIcon,
   FileJsonIcon,
   LockIcon,
+  PlusIcon,
 } from "../assets/Icons";
 
 // ============================================
@@ -45,7 +46,7 @@ interface StudioProps {
   transcription: string;
   timerFormatted: string;
   errorMessage: string;
-  onStartRecording: () => void;
+  onStartRecording: (mode?: "replace" | "append") => void;
   onStopRecording: () => void;
   onClearError: () => void;
   /** Callback to save snippet to library */
@@ -114,7 +115,7 @@ const sanitizeFilename = (title: string): string =>
 /** Empty state when no content */
 const EmptyState: React.FC<{
   isIdle: boolean;
-  onStartRecording: () => void;
+  onStartRecording: (mode?: "replace" | "append") => void;
 }> = React.memo(({ isIdle, onStartRecording }) => (
   <div className="studio-empty-state">
     <div className="empty-state-icon">
@@ -129,7 +130,7 @@ const EmptyState: React.FC<{
     {isIdle && (
       <button
         className="empty-state-cta"
-        onClick={onStartRecording}
+        onClick={() => onStartRecording("replace")}
         aria-label="Start recording"
       >
         <MicIcon />
@@ -624,17 +625,44 @@ export const Studio: React.FC<StudioProps> = React.memo(
           {/* Right: Primary Action */}
           <div className="studio-primary-action">
             {(isIdle || isError) && (
-              <button
-                className="studio-record-btn"
-                onClick={onStartRecording}
-                aria-label="Start recording"
-              >
-                <span className="record-btn-pulse" />
-                <span className="record-btn-icon">
-                  <MicIcon />
-                </span>
-                <span className="record-btn-text">Record</span>
-              </button>
+              <>
+                {/* Show "Add to Note" button when there's existing content */}
+                {hasContent && (
+                  <button
+                    className="studio-append-btn"
+                    onClick={() => onStartRecording("append")}
+                    aria-label="Add to transcription"
+                    title="Record and append to existing note"
+                  >
+                    <span className="append-btn-icon">
+                      <PlusIcon />
+                    </span>
+                    <span className="append-btn-text">Add</span>
+                  </button>
+                )}
+                <button
+                  className="studio-record-btn"
+                  onClick={() => onStartRecording("replace")}
+                  aria-label={
+                    hasContent
+                      ? "Start new recording (replaces current)"
+                      : "Start recording"
+                  }
+                  title={
+                    hasContent
+                      ? "Start new recording (replaces current content)"
+                      : "Start recording"
+                  }
+                >
+                  <span className="record-btn-pulse" />
+                  <span className="record-btn-icon">
+                    <MicIcon />
+                  </span>
+                  <span className="record-btn-text">
+                    {hasContent ? "New" : "Record"}
+                  </span>
+                </button>
+              </>
             )}
 
             {isRecording && (
