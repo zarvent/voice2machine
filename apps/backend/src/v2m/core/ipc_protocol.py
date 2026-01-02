@@ -209,4 +209,7 @@ class IPCResponse:
         )
 
 
-SOCKET_PATH = "/tmp/v2m.sock"
+# SECURITY FIX: Uso de directorio seguro para prevenir symlink attacks
+# Anteriormente usaba "/tmp/v2m.sock" que es vulnerable
+from v2m.utils.paths import get_secure_runtime_dir
+SOCKET_PATH = str(get_secure_runtime_dir() / "v2m.sock")
