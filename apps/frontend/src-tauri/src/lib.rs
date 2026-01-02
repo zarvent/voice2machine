@@ -17,7 +17,27 @@ use tauri::{Emitter, Manager};
 fn socket_path() -> &'static str {
     static PATH: OnceLock<String> = OnceLock::new();
     PATH.get_or_init(|| {
-        env::var("V2M_SOCKET_PATH").unwrap_or_else(|_| "/tmp/v2m.sock".to_string())
+        env::var("V2M_SOCKET_PATH").unwrap_or_else(|_| {
+            // 1. Try XDG_RUNTIME_DIR
+            if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+                return format!("{}/v2m/v2m.sock", runtime_dir);
+            }
+
+            // 2. Fallback: Try to get UID to construct secure path
+            let uid_output = std::process::Command::new("id")
+                .arg("-u")
+                .output()
+                .ok()
+                .and_then(|o| String::from_utf8(o.stdout).ok())
+                .map(|s| s.trim().to_string());
+
+            if let Some(uid) = uid_output {
+                 format!("/tmp/v2m_{}/v2m.sock", uid)
+            } else {
+                 // 3. Last resort (insecure, but better than crashing?)
+                 "/tmp/v2m.sock".to_string()
+            }
+        })
     })
 }
 
