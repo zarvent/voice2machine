@@ -23,3 +23,7 @@
 ## 2025-05-27 - [Toggle Switch Interaction]
 **Learning:** Replacing native small checkboxes with larger toggle switches not only improves the "delight" factor but significantly aids motor accessibility by increasing the click target size. When doing so, ensuring the underlying `input` remains accessible (focus management) is critical.
 **Action:** Use CSS-only toggle switches that wrap a standard `checkbox` input. Maintain keyboard focus visibility on the input element but visualize it on the slider.
+
+## 2024-05-27 - [Refining Status Accessibility]
+**Learning:** Making static status indicators focusable (`tabIndex={0}`) is an anti-pattern as it clutters the tab order. Screen readers can access static content via virtual cursors without it being in the focus sequence.
+**Action:** Use `role="status"` and `aria-label` for semantic announcements, but avoid `tabIndex={0}` on non-interactive elements.
