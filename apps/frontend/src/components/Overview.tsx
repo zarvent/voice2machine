@@ -104,18 +104,34 @@ export const Overview: React.FC<OverviewProps> = React.memo(
                 className={`status-badge ${
                   isConnected ? "connected" : "disconnected"
                 }`}
+                role="status"
+                aria-label={`Connection Status: ${
+                  isConnected ? "Connected" : "Disconnected"
+                }`}
               >
-                <span className="status-dot" />
+                <span className="status-dot" aria-hidden="true" />
                 {isConnected ? "Connected" : "Disconnected"}
               </span>
             </div>
             <div className="status-item">
               <span className="status-label">State</span>
-              <span className={`status-badge state-${status}`}>{status}</span>
+              <span
+                className={`status-badge state-${status}`}
+                role="status"
+                aria-label={`Daemon State: ${status}`}
+              >
+                {status}
+              </span>
             </div>
             <div className="status-item">
               <span className="status-label">Last Ping</span>
-              <span className="status-value mono">{lastPingFormatted}</span>
+              <span
+                className="status-value mono"
+                role="status"
+                aria-label={`Last Ping: ${lastPingFormatted}`}
+              >
+                {lastPingFormatted}
+              </span>
             </div>
           </div>
         </div>
