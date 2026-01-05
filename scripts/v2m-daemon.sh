@@ -69,8 +69,12 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 VENV_PYTHON="${PROJECT_DIR}/venv/bin/python"
-LOG_FILE="/tmp/v2m_daemon.log"
-PID_FILE="/tmp/v2m_daemon.pid"
+
+# --- LOAD COMMON UTILS ---
+source "${SCRIPT_DIR}/common.sh"
+RUNTIME_DIR=$(get_runtime_dir)
+LOG_FILE="${RUNTIME_DIR}/v2m_daemon.log"
+PID_FILE="${RUNTIME_DIR}/v2m_daemon.pid"
 
 start_daemon() {
     if [ -f "${PID_FILE}" ]; then
@@ -92,7 +96,9 @@ start_daemon() {
     # --- configurar ld_library_path para cuda y cudnn ---
     # buscamos las librerías de nvidia en el entorno virtual que son
     # necesarias para que whisper funcione con la tarjeta gráfica
-    VENV_LIB="${PROJECT_DIR}/venv/lib/python3.12/site-packages/nvidia"
+    # NOTA: detectamos la versión de Python dinámicamente para evitar hardcoding
+    PYTHON_VERSION=$("${VENV_PYTHON}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "3.12")
+    VENV_LIB="${PROJECT_DIR}/venv/lib/python${PYTHON_VERSION}/site-packages/nvidia"
     CUDA_PATHS=""
 
     if [ -d "${VENV_LIB}" ]; then

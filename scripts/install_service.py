@@ -117,7 +117,15 @@ def get_cuda_paths(venv_python: Path) -> str:
 
     # 2. Buscar nvidia libs directamente en el venv
     venv_dir = Path(venv_python).parent.parent
-    nvidia_base = venv_dir / "lib" / "python3.12" / "site-packages" / "nvidia"
+
+    # Detectar versión de Python dinámicamente (no hardcodear 3.12)
+    try:
+        cmd = [str(venv_python), "-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"]
+        py_version = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL).strip()
+    except Exception:
+        py_version = "3.12"  # Fallback si falla la detección
+
+    nvidia_base = venv_dir / "lib" / f"python{py_version}" / "site-packages" / "nvidia"
 
     for lib_name in ["cublas", "cudnn"]:
         lib_dir = nvidia_base / lib_name / "lib"
@@ -198,7 +206,8 @@ def install_service() -> None:
     # 4. Contenido del servicio
     service_content = f"""[Unit]
 Description=Voice2Machine Daemon
-After=network.target sound.target
+After=network.target sound.target default.target
+PartOf=graphical-session.target
 
 [Service]
 Type=simple
@@ -206,6 +215,10 @@ WorkingDirectory={current_dir}
 {env_vars}ExecStart={venv_python} -m v2m.main --daemon
 Restart=on-failure
 RestartSec=5
+
+# Modern logging (Journald)
+StandardOutput=journal
+StandardError=journal
 
 # Cargar variables (API Key) desde .env
 EnvironmentFile={current_dir}/.env

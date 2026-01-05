@@ -90,15 +90,16 @@ def test_config_loading() -> None:
 
     # Validación del modelo de Whisper
     # large-v3-turbo: 6x más rápido que large-v3 con calidad comparable
-    assert config.whisper.model == "large-v3-turbo", (
-        f"Modelo inesperado: {config.whisper.model}. "
+    # NOTE: Access via transcription.whisper since whisper field is deprecated/default only
+    assert config.transcription.whisper.model == "large-v3-turbo", (
+        f"Modelo inesperado: {config.transcription.whisper.model}. "
         "¿Se modificó config.toml sin actualizar este test?"
     )
 
     # Validación del idioma
     # "auto" = detección automática mediante análisis espectral
-    assert config.whisper.language == "auto", (
-        f"Idioma inesperado: {config.whisper.language}. "
+    assert config.transcription.whisper.language == "auto", (
+        f"Idioma inesperado: {config.transcription.whisper.language}. "
         "El valor debe ser 'auto' para detección automática."
     )
 
@@ -107,4 +108,37 @@ def test_config_loading() -> None:
     assert config.gemini.retry_attempts == 3, (
         f"Reintentos inesperados: {config.gemini.retry_attempts}. "
         "El valor recomendado es 3 para balancear resiliencia y latencia."
+    )
+
+
+def test_ollama_config_defaults() -> None:
+    """Verifica defaults de OllamaConfig para structured outputs.
+
+    Valores verificados
+    -------------------
+    ollama.model = "gemma2:2b"
+        Modelo optimizado para grammar correction, cabe en 4GB VRAM.
+
+    ollama.keep_alive = "5m"
+        Balance entre consumo de VRAM y latencia. Mantiene modelo
+        cargado 5 minutos después del último uso.
+
+    ollama.temperature = 0.0
+        Determinístico para structured outputs con JSON schema.
+    """
+    config = Settings()
+
+    assert config.llm.ollama.model == "gemma2:2b", (
+        f"Modelo Ollama inesperado: {config.llm.ollama.model}. "
+        "El default debe ser 'gemma2:2b' para grammar correction."
+    )
+
+    assert config.llm.ollama.keep_alive == "5m", (
+        f"keep_alive inesperado: {config.llm.ollama.keep_alive}. "
+        "El default debe ser '5m' para balance VRAM/latencia."
+    )
+
+    assert config.llm.ollama.temperature == 0.0, (
+        f"Temperatura inesperada: {config.llm.ollama.temperature}. "
+        "Debe ser 0.0 para structured outputs determinísticos."
     )

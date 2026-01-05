@@ -1,27 +1,27 @@
-# scripts de utilidad
+# 🛠️ Utility Scripts (Ops & Maint)
 
-colección de scripts para mantenimiento pruebas benchmarks y gestión del servicio v2m
+Curated collection of tools for the **Voice2Machine** lifecycle.
+From installation to deep diagnostics.
 
-contenido principal
+## 🚀 Core Scripts (Daily Use)
 
-**gestión del servicio**
-- `install_service.py` instala v2m como un servicio systemd de usuario
-- `v2m-daemon.sh` wrapper para iniciar el daemon
-- `v2m-toggle.sh` script para alternar grabación (usado por atajos de teclado)
+| Script          | Purpose                                                                      |
+| :-------------- | :--------------------------------------------------------------------------- |
+| `v2m-daemon.sh` | **The Service**. Starts/Stops the backend in the background.                 |
+| `v2m-toggle.sh` | **The Trigger**. Toggles (Start/Stop) recording. Map to keyboard shortcut.   |
+| `v2m-llm.sh`    | **The AI**. Takes the clipboard, refines it with Gemini, and pastes it back. |
 
-**diagnóstico y pruebas**
-- `check_cuda.py` verifica si la gpu nvidia es detectada correctamente
-- `diagnose_audio.py` herramienta interactiva para probar micrófonos y niveles de audio
-- `benchmark_latency.py` mide el rendimiento del sistema (cold start inferencia vad)
-- `test_whisper_gpu.py` descarga y prueba el modelo whisper en gpu
-- `verify_daemon.py` test de integración completo del sistema
+## 🩺 Diagnostics and Benchmarks
 
-**mantenimiento**
-- `cleanup.py` herramienta para limpiar archivos temporales cache y logs antiguos
+If something fails, run this before opening an issue.
 
-uso
-la mayoría de estos scripts deben ejecutarse desde la raíz del repositorio
-ejemplo
-```bash
-python3 scripts/check_cuda.py
-```
+- **`check_cuda.py`**: Is your GPU visible to PyTorch?
+- **`diagnose_audio.py`**: Console VU meter. Verifies if your mic is picking up sound.
+- **`benchmark_latency.py`**: Measures exact milliseconds of "Cold Start" vs "Warm Start".
+- **`test_whisper_gpu.py`**: Downloads a "tiny" model and transcribes a test audio.
+- **`verify_daemon.py`**: End-to-end integration test. Simulates a client connecting to the socket.
+
+## 🧹 Maintenance
+
+- **`cleanup.py`**: Deletes logs, temporary files (`/tmp/v2m_*`), and corrupt model cache.
+- **`install.sh`**: The "magic" idempotent installation script.

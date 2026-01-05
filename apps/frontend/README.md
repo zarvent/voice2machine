@@ -1,56 +1,57 @@
-# V2M Frontend
+# Frontend Voice2Machine (Tauri + React)
 
-GUI de escritorio para **voice2machine** construida con Tauri 2.0 + React 19.
+State-of-the-art desktop GUI built with **Tauri 2.0** (Rust) and **React 19**.
 
-## REQUISITOS
+## ⚡ Philosophy
 
-- **Node.js** 18+ y npm
-- **Rust** (cargo) para compilar Tauri
-- **Daemon v2m corriendo** en `/tmp/v2m.sock`
+- **Ultralight**: < 15MB binary. < 50MB RAM.
+- **Secure**: We don't run Node.js at runtime. Everything goes through Rust's secure bridge.
+- **Decoupled**: The GUI is just a "view". Heavy logic lives in the Python Daemon.
 
-## DESARROLLO
+## 🛠️ Development Requirements
+
+- **Node.js** 20+ (Recommended: use `fnm` or `nvm`).
+- **Rust** (stable toolchain) to compile the Tauri backend.
+- **System dependencies**: `libwebkit2gtk-4.1-dev` (on Ubuntu).
+
+## 🧑‍💻 Commands
 
 ```bash
-# instalar dependencias
+# 1. Install deps
 npm install
 
-    # iniciar en modo desarrollo (requiere daemon corriendo)
+# 2. Development Mode (Hot Reload)
+# NOTE: Make sure the Python daemon is running to see real data.
 npm run tauri dev
-```
 
-## BUILD DE PRODUCCIÓN
-
-```bash
+# 3. Production Build
 npm run tauri build
 ```
 
-El binario resultante estará en `src-tauri/target/release/`.
+The optimized binary will appear at `src-tauri/target/release/voice2machine`.
 
-## ARQUITECTURA
+## 🧩 Frontend Architecture
 
 ```
-frontend/
-├── src/               # React (UI)
-│   ├── App.tsx        # Componente principal
-│   └── App.css        # Estilos glassmorphism
-├── src-tauri/         # Rust (Backend Tauri)
-│   └── src/lib.rs     # IPC con daemon via Unix socket
-└── package.json
+apps/frontend/
+├── src/
+│   ├── components/    # Atomic React components
+│   ├── hooks/         # Custom hooks (useSocket, useRecording)
+│   ├── App.tsx        # Main layout (Glassmorphism)
+│   └── main.tsx       # Entry point
+├── src-tauri/
+│   ├── src/lib.rs     # IPC Client (Rust -> Unix Socket -> Python)
+│   └── tauri.conf.json # Permissions and window configuration
 ```
 
-La GUI se comunica con el daemon Python mediante **sockets unix**, replicando el protocolo de `client.py` (4 bytes de longitud + payload UTF-8).
+### IPC Communication
 
-## FUNCIONALIDADES
+The GUI doesn't talk directly to Python.
 
-- **Grabación de voz**: Click en el botón de micrófono
-- **Transcripción**: Automática al detener grabación
-- **Refinamiento IA**: Procesa el texto con el LLM configurado
-- **Copiar al portapapeles**: Un click para copiar
+1.  **React** invokes a Tauri command: `invoke('send_command', { cmd: 'start' })`.
+2.  **Rust** intercepts the call.
+3.  **Rust** writes to the Unix socket `/tmp/v2m.sock`.
+4.  **Python** receives, processes, and responds.
+5.  **Rust** returns the response to React.
 
-## TROUBLESHOOTING
-
-| Problema | Solución |
-|----------|----------|
-| "Daemon desconectado" | Verifica que el daemon esté corriendo: `pgrep -f v2m` |
-| Ventana no abre | Asegúrate de tener Rust instalado: `rustc --version` |
-| Error de compilación | Ejecuta `npm install` y luego `npm run tauri dev` |
+This "dance" guarantees the UI never freezes, even if Python is busy transcribing 1 hour of audio.

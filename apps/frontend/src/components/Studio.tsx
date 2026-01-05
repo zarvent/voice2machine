@@ -19,7 +19,6 @@ import {
   FileCodeIcon,
   FileJsonIcon,
   PlusIcon,
-  TranslateIcon,
 } from "../assets/Icons";
 import { TabBar } from "./TabBar";
 import { useNoteTabs } from "../hooks/useNoteTabs";
@@ -28,7 +27,7 @@ import { useNoteTabs } from "../hooks/useNoteTabs";
 // TYPES
 // ============================================
 
-/** Snippet item stored in localStorage */
+/** Ítem de fragmento almacenado en localStorage */
 export interface SnippetItem {
   id: string;
   timestamp: number;
@@ -37,10 +36,10 @@ export interface SnippetItem {
   language?: "es" | "en";
 }
 
-/** Export format options */
+/** Opciones de formato de exportación */
 type ExportFormat = "txt" | "md" | "json";
 
-/** Copy button state */
+/** Estado del botón de copiar */
 type CopyState = "idle" | "copied" | "error";
 
 interface StudioProps {
@@ -51,54 +50,56 @@ interface StudioProps {
   onStartRecording: (mode?: "replace" | "append") => void;
   onStopRecording: () => void;
   onClearError: () => void;
-  /** Callback to save snippet to library */
+  /** Callback para guardar fragmento en la librería */
   onSaveSnippet?: (snippet: Omit<SnippetItem, "id" | "timestamp">) => void;
-  /** Callback to update transcription in parent state */
+  /** Callback para actualizar transcripción en el estado padre */
   onTranscriptionChange?: (text: string) => void;
+  /** Callback para traducir texto vía backend */
+  onTranslate?: (targetLang: "es" | "en") => Promise<void>;
 }
 
 // ============================================
 // CONSTANTS
 // ============================================
 
-/** File extension info for export formats */
+/** Información de extensión de archivo para formatos de exportación */
 const EXPORT_FORMATS: Record<
   ExportFormat,
   { label: string; Icon: React.FC; mimeType: string; description: string }
 > = {
   txt: {
-    label: "Plain Text",
+    label: "Texto Plano",
     Icon: FileTextIcon,
     mimeType: "text/plain",
-    description: "Simple text file",
+    description: "Archivo de texto simple",
   },
   md: {
     label: "Markdown",
     Icon: FileCodeIcon,
     mimeType: "text/markdown",
-    description: "Formatted document",
+    description: "Documento formateado",
   },
   json: {
     label: "JSON",
     Icon: FileJsonIcon,
     mimeType: "application/json",
-    description: "Structured data",
+    description: "Datos estructurados",
   },
 };
 
-/** Keyboard shortcut for recording toggle */
+/** Atajo de teclado para alternar grabación */
 const RECORD_SHORTCUT = navigator.platform.includes("Mac")
-  ? "⌘ Space"
-  : "Ctrl+Space";
+  ? "⌘ Espacio"
+  : "Ctrl+Espacio";
 
 // ============================================
 // HELPERS
 // ============================================
 
-/** Generate default note title based on current date/time */
+/** Generar título predeterminado basado en fecha/hora actual */
 const generateDefaultTitle = (): string => {
   const now = new Date();
-  return now.toLocaleDateString("en-US", {
+  return now.toLocaleDateString("es-ES", {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -108,15 +109,15 @@ const generateDefaultTitle = (): string => {
   });
 };
 
-/** Sanitize title for filename */
+/** Sanitizar título para nombre de archivo */
 const sanitizeFilename = (title: string): string =>
-  title.replace(/[/\\?%*:|"<>]/g, "-").trim() || "untitled";
+  title.replace(/[/\\?%*:|"<>]/g, "-").trim() || "sin_titulo";
 
 // ============================================
 // SUB-COMPONENTS
 // ============================================
 
-/** Empty state when no content */
+/** Estado vacío cuando no hay contenido */
 const EmptyState: React.FC<{
   isIdle: boolean;
   onStartRecording: (mode?: "replace" | "append") => void;
@@ -125,32 +126,32 @@ const EmptyState: React.FC<{
     <div className="empty-state-icon">
       <MicIcon />
     </div>
-    <h2 className="empty-state-title">Capture your thoughts</h2>
+    <h2 className="empty-state-title">Captura tus ideas</h2>
     <p className="empty-state-description">
-      Just speak. Your voice becomes text, instantly.
+      Solo habla. Tu voz se convierte en texto, al instante.
       <br />
-      Local, private, and fast.
+      Local, privado y rápido.
     </p>
     {isIdle && (
       <button
         className="studio-empty-cta"
         onClick={() => onStartRecording("replace")}
-        aria-label="Start recording"
+        aria-label="Iniciar grabación"
       >
         <MicIcon />
-        <span>Start Capture</span>
+        <span>Iniciar Captura</span>
       </button>
     )}
     <div className="studio-empty-shortcut">
-      <span className="shortcut-label">Press</span>
+      <span className="shortcut-label">Presiona</span>
       <kbd>{RECORD_SHORTCUT}</kbd>
-      <span className="shortcut-label">to capture</span>
+      <span className="shortcut-label">para capturar</span>
     </div>
   </div>
 ));
 EmptyState.displayName = "EmptyState";
 
-/** Recording waveform animation */
+/** Animación de forma de onda de grabación */
 const RecordingWaveform: React.FC = React.memo(() => (
   <div className="recording-waveform" aria-hidden="true">
     {[...Array(5)].map((_, i) => (
@@ -169,15 +170,15 @@ RecordingWaveform.displayName = "RecordingWaveform";
 // ============================================
 
 /**
- * Studio - Primary workspace for audio transcription and processing.
+ * Studio - Espacio de trabajo principal para transcripción y procesamiento de audio.
  *
- * Features:
- * - Editable conceptual note title (preview only - no file until export)
- * - Prominent recording controls with keyboard shortcuts
- * - Quick copy with visual feedback
- * - Multi-format export (TXT, MD, JSON)
- * - Real-time word count and status
- * - Polished empty state and micro-interactions
+ * Características:
+ * - Título de nota editable (vista previa - sin archivo hasta exportar)
+ * - Controles de grabación prominentes con atajos de teclado
+ * - Copia rápida con retroalimentación visual
+ * - Exportación multiformato (TXT, MD, JSON)
+ * - Conteo de palabras y estado en tiempo real
+ * - Estado vacío pulido y micro-interacciones
  */
 export const Studio: React.FC<StudioProps> = React.memo(
   ({
@@ -190,8 +191,9 @@ export const Studio: React.FC<StudioProps> = React.memo(
     onClearError,
     onSaveSnippet,
     onTranscriptionChange,
+    onTranslate,
   }) => {
-    // --- Tabs State ---
+    // --- Estado de Pestañas ---
     const {
       tabs,
       activeTabId,
@@ -205,7 +207,7 @@ export const Studio: React.FC<StudioProps> = React.memo(
       reorderTabs,
     } = useNoteTabs();
 
-    // --- Local State ---
+    // --- Estado Local ---
     const [noteTitle, setNoteTitle] = useState(generateDefaultTitle);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [copyState, setCopyState] = useState<CopyState>("idle");
@@ -214,7 +216,16 @@ export const Studio: React.FC<StudioProps> = React.memo(
     const [snippetTitle, setSnippetTitle] = useState("");
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [exportToast, setExportToast] = useState<string | null>(null);
-    const [localContent, setLocalContent] = useState(transcription);
+    const [localContent, setLocalContent] = useState("");
+
+    // Rastrear modo de grabación (agregar o reemplazar)
+    const [recordingMode, setRecordingMode] = useState<"replace" | "append">(
+      "replace"
+    );
+    // Almacenar contenido antes de iniciar grabación (para vista previa en modo append)
+    const [preRecordingContent, setPreRecordingContent] = useState("");
+    // Rastrear estado previo para detectar finalización de grabación
+    const prevStatusRef = useRef<Status>(status);
 
     // --- Refs ---
     const titleInputRef = useRef<HTMLInputElement>(null);
@@ -223,20 +234,45 @@ export const Studio: React.FC<StudioProps> = React.memo(
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const copyTimeoutRef = useRef<number | null>(null);
 
-    // Sync transcription from props to local content
-    useEffect(() => {
-      setLocalContent(transcription);
-    }, [transcription]);
+    // --- Efectos ---
 
-    // Sync active tab title with noteTitle
+    // 1. Sincronizar título y contenido de pestaña activa
     useEffect(() => {
       if (activeTab) {
         setNoteTitle(activeTab.title);
-        setLocalContent(activeTab.content || transcription);
+        // Solo actualizar localContent desde la pestaña si no estamos grabando
+        if (status !== "recording") {
+          setLocalContent(activeTab.content || "");
+        }
       }
-    }, [activeTabId, activeTab, transcription]);
+    }, [activeTabId, activeTab, status]);
 
-    // --- Derived state (memoized) ---
+    // 2. Manejar Lógica de Inicio/Fin de Grabación
+    useEffect(() => {
+      const prevStatus = prevStatusRef.current;
+
+      // Detectar Inicio de Grabación
+      if (prevStatus !== "recording" && status === "recording") {
+        setPreRecordingContent(localContent);
+      }
+
+      // Detectar Fin de Grabación O Procesamiento Completado
+      if (
+        (prevStatus === "recording" || prevStatus === "processing") &&
+        status === "idle"
+      ) {
+        if (transcription) {
+          setLocalContent(transcription);
+          if (activeTabId) {
+            updateTabContent(activeTabId, transcription);
+          }
+        }
+      }
+
+      prevStatusRef.current = status;
+    }, [status, transcription, localContent, activeTabId, updateTabContent]);
+
+    // --- Estado Derivado (Memoizado) ---
     const statusFlags = useMemo(
       () => ({
         isRecording: status === "recording",
@@ -258,8 +294,24 @@ export const Studio: React.FC<StudioProps> = React.memo(
       isError,
     } = statusFlags;
 
-    // Use localContent for display, transcription for recording sync
-    const displayContent = isRecording ? transcription : localContent;
+    // Lógica de Visualización de Contenido
+    const displayContent = useMemo(() => {
+      if (isRecording) {
+        return recordingMode === "append"
+          ? `${preRecordingContent}${
+              preRecordingContent ? "\n\n" : ""
+            }${transcription}`
+          : transcription;
+      }
+      return localContent;
+    }, [
+      isRecording,
+      recordingMode,
+      preRecordingContent,
+      transcription,
+      localContent,
+    ]);
+
     const hasContent = displayContent.length > 0;
     const wordCount = useMemo(
       () => (hasContent ? countWords(displayContent) : 0),
@@ -270,12 +322,12 @@ export const Studio: React.FC<StudioProps> = React.memo(
       [displayContent]
     );
 
-    // Current language from active tab
+    // Idioma actual de la pestaña activa
     const currentLanguage = activeTab?.language ?? "es";
 
-    // --- Effects ---
+    // --- Efectos ---
 
-    // Focus title input when editing
+    // Enfocar input de título al editar
     useEffect(() => {
       if (isEditingTitle && titleInputRef.current) {
         titleInputRef.current.focus();
@@ -283,7 +335,7 @@ export const Studio: React.FC<StudioProps> = React.memo(
       }
     }, [isEditingTitle]);
 
-    // Close export menu on outside click
+    // Cerrar menú de exportación al hacer clic fuera
     useEffect(() => {
       if (!showExportMenu) return;
 
@@ -301,7 +353,7 @@ export const Studio: React.FC<StudioProps> = React.memo(
         document.removeEventListener("mousedown", handleClickOutside);
     }, [showExportMenu]);
 
-    // Handle escape key for all dialogs
+    // Manejar tecla escape para todos los diálogos
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === "Escape") {
@@ -315,7 +367,7 @@ export const Studio: React.FC<StudioProps> = React.memo(
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [showSaveDialog, showExportMenu, isEditingTitle]);
 
-    // Auto-scroll editor during recording
+    // Auto-scroll del editor durante la grabación
     useEffect(() => {
       if (isRecording && editorRef.current) {
         requestAnimationFrame(() => {
@@ -325,9 +377,9 @@ export const Studio: React.FC<StudioProps> = React.memo(
           });
         });
       }
-    }, [transcription, isRecording]);
+    }, [displayContent, isRecording]);
 
-    // Cleanup copy timeout on unmount
+    // Limpiar timeout de copia al desmontar
     useEffect(() => {
       return () => {
         if (copyTimeoutRef.current) {
@@ -337,6 +389,16 @@ export const Studio: React.FC<StudioProps> = React.memo(
     }, []);
 
     // --- Handlers ---
+
+    // Interceptar inicio de grabación para rastrear modo
+    const handleStartRecording = useCallback(
+      (mode: "replace" | "append" = "replace") => {
+        setRecordingMode(mode);
+        setPreRecordingContent(localContent);
+        onStartRecording(mode);
+      },
+      [onStartRecording, localContent]
+    );
 
     const handleTitleSubmit = useCallback(() => {
       setIsEditingTitle(false);
@@ -358,10 +420,9 @@ export const Studio: React.FC<StudioProps> = React.memo(
       if (!hasContent || copyState === "copied") return;
 
       try {
-        await navigator.clipboard.writeText(transcription);
+        await navigator.clipboard.writeText(displayContent);
         setCopyState("copied");
 
-        // Clear any existing timeout
         if (copyTimeoutRef.current) {
           clearTimeout(copyTimeoutRef.current);
         }
@@ -371,11 +432,11 @@ export const Studio: React.FC<StudioProps> = React.memo(
           copyTimeoutRef.current = null;
         }, COPY_FEEDBACK_DURATION_MS);
       } catch (err) {
-        console.error("[Studio] Copy failed:", err);
+        console.error("[Studio] Falló la copia:", err);
         setCopyState("error");
         setTimeout(() => setCopyState("idle"), 2000);
       }
-    }, [transcription, hasContent, copyState]);
+    }, [displayContent, hasContent, copyState]);
 
     const handleExport = useCallback(
       (format: ExportFormat) => {
@@ -386,7 +447,7 @@ export const Studio: React.FC<StudioProps> = React.memo(
 
         switch (format) {
           case "md":
-            content = `# ${noteTitle}\n\n${displayContent}\n\n---\n\n*Exported from Voice2Machine on ${new Date().toLocaleString()}*`;
+            content = `# ${noteTitle}\n\n${displayContent}\n\n---\n\n*Exportado desde Voice2Machine el ${new Date().toLocaleString()}*`;
             break;
           case "json":
             content = JSON.stringify(
@@ -417,7 +478,6 @@ export const Studio: React.FC<StudioProps> = React.memo(
         link.href = url;
         link.download = `${filename}.${format}`;
 
-        // Fix: Append to body, click, then remove for better browser compatibility
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -425,31 +485,28 @@ export const Studio: React.FC<StudioProps> = React.memo(
         URL.revokeObjectURL(url);
         setShowExportMenu(false);
 
-        // Show success toast
-        setExportToast(`Exported as ${filename}.${format}`);
+        setExportToast(`Exportado como ${filename}.${format}`);
         setTimeout(() => setExportToast(null), 3000);
       },
       [displayContent, noteTitle, wordCount, hasContent, currentLanguage]
     );
 
-    // Handle content editing
+    // Manejar edición de contenido
     const handleContentChange = useCallback(
       (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newContent = e.target.value;
         setLocalContent(newContent);
 
-        // Update active tab content
         if (activeTabId) {
           updateTabContent(activeTabId, newContent);
         }
 
-        // Notify parent if callback provided
         onTranscriptionChange?.(newContent);
       },
       [activeTabId, updateTabContent, onTranscriptionChange]
     );
 
-    // Handle title change updates
+    // Manejar cambio de título
     const handleTitleChangeForTab = useCallback(
       (newTitle: string) => {
         setNoteTitle(newTitle);
@@ -459,24 +516,6 @@ export const Studio: React.FC<StudioProps> = React.memo(
       },
       [activeTabId, updateTabTitle]
     );
-
-    // Handle translate button (conceptual - placeholder)
-    const handleTranslate = useCallback(() => {
-      const targetLang = currentLanguage === "es" ? "en" : "es";
-
-      // Update language in tab
-      if (activeTabId) {
-        updateTabLanguage(activeTabId, targetLang);
-      }
-
-      // TODO: Integrate with LLM for actual translation
-      console.log(
-        `[Studio] Translation requested: ${currentLanguage} -> ${targetLang}`
-      );
-
-      // For now, just toggle the language indicator
-      // Future: Call backend translateText API
-    }, [currentLanguage, activeTabId, updateTabLanguage]);
 
     const handleSaveToLibrary = useCallback(() => {
       if (!hasContent) return;
@@ -516,7 +555,7 @@ export const Studio: React.FC<StudioProps> = React.memo(
 
     return (
       <div className={`studio-workspace ${isRecording ? "is-recording" : ""}`}>
-        {/* === Header Bar === */}
+        {/* === Barra Superior === */}
         <header className="studio-header">
           <div
             className="studio-title-section"
@@ -531,8 +570,8 @@ export const Studio: React.FC<StudioProps> = React.memo(
                 onChange={(e) => handleTitleChangeForTab(e.target.value)}
                 onBlur={handleTitleSubmit}
                 onKeyDown={handleTitleKeyDown}
-                placeholder="Name your thought..."
-                aria-label="Note title"
+                placeholder="Nombra tu idea..."
+                aria-label="Título de nota"
                 maxLength={100}
                 style={{ width: "100%" }}
               />
@@ -540,7 +579,7 @@ export const Studio: React.FC<StudioProps> = React.memo(
               <button
                 className="studio-title-display"
                 onClick={() => setIsEditingTitle(true)}
-                aria-label="Click to edit note title"
+                aria-label="Clic para editar título"
                 style={{
                   maxWidth: "100%",
                   display: "flex",
@@ -567,48 +606,91 @@ export const Studio: React.FC<StudioProps> = React.memo(
             )}
             <span className="studio-title-hint">
               <span className="hint-dot" />
-              Draft
+              Borrador
             </span>
           </div>
 
+          {/* --- HUB DE ACCIONES --- */}
           <div className="studio-header-actions">
-            {/* Copy Button */}
+            {/* Botón Copiar */}
             <button
               className={`studio-btn studio-btn-copy ${copyState}`}
               onClick={handleCopy}
               disabled={!hasContent || isBusy}
               aria-label={
-                copyState === "copied" ? "Copied!" : "Copy to clipboard"
+                copyState === "copied" ? "¡Copiado!" : "Copiar al portapapeles"
               }
             >
               {copyState === "copied" ? <CheckIcon /> : <CopyIcon />}
-              <span>{copyState === "copied" ? "Copied!" : "Copy"}</span>
+              <span>{copyState === "copied" ? "¡Copiado!" : "Copiar"}</span>
             </button>
-
-            {/* Export Dropdown */}
-            <div className="studio-dropdown" ref={exportMenuRef}>
+            {/* Switch de Traducción Magnético */}
+            <div
+              className="semantic-toggle-group"
+              role="group"
+              aria-label="Idioma de Traducción"
+            >
               <button
-                className={`studio-btn studio-btn-export ${
-                  showExportMenu ? "active" : ""
+                className={`semantic-toggle-option ${
+                  currentLanguage === "en" ? "active" : ""
                 }`}
-                onClick={() => setShowExportMenu(!showExportMenu)}
+                onClick={() => {
+                  onTranslate && onTranslate("en");
+                  if (activeTabId) updateTabLanguage(activeTabId, "en");
+                }}
+                disabled={isBusy}
+                title="Traducir a Inglés"
+              >
+                <span className="toggle-label">EN</span>
+              </button>
+              <button
+                className={`semantic-toggle-option ${
+                  currentLanguage === "es" ? "active" : ""
+                }`}
+                onClick={() => {
+                  onTranslate && onTranslate("es");
+                  if (activeTabId) updateTabLanguage(activeTabId, "es");
+                }}
+                disabled={isBusy}
+                title="Traducir a Español"
+              >
+                <span className="toggle-label">ES</span>
+              </button>
+              {/* Indicador Activo (Solo visual) */}
+              <div
+                className={`toggle-indicator ${currentLanguage}`}
+                aria-hidden="true"
+              />
+            </div>
+
+            <div className="studio-action-divider" />
+
+            {/* Acción Primaria: Exportar */}
+            <div className="studio-export-wrapper">
+              <button
+                className="studio-btn-primary-ghost"
+                onClick={() => handleExport("txt")}
                 disabled={!hasContent || isBusy}
-                aria-expanded={showExportMenu}
-                aria-haspopup="menu"
-                aria-label="Export transcription"
+                title="Exportar a Archivo de Texto"
               >
                 <ExportIcon />
-                <span>Export</span>
-                <span
-                  className={`dropdown-chevron ${showExportMenu ? "open" : ""}`}
-                >
-                  ▾
-                </span>
+                <span>Exportar</span>
+              </button>
+
+              {/* Gatillo Dropdown */}
+              <button
+                className="studio-btn-icon-ghost"
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                disabled={!hasContent || isBusy}
+                aria-label="Más opciones de exportación"
+                aria-expanded={showExportMenu}
+              >
+                <span className="chevron-down">▼</span>
               </button>
 
               {showExportMenu && (
-                <div className="studio-dropdown-menu" role="menu">
-                  <div className="dropdown-menu-header">Export as</div>
+                <div className="spatial-dropdown-menu" role="menu">
+                  <div className="dropdown-menu-header">Elegir Formato</div>
                   {(
                     Object.entries(EXPORT_FORMATS) as [
                       ExportFormat,
@@ -617,56 +699,36 @@ export const Studio: React.FC<StudioProps> = React.memo(
                   ).map(([format, { label, Icon, description }]) => (
                     <button
                       key={format}
-                      className="studio-dropdown-item"
+                      className="spatial-dropdown-item"
                       onClick={() => handleExport(format)}
                       role="menuitem"
                     >
-                      <span className="dropdown-item-icon">
+                      <span className="item-icon-wrapper">
                         <Icon />
                       </span>
-                      <span className="dropdown-item-content">
-                        <span className="dropdown-item-label">{label}</span>
-                        <span className="dropdown-item-desc">
-                          {description}
-                        </span>
-                      </span>
-                      <span className="dropdown-item-ext">.{format}</span>
+                      <div className="item-content">
+                        <span className="item-label">{label}</span>
+                        <span className="item-desc">{description}</span>
+                      </div>
                     </button>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Translate Button */}
+            {/* Guardar en Librería (Secundario) */}
             <button
-              className="studio-btn studio-btn-translate"
-              onClick={handleTranslate}
-              disabled={!hasContent || isBusy}
-              aria-label={`Translate to ${
-                currentLanguage === "es" ? "English" : "Spanish"
-              }`}
-              title={`Translate to ${
-                currentLanguage === "es" ? "English" : "Spanish"
-              }`}
-            >
-              <TranslateIcon />
-              <span>{currentLanguage === "es" ? "EN" : "ES"}</span>
-            </button>
-
-            {/* Save to Library */}
-            <button
-              className="studio-btn studio-btn-save"
+              className="studio-btn-icon-ghost"
               onClick={handleSaveToLibrary}
               disabled={!hasContent || isBusy}
-              aria-label="Save to Snippets Library"
+              title="Guardar en Librería"
             >
               <SaveIcon />
-              <span>Save</span>
             </button>
           </div>
         </header>
 
-        {/* === Tab Bar === */}
+        {/* === Barra de Pestañas === */}
         <TabBar
           tabs={tabs}
           activeTabId={activeTabId}
@@ -676,16 +738,19 @@ export const Studio: React.FC<StudioProps> = React.memo(
           onTabReorder={reorderTabs}
         />
 
-        {/* === Editor Area === */}
+        {/* === Área del Editor === */}
         <div className="studio-editor-wrapper">
           {!hasContent && !isRecording ? (
-            <EmptyState isIdle={isIdle} onStartRecording={onStartRecording} />
+            <EmptyState
+              isIdle={isIdle}
+              onStartRecording={handleStartRecording}
+            />
           ) : (
             <div
               className={`studio-editor ${isRecording ? "recording" : ""}`}
               ref={editorRef}
             >
-              {/* Top bar */}
+              {/* Barra superior del editor */}
               <div className="studio-editor-topbar">
                 <div className="studio-traffic-lights" aria-hidden="true">
                   <span className="light red" />
@@ -697,20 +762,20 @@ export const Studio: React.FC<StudioProps> = React.memo(
                   {isRecording && (
                     <div className="studio-live-badge">
                       <RecordingWaveform />
-                      <span>Recording</span>
+                      <span>Grabando</span>
                       <span className="live-timer">{timerFormatted}</span>
                     </div>
                   )}
                   {isTranscribing && (
                     <div className="studio-processing-badge">
                       <span className="processing-spinner" />
-                      <span>Transcribing...</span>
+                      <span>Transcribiendo...</span>
                     </div>
                   )}
                   {isProcessing && (
                     <div className="studio-processing-badge">
                       <span className="processing-spinner" />
-                      <span>Processing...</span>
+                      <span>Procesando...</span>
                     </div>
                   )}
                   {!isRecording && !isBusy && (
@@ -722,9 +787,9 @@ export const Studio: React.FC<StudioProps> = React.memo(
                 </div>
               </div>
 
-              {/* Content - Editable textarea when not recording */}
+              {/* Contenido - Textarea editable cuando no graba */}
               {isRecording || isBusy ? (
-                /* Read-only view during recording/processing */
+                /* Vista de solo lectura durante grabación/procesamiento */
                 <div className="studio-editor-content">
                   {lines.map((line, i) => (
                     <div key={i} className="studio-line">
@@ -746,13 +811,13 @@ export const Studio: React.FC<StudioProps> = React.memo(
                   )}
                 </div>
               ) : (
-                /* Editable textarea when idle */
+                /* Textarea editable cuando está inactivo */
                 <div className="studio-editor-with-lines">
                   <div className="studio-line-numbers" aria-hidden="true">
                     {lines.map((_, i) => (
                       <span key={i}>{i + 1}</span>
                     ))}
-                    {/* Extra line for when typing at end */}
+                    {/* Línea extra para cuando se escribe al final */}
                     <span>{lines.length + 1}</span>
                   </div>
                   <textarea
@@ -760,8 +825,8 @@ export const Studio: React.FC<StudioProps> = React.memo(
                     className="studio-editable-area"
                     value={localContent}
                     onChange={handleContentChange}
-                    placeholder="Start typing or record to transcribe..."
-                    aria-label="Note content"
+                    placeholder="Empieza a escribir o graba para transcribir..."
+                    aria-label="Contenido de la nota"
                     spellCheck="true"
                   />
                 </div>
@@ -770,62 +835,68 @@ export const Studio: React.FC<StudioProps> = React.memo(
           )}
         </div>
 
-        {/* === Footer === */}
+        {/* === Pie de Página === */}
         <footer className="studio-footer">
-          {/* Left: Stats */}
+          {/* Izquierda: Estadísticas */}
           <div className="studio-stats">
             <span className="studio-stat">
               <strong>{wordCount.toLocaleString()}</strong>
-              <span className="stat-label">words</span>
+              <span className="stat-label">palabras</span>
             </span>
             <span className="studio-stat-divider" />
             <span className="studio-stat">
               <strong>{transcription.length.toLocaleString()}</strong>
-              <span className="stat-label">chars</span>
+              <span className="stat-label">caracteres</span>
             </span>
             <span className="studio-stat-divider" />
             <span className="studio-stat">
               <strong>{lines.length}</strong>
-              <span className="stat-label">lines</span>
+              <span className="stat-label">líneas</span>
             </span>
           </div>
 
-          {/* Center: Keyboard shortcut hint */}
+          {/* Centro: Pista de atajo de teclado */}
           <div className="studio-shortcut-hint">
             <kbd>{RECORD_SHORTCUT}</kbd>
-            <span>to {isRecording ? "stop" : "start"}</span>
+            <span>para {isRecording ? "parar" : "empezar"}</span>
           </div>
 
-          {/* Right: Primary Action */}
+          {/* Derecha: Acción Primaria */}
           <div className="studio-primary-action">
             {(isIdle || isError) && (
               <>
-                {/* Show "Add to Note" button when there's existing content */}
+                {/* Mostrar botón "Añadir" cuando hay contenido existente */}
                 {hasContent && (
                   <button
                     className="studio-append-btn"
-                    onClick={() => onStartRecording("append")}
-                    aria-label="Add to transcription"
-                    title="Record and append to existing note"
+                    onClick={() => handleStartRecording("append")}
+                    aria-label="Añadir a transcripción"
+                    title="Grabar y añadir a la nota existente"
                   >
                     <span className="append-btn-icon">
                       <PlusIcon />
                     </span>
-                    <span className="append-btn-text">Add</span>
+                    <span className="append-btn-text">Añadir</span>
                   </button>
                 )}
                 <button
                   className="studio-record-btn"
-                  onClick={() => onStartRecording("replace")}
+                  onClick={() => {
+                    if (hasContent) {
+                      // Crear nueva pestaña para acción "Nuevo" cuando hay contenido
+                      addTab();
+                    }
+                    handleStartRecording("replace");
+                  }}
                   aria-label={
                     hasContent
-                      ? "Start new recording (replaces current)"
-                      : "Start recording"
+                      ? "Crear nueva nota e iniciar grabación"
+                      : "Iniciar grabación"
                   }
                   title={
                     hasContent
-                      ? "Start new recording (replaces current content)"
-                      : "Start recording"
+                      ? "Crear nueva nota e iniciar grabación"
+                      : "Iniciar grabación"
                   }
                 >
                   <span className="record-btn-pulse" />
@@ -833,7 +904,7 @@ export const Studio: React.FC<StudioProps> = React.memo(
                     <MicIcon />
                   </span>
                   <span className="record-btn-text">
-                    {hasContent ? "New" : "Record"}
+                    {hasContent ? "Nuevo" : "Grabar"}
                   </span>
                 </button>
               </>
@@ -843,10 +914,10 @@ export const Studio: React.FC<StudioProps> = React.memo(
               <button
                 className="studio-stop-btn"
                 onClick={onStopRecording}
-                aria-label="Stop recording"
+                aria-label="Detener grabación"
               >
                 <span className="stop-btn-icon" />
-                <span className="stop-btn-text">Stop</span>
+                <span className="stop-btn-text">Parar</span>
               </button>
             )}
 
@@ -854,16 +925,16 @@ export const Studio: React.FC<StudioProps> = React.memo(
               <button
                 className="studio-busy-btn"
                 disabled
-                aria-label="Processing"
+                aria-label="Procesando"
               >
                 <span className="processing-spinner" />
-                <span>Processing</span>
+                <span>Procesando</span>
               </button>
             )}
           </div>
         </footer>
 
-        {/* === Error Toast === */}
+        {/* === Toast de Error === */}
         {isError && errorMessage && (
           <div
             className="studio-error-toast"
@@ -875,14 +946,14 @@ export const Studio: React.FC<StudioProps> = React.memo(
             <button
               onClick={onClearError}
               className="error-close-btn"
-              aria-label="Dismiss error"
+              aria-label="Descartar error"
             >
               ✕
             </button>
           </div>
         )}
 
-        {/* === Save Dialog Modal === */}
+        {/* === Modal de Guardar Diálogo === */}
         {showSaveDialog && (
           <div
             className="studio-modal-overlay"
@@ -897,25 +968,25 @@ export const Studio: React.FC<StudioProps> = React.memo(
                   <span className="success-icon">
                     <CheckIcon />
                   </span>
-                  <span>Saved!</span>
+                  <span>¡Guardado!</span>
                 </div>
               ) : (
                 <>
                   <header className="studio-modal-header">
                     <h2 id="save-dialog-title" className="studio-modal-title">
-                      Save to Library
+                      Guardar en Librería
                     </h2>
                   </header>
 
                   <div className="studio-modal-body">
                     <div className="form-field">
-                      <label htmlFor="snippet-title-input">Title</label>
+                      <label htmlFor="snippet-title-input">Título</label>
                       <input
                         id="snippet-title-input"
                         type="text"
                         value={snippetTitle}
                         onChange={(e) => setSnippetTitle(e.target.value)}
-                        placeholder="Enter a title..."
+                        placeholder="Ingresa un título..."
                         autoFocus
                         maxLength={100}
                       />
@@ -927,9 +998,9 @@ export const Studio: React.FC<StudioProps> = React.memo(
                         {displayContent.length > 200 ? "..." : ""}
                       </p>
                       <div className="snippet-preview-meta">
-                        <span>{wordCount} words</span>
+                        <span>{wordCount} palabras</span>
                         <span>•</span>
-                        <span>{displayContent.length} characters</span>
+                        <span>{displayContent.length} caracteres</span>
                       </div>
                     </div>
                   </div>
@@ -939,14 +1010,14 @@ export const Studio: React.FC<StudioProps> = React.memo(
                       onClick={handleCancelSave}
                       className="studio-btn-cancel"
                     >
-                      Cancel
+                      Cancelar
                     </button>
                     <button
                       onClick={handleConfirmSave}
                       className="studio-btn-confirm"
                     >
                       <SaveIcon />
-                      <span>Save Snippet</span>
+                      <span>Guardar Fragmento</span>
                     </button>
                   </footer>
                 </>
@@ -955,7 +1026,7 @@ export const Studio: React.FC<StudioProps> = React.memo(
           </div>
         )}
 
-        {/* === Export Success Toast === */}
+        {/* === Toast de Éxito de Exportación === */}
         {exportToast && (
           <div className="export-toast" role="status" aria-live="polite">
             <CheckIcon />

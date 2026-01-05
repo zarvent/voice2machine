@@ -29,21 +29,21 @@ export const GeneralSection: React.FC = () => {
       {/* WHISPER MODEL */}
       <div className="form-group">
         <label className="label" htmlFor="whisper-model">
-          modelo whisper (transcripción)
+          Modelo Whisper (Transcripción)
         </label>
         <p className="form-hint">
-          seleccione el modelo que mejor se adapte a su hardware
+          Seleccione el modelo que mejor se adapte a su hardware.
         </p>
         <select
           id="whisper-model"
           className="select"
           {...register("whisper.model")}
         >
-          <option value="tiny">tiny (rápido, baja precisión)</option>
-          <option value="base">base</option>
-          <option value="small">small</option>
-          <option value="medium">medium</option>
-          <option value="large-v3-turbo">large v3 turbo (recomendado)</option>
+          <option value="tiny">Tiny (Rápido, baja precisión)</option>
+          <option value="base">Base (Uso general ligero)</option>
+          <option value="small">Small (Equilibrado)</option>
+          <option value="medium">Medium (Preciso)</option>
+          <option value="large-v3-turbo">Large V3 Turbo (Recomendado, alta precisión)</option>
         </select>
       </div>
 
@@ -52,37 +52,85 @@ export const GeneralSection: React.FC = () => {
       {/* LLM BACKEND */}
       <div className="form-group">
         <label className="label" htmlFor="llm-backend">
-          backend de inteligencia artificial
+          Backend de Inteligencia Artificial
         </label>
         <p className="form-hint">
-          el motor utilizado para refinar y corregir el texto transcrito
+          El motor utilizado para refinar y corregir el texto transcrito.
         </p>
         <select
           id="llm-backend"
           className="select"
           {...register("llm.backend")}
         >
-          <option value="local">local (privado - llama/qwen)</option>
-          <option value="gemini">google gemini (nube - mayor calidad)</option>
+          <option value="local">Local (Privado - Llama/Qwen)</option>
+          <option value="gemini">Google Gemini (Nube - Mayor calidad)</option>
+          <option value="ollama">Ollama (Local - Estructurado)</option>
         </select>
       </div>
 
       {llmBackend === "gemini" && (
         <div className="form-group bg-surface-alt p-4 rounded-md mt-2">
           <label className="label" htmlFor="gemini-api-key">
-            gemini api key
+            Gemini API Key
           </label>
           <input
             id="gemini-api-key"
             className="input"
             type="password"
-            placeholder="cargada desde variable de entorno"
+            placeholder="Cargada desde variable de entorno"
             disabled
           />
           <small className="text-xs text-muted mt-1 block">
-            configure <code>GOOGLE_API_KEY</code> en su archivo{" "}
-            <code>.env</code>
+            Configure <code>GOOGLE_API_KEY</code> en su archivo{" "}
+            <code>.env</code>.
           </small>
+        </div>
+      )}
+
+      {llmBackend === "ollama" && (
+        <div className="form-group bg-surface-alt p-4 rounded-md mt-2">
+          <label className="label" htmlFor="ollama-model">
+            Modelo Ollama
+          </label>
+          <p className="form-hint">
+            Seleccione según su disponibilidad de VRAM.
+          </p>
+          <select
+            id="ollama-model"
+            className="select"
+            {...register("llm.ollama.model")}
+          >
+            <option value="gemma2:2b">Gemma 2 2B (Gramática, 2GB)</option>
+            <option value="phi3.5-mini">Phi 3.5 Mini (Versátil, 3GB)</option>
+            <option value="qwen2.5-coder:7b">
+              Qwen 2.5 Coder 7B (Código, 5GB)
+            </option>
+          </select>
+
+          <label className="label mt-3" htmlFor="ollama-keep-alive">
+            Gestión de VRAM
+          </label>
+          <p className="form-hint">Tiempo para mantener el modelo en memoria.</p>
+          <select
+            id="ollama-keep-alive"
+            className="select"
+            {...register("llm.ollama.keep_alive")}
+          >
+            <option value="0m">Liberar inmediatamente (Bajo consumo)</option>
+            <option value="5m">5 minutos (Balanceado)</option>
+            <option value="30m">30 minutos (Mínima latencia)</option>
+          </select>
+
+          <label className="label mt-3" htmlFor="ollama-host">
+            Host Ollama
+          </label>
+          <input
+            id="ollama-host"
+            className="input"
+            type="text"
+            placeholder="http://localhost:11434"
+            {...register("llm.ollama.host")}
+          />
         </div>
       )}
     </div>

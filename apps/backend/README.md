@@ -1,41 +1,90 @@
-# Backend Voice2Machine
+# Backend Voice2Machine (Python Core)
 
-## Instalación Rápida
+The "brain" of the system. Handles business logic, audio processing, and AI inference.
+
+## 🚀 Quick Start (Dev Mode)
+
+### Automated Installation (Recommended)
+
+Run the installer from **anywhere** in the project:
 
 ```bash
-# 1. Crear entorno virtual
-python3 -m venv venv
+# From project root OR from scripts/
+./scripts/install.sh
 
-# 2. Instalar dependencias
-venv/bin/pip install -r requirements.txt
-
-# 3. Configurar API key (opcional, para LLM cloud)
-cp .env.example .env
-# Editar .env con tu GEMINI_API_KEY
-
-# 4. Ejecutar daemon
-PYTHONPATH=src venv/bin/python3 -m v2m.main --daemon
+# The installer will:
+# 1. Detect Python 3.12+ automatically
+# 2. Install uv (10-100x faster than pip)
+# 3. Create venv and install dependencies
+# 4. Verify GPU/CUDA availability
 ```
 
-## Notas de Portabilidad
+### Manual Development Setup
 
-- **El venv DEBE recrearse** si mueves el proyecto a otra ubicación o PC
-- Las rutas se auto-detectan relativas al proyecto
-- Requisitos: Python 3.12+, GPU NVIDIA con CUDA (opcional pero recomendado)
+```bash
+# 1. Navigate to backend
+cd apps/backend
 
-## Estructura
+# 2. Activate virtual environment
+source venv/bin/activate
+
+# 3. Install in editable mode (useful for dev)
+uv pip install -e .  # or: pip install -e .
+
+# 4. Launch the Daemon (Server)
+# This will keep the process alive listening on /tmp/v2m.sock
+python -m v2m.main --daemon
+```
+
+## 🏗️ Development Commands
+
+We use modern tools to ensure code quality.
+
+### Testing (Pytest)
+
+```bash
+# Fast unit tests
+pytest tests/unit/
+
+# Integration tests (requires GPU/Audio)
+pytest tests/integration/
+```
+
+### Linting & Formatting (Ruff)
+
+We use `ruff` (the fastest linter in the West) to replace flake8, isort, and black.
+
+```bash
+# Check and autofix
+ruff check src/ --fix
+
+# Format
+ruff format src/
+```
+
+## 📦 Project Structure
 
 ```
 apps/backend/
-├── src/v2m/          # Código fuente principal
-├── tests/            # Tests
-├── config.toml       # Configuración
-├── requirements.txt  # Dependencias Python
-└── venv/             # Entorno virtual (no versionado)
+├── src/v2m/
+│   ├── application/    # Use cases (Commands/Handlers)
+│   ├── core/           # Command bus and global configuration
+│   ├── domain/         # Pure entities and exceptions
+│   ├── infrastructure/ # Real implementations (Whisper, Gemini, Audio)
+│   └── main.py         # Entrypoint
+├── config.toml         # Default configuration
+└── pyproject.toml      # Build and tooling configuration
 ```
 
-## Dependencias del Sistema (Linux)
+## 🔌 Socket API
 
-```bash
-sudo apt install ffmpeg xclip pulseaudio-utils python3-venv build-essential python3-dev
-```
+The backend exposes a Unix Socket at `$XDG_RUNTIME_DIR/v2m/v2m.sock` (typically `/run/user/<uid>/v2m/v2m.sock`).
+
+> **Note**: The socket location follows the XDG Base Directory Specification for secure, user-isolated runtime files.
+
+**Protocol:**
+
+1.  **Header**: 4 bytes (Big Endian) indicating message length.
+2.  **Body**: JSON string encoded in UTF-8.
+
+_Message example:_ `{"type": "toggle_recording"}`

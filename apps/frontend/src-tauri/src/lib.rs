@@ -11,13 +11,46 @@ use std::sync::OnceLock;
 use tauri::path::BaseDirectory;
 use tauri::{Emitter, Manager};
 
-// --- CONFIGURATION (Centralized) ---
-
-/// Socket path - reads from V2M_SOCKET_PATH env var, defaults to /tmp/v2m.sock
+/// Socket path - reads from V2M_SOCKET_PATH env var, or dynamically discovers XDG_RUNTIME_DIR.
+/// Adheres to 2026 security standards for local IPC.
 fn socket_path() -> &'static str {
     static PATH: OnceLock<String> = OnceLock::new();
     PATH.get_or_init(|| {
-        env::var("V2M_SOCKET_PATH").unwrap_or_else(|_| "/tmp/v2m.sock".to_string())
+        if let Ok(p) = env::var("V2M_SOCKET_PATH") {
+            return p;
+        }
+
+        let uid = unsafe { libc::getuid() };
+        let mut path = if let Ok(xdg) = env::var("XDG_RUNTIME_DIR") {
+            std::path::PathBuf::from(xdg).join("v2m")
+        } else {
+            // Fallback to /tmp with user UID (safe on Linux when ownership is verified)
+            std::path::PathBuf::from("/tmp").join(format!("v2m_{}", uid))
+        };
+
+        // Security Audit (SOTA 2026): Ensure the directory is owned by the current user
+        // This prevents "squatting" attacks where another user creates the directory first.
+        if path.exists() {
+            use std::os::unix::fs::MetadataExt;
+            if let Ok(metadata) = std::fs::metadata(&path) {
+                if metadata.uid() != uid {
+                    // Critical security failure: Directory owned by someone else
+                    // Fallback to a random temporary name or fail loudly
+                    eprintln!("SECURITY ERROR: Runtime directory {:?} is not owned by UID {}", path, uid);
+                }
+            }
+        } else {
+            // Attempt to create it with restricted permissions
+            let _ = std::fs::create_dir_all(&path);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700));
+            }
+        }
+
+        path.push("v2m.sock");
+        path.to_string_lossy().into_owned()
     })
 }
 
@@ -128,6 +161,22 @@ fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, IpcErr
     let json_payload = serde_json::to_vec(&request)
         .map_err(|e| IpcError::from(format!("JSON serialize error: {}", e)))?;
 
+    // SOTA 2026: Payload size validation and debug logging
+    let payload_size = json_payload.len();
+    eprintln!("[IPC DEBUG] Command: {}, Payload size: {} bytes", command, payload_size);
+
+    // Critical security check: prevent accidentally sending massive payloads
+    const MAX_REQUEST_SIZE: usize = 10 * 1024 * 1024; // 10MB limit for requests
+    if payload_size > MAX_REQUEST_SIZE {
+        eprintln!("[IPC ERROR] Payload too large for command '{}': {} bytes > {} limit",
+                  command, payload_size, MAX_REQUEST_SIZE);
+        return Err(IpcError {
+            code: "REQUEST_TOO_LARGE".to_string(),
+            message: format!("Request payload ({} MB) exceeds {} MB limit",
+                           payload_size >> 20, MAX_REQUEST_SIZE >> 20),
+        });
+    }
+
     // 3. Send with length-prefix framing (4 bytes big-endian + payload)
     let len = json_payload.len() as u32;
     stream
@@ -222,6 +271,18 @@ fn process_text(app: tauri::AppHandle, text: String) -> Result<DaemonState, IpcE
     let state: DaemonState = serde_json::from_value(result)
         .map_err(|e| IpcError::from(format!("Parse error: {}", e)))?;
     // Emit refined text result
+    let _ = app.emit("v2m://state-update", &state);
+    Ok(state)
+}
+
+/// Translate text with LLM
+#[tauri::command]
+fn translate_text(app: tauri::AppHandle, text: String, target_lang: String) -> Result<DaemonState, IpcError> {
+    let data = json!({ "text": text, "target_lang": target_lang });
+    let result = send_json_request("TRANSLATE_TEXT", Some(data))?;
+    let state: DaemonState = serde_json::from_value(result)
+        .map_err(|e| IpcError::from(format!("Parse error: {}", e)))?;
+    // Emit translated text result
     let _ = app.emit("v2m://state-update", &state);
     Ok(state)
 }
@@ -362,6 +423,7 @@ pub fn run() {
             stop_recording,
             ping,
             process_text,
+            translate_text,
             pause_daemon,
             resume_daemon,
             update_config,

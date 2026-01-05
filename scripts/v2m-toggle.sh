@@ -75,10 +75,14 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_DIR="$( dirname "${SCRIPT_DIR}" )/apps/backend"
 NOTIFY_EXPIRE_TIME=3000
 
+# --- LOAD COMMON UTILS ---
+source "${SCRIPT_DIR}/common.sh"
+RUNTIME_DIR=$(get_runtime_dir)
+
 # --- RUTAS DERIVADAS ---
 VENV_PATH="${PROJECT_DIR}/venv"
 MAIN_SCRIPT="${PROJECT_DIR}/src/v2m/main.py"
-RECORDING_FLAG="/tmp/v2m_recording.pid"
+RECORDING_FLAG="${RUNTIME_DIR}/v2m_recording.pid"
 DAEMON_SCRIPT="${SCRIPT_DIR}/v2m-daemon.sh"
 
 # --- FUNCIÓN PRINCIPAL ---
