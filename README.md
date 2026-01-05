@@ -1,7 +1,4 @@
-# 🗣️ voice2machine (v2m-lab)
-
-Internal source of truth and upstream core for Voice2Machine.
-
+# 🗣️ voice2machine
 _voice dictation for any text field in your OS_
 
 ---
