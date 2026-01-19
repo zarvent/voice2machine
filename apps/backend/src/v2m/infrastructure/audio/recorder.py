@@ -1,24 +1,14 @@
-# This file is part of voice2machine.
-#
-# voice2machine is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# voice2machine is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 import threading
 import wave
 from pathlib import Path
 
 import numpy as np
-import sounddevice as sd
+
+try:
+    import sounddevice as sd
+except OSError:
+    sd = None
 
 from v2m.core.logging import logger
 from v2m.domain.errors import RecordingError
@@ -94,6 +84,9 @@ class AudioRecorder:
                 return
             except Exception as e:
                 logger.error(f"error inicializando motor rust: {e} - cayendo a python")
+
+        if sd is None:
+            logger.warning("sounddevice no está disponible (PortAudio no encontrado)")
 
         # Inicialización del fallback Python (buffer pre-allocado)
         self._buffer = self._allocate_buffer()
@@ -179,6 +172,8 @@ class AudioRecorder:
                     self._write_pos = end_pos
 
         try:
+            if sd is None:
+                raise OSError("PortAudio library not found")
             self._stream = sd.InputStream(
                 samplerate=self.sample_rate,
                 channels=self.channels,
@@ -264,3 +259,46 @@ class AudioRecorder:
             return audio_view.copy()
 
         return audio_view
+
+    # =========================================================================
+    # STREAMING METHODS (delegate to Rust engine)
+    # =========================================================================
+
+    async def wait_for_data(self) -> None:
+        """
+        Wait asynchronously for new audio data to be available.
+
+        This method delegates to the Rust engine's wait_for_data() which uses
+        tokio::Notify for efficient async waiting without polling.
+
+        Raises:
+            RuntimeError: If using Python fallback (streaming not supported) or not recording.
+        """
+        if not self._rust_recorder:
+            raise RuntimeError("wait_for_data requires Rust engine (Python fallback does not support streaming)")
+        if not self._recording:
+            raise RuntimeError("not recording")
+
+        # Rust wait_for_data returns an awaitable
+        await self._rust_recorder.wait_for_data()
+
+    def read_chunk(self) -> "np.ndarray":
+        """
+        Read available audio data from the ring buffer.
+
+        Returns all samples currently in the buffer without blocking.
+        Used for streaming transcription where we process audio incrementally.
+
+        Returns:
+            np.ndarray: Audio samples as float32 numpy array.
+
+        Raises:
+            RuntimeError: If using Python fallback (streaming not supported) or not recording.
+        """
+        if not self._rust_recorder:
+            raise RuntimeError("read_chunk requires Rust engine (Python fallback does not support streaming)")
+        if not self._recording:
+            return np.array([], dtype=np.float32)
+
+        return self._rust_recorder.read_chunk()
+

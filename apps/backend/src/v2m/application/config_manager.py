@@ -1,17 +1,3 @@
-# This file is part of voice2machine.
-#
-# voice2machine is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# voice2machine is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 Servicio Gestor de Configuración (Config Manager).
@@ -96,7 +82,7 @@ class ConfigManager:
                 toml.dumps(current_config)
             except Exception as e:
                 logger.error("configuración actualizada no es toml válido, revirtiendo", exc_info=True)
-                raise ValueError(f"Estructura TOML inválida tras el merge: {e}")
+                raise ValueError(f"Estructura TOML inválida tras el merge: {e}") from e
 
             with open(self.config_path, "w") as f:
                 toml.dump(current_config, f)

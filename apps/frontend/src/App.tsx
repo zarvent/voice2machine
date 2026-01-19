@@ -1,10 +1,10 @@
 import {
-  useState,
   useCallback,
   useEffect,
   lazy,
   Suspense,
   useMemo,
+  useState,
 } from "react";
 import { Sidebar } from "./components/Sidebar";
 import type { NavItem } from "./components/Sidebar";
@@ -12,36 +12,35 @@ import { Studio } from "./components/Studio";
 import { Overview } from "./components/Overview";
 import { Transcriptions } from "./components/Transcriptions";
 import { SnippetsLibrary } from "./components/SnippetsLibrary";
-import { useBackend } from "./hooks/useBackend";
+import { Export } from "./components/Export";
+import { BackendInitializer } from "./components/BackendInitializer";
+import { useBackendStore } from "./stores/backendStore";
+import { useUiStore } from "./stores/uiStore";
 import { useTimer } from "./hooks/useTimer";
 import { useSnippets } from "./hooks/useSnippets";
 import { countWords } from "./utils";
-import "./App.css";
 
 const Settings = lazy(() =>
   import("./components/Settings").then((m) => ({ default: m.Settings }))
 );
 
-function App() {
-  const [backendState, actions] = useBackend();
-  const {
-    status,
-    transcription,
-    errorMessage,
-    isConnected,
-    lastPingTime,
-    telemetry,
-    cpuHistory,
-    ramHistory,
-    history,
-  } = backendState;
+function AppContent() {
+  const status = useBackendStore((state) => state.status);
+  const transcription = useBackendStore((state) => state.transcription);
+  const history = useBackendStore((state) => state.history);
+
+  // Actions
+  const startRecording = useBackendStore((state) => state.startRecording);
+  const stopRecording = useBackendStore((state) => state.stopRecording);
+  const setTranscription = useBackendStore((state) => state.setTranscription);
+
   const timer = useTimer(status);
   const { addSnippet } = useSnippets();
 
-  const [activeView, setActiveView] = useState<NavItem>("studio");
+  const { activeView, setActiveView } = useUiStore();
   const [showSettings, setShowSettings] = useState(false);
 
-  // Memoización separada del conteo de palabras para evitar O(n) en cada tick del temporizador
+  // Memoización del conteo de palabras
   const wordCount = useMemo(() => countWords(transcription), [transcription]);
   const sessionStats = useMemo(
     () => ({
@@ -53,11 +52,7 @@ function App() {
     [wordCount, timer.formatted]
   );
 
-  // Referencias directas a métodos de acción estables (sin overhead de wrappers)
-  const handleStartRecording = actions.startRecording;
-  const handleStopRecording = actions.stopRecording;
-
-  // Atajo global para alternar grabación (Ctrl+Space)
+  // Atajo global (Ctrl+Space)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.code === "Space") {
@@ -69,87 +64,54 @@ function App() {
           status === "paused";
         if (!isDisabled) {
           if (status === "recording") {
-            handleStopRecording();
+            stopRecording();
           } else {
-            handleStartRecording();
+            startRecording();
           }
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleStartRecording, handleStopRecording, status]);
+  }, [startRecording, stopRecording, status]);
 
   const handleOpenSettings = useCallback(() => setShowSettings(true), []);
-
-  const handleNavChange = useCallback((nav: NavItem) => {
-    setActiveView(nav);
-  }, []);
-
-  // Guardar fragmento en la biblioteca
+  const handleNavChange = useCallback((nav: NavItem) => setActiveView(nav), [setActiveView]);
   const handleSaveSnippet = useCallback(
-    (snippet: { title: string; text: string }) => {
-      addSnippet(snippet);
-    },
+    (snippet: { title: string; text: string }) => addSnippet(snippet),
     [addSnippet]
   );
-
-  // Usar fragmento en Studio (desde SnippetsLibrary o Transcriptions)
   const handleUseSnippet = useCallback(
     (text: string) => {
-      actions.setTranscription(text);
+      setTranscription(text);
       setActiveView("studio");
     },
-    [actions]
+    [setTranscription, setActiveView]
   );
-
-  // Eliminar elemento del historial
   const handleDeleteHistoryItem = useCallback((id: string) => {
-    // Esto requiere agregar una acción deleteHistoryItem a useBackend
-    // Por ahora, solo lo registramos en consola
     console.log("[App] Eliminar elemento del historial:", id);
   }, []);
-
-  // Seleccionar elemento del historial -> abrir en Studio
   const handleSelectHistoryItem = useCallback(
     (item: { text: string }) => {
-      actions.setTranscription(item.text);
+      setTranscription(item.text);
       setActiveView("studio");
     },
-    [actions]
+    [setTranscription, setActiveView]
   );
 
-  // Renderizar contenido de la vista activa
   const renderView = () => {
     switch (activeView) {
       case "studio":
         return (
           <Studio
-            status={status}
-            transcription={transcription}
             timerFormatted={timer.formatted}
-            errorMessage={errorMessage}
-            onStartRecording={handleStartRecording}
-            onStopRecording={handleStopRecording}
-            onClearError={actions.clearError}
             onSaveSnippet={handleSaveSnippet}
-            onTranslate={actions.translateText}
           />
         );
 
       case "overview":
         return (
-          <Overview
-            status={status}
-            isConnected={isConnected}
-            lastPingTime={lastPingTime}
-            telemetry={telemetry}
-            cpuHistory={cpuHistory}
-            ramHistory={ramHistory}
-            onRestart={actions.restartDaemon}
-            onShutdown={actions.shutdownDaemon}
-            onResume={actions.togglePause}
-          />
+          <Overview />
         );
 
       case "transcriptions":
@@ -164,6 +126,9 @@ function App() {
       case "snippets":
         return <SnippetsLibrary onUseSnippet={handleUseSnippet} />;
 
+      case "export":
+        return <Export onTranscriptionComplete={handleUseSnippet} />;
+
       default:
         return null;
     }
@@ -171,28 +136,29 @@ function App() {
 
   return (
     <div className="app-layout">
-      {/* Barra lateral con navegación y estadísticas */}
       <Sidebar
         sessionStats={sessionStats}
-        activeNav={activeView}
+        activeNav={activeView as NavItem}
         onNavChange={handleNavChange}
         onOpenSettings={handleOpenSettings}
       />
-
-      {/* Área de contenido principal */}
       <main className="main-content">{renderView()}</main>
-
-      {/* Modal de Configuración */}
       {showSettings && (
-        <Suspense
-          fallback={
-            <div className="modal-overlay modal-loading">Cargando...</div>
-          }
-        >
+        <Suspense fallback={<div className="modal-overlay modal-loading">Cargando...</div>}>
           <Settings onClose={() => setShowSettings(false)} />
         </Suspense>
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <>
+      <BackendInitializer>
+        <AppContent />
+      </BackendInitializer>
+    </>
   );
 }
 

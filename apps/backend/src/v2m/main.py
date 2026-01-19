@@ -1,17 +1,3 @@
-# This file is part of voice2machine.
-#
-# voice2machine is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# voice2machine is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 Punto de Entrada Principal para Voice2Machine.
@@ -37,6 +23,7 @@ import sys
 from v2m.client import send_command
 from v2m.core.ipc_protocol import IPCCommand
 from v2m.core.logging import logger
+from v2m.utils.env import configure_gpu_environment
 
 
 def _setup_uvloop() -> None:
@@ -67,6 +54,7 @@ def main() -> None:
 
     if args.daemon:
         _setup_uvloop()
+        configure_gpu_environment()
 
         from v2m.daemon import Daemon
 

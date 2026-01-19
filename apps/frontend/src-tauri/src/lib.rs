@@ -57,8 +57,20 @@ fn socket_path() -> &'static str {
 /// Max response size (1MB) - DoS protection
 const MAX_RESPONSE_SIZE: usize = 1 << 20;
 
-/// Read timeout (5 seconds)
-const READ_TIMEOUT_SECS: u64 = 5;
+/// Read timeout (300 seconds / 5 minutes)
+/// Increased to accommodate Whisper transcription of long files and LLM processing.
+/// Performance Note: Prevents abandoning expensive inference computations mid-flight.
+const READ_TIMEOUT_SECS: u64 = 300;
+
+// --- PERSISTENCE (SOTA 2026: Remote Control State) ---
+// Stores the last successful export result to allow checking "job status"
+// even if the frontend component unmounted/remounted (tab switch).
+use std::sync::Mutex;
+static LAST_EXPORT: OnceLock<Mutex<Option<DaemonState>>> = OnceLock::new();
+
+fn get_last_export_store() -> &'static Mutex<Option<DaemonState>> {
+    LAST_EXPORT.get_or_init(|| Mutex::new(None))
+}
 
 // --- TYPED STRUCTURES (Eliminates double serialization) ---
 
@@ -142,34 +154,32 @@ impl From<String> for IpcError {
 
 // --- CORE IPC FUNCTION ---
 
+/// Global persistent connection lock
+static CONNECTION: OnceLock<Mutex<Option<UnixStream>>> = OnceLock::new();
+
+fn get_connection() -> &'static Mutex<Option<UnixStream>> {
+    CONNECTION.get_or_init(|| Mutex::new(None))
+}
+
 /// Send JSON request to Python daemon via Unix socket.
 /// Returns typed Value on success, IpcError on failure.
+/// Uses persistent connection to reduce latency (SOTA 2026).
 fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, IpcError> {
-    // 1. Connect to socket
-    let mut stream = UnixStream::connect(socket_path())
-        .map_err(|e| IpcError::from(format!("Daemon not running: {}", e)))?;
+    let conn_lock = get_connection();
+    let mut guard = conn_lock.lock().map_err(|_| IpcError::from("Lock poisoned".to_string()))?;
 
-    stream
-        .set_read_timeout(Some(std::time::Duration::from_secs(READ_TIMEOUT_SECS)))
-        .map_err(|e| IpcError::from(format!("Timeout config failed: {}", e)))?;
-
-    // 2. Serialize request
+    // 1. Prepare payload (fail fast before network ops)
     let request = IpcCommand {
         cmd: command.to_string(),
         data,
     };
     let json_payload = serde_json::to_vec(&request)
         .map_err(|e| IpcError::from(format!("JSON serialize error: {}", e)))?;
-
-    // SOTA 2026: Payload size validation and debug logging
     let payload_size = json_payload.len();
-    eprintln!("[IPC DEBUG] Command: {}, Payload size: {} bytes", command, payload_size);
 
-    // Critical security check: prevent accidentally sending massive payloads
-    const MAX_REQUEST_SIZE: usize = 10 * 1024 * 1024; // 10MB limit for requests
+    // Critical security check
+    const MAX_REQUEST_SIZE: usize = 10 * 1024 * 1024; // 10MB limit
     if payload_size > MAX_REQUEST_SIZE {
-        eprintln!("[IPC ERROR] Payload too large for command '{}': {} bytes > {} limit",
-                  command, payload_size, MAX_REQUEST_SIZE);
         return Err(IpcError {
             code: "REQUEST_TOO_LARGE".to_string(),
             message: format!("Request payload ({} MB) exceeds {} MB limit",
@@ -177,36 +187,67 @@ fn send_json_request(command: &str, data: Option<Value>) -> Result<Value, IpcErr
         });
     }
 
-    // 3. Send with length-prefix framing (4 bytes big-endian + payload)
-    let len = json_payload.len() as u32;
-    stream
-        .write_all(&len.to_be_bytes())
-        .map_err(|e| IpcError::from(format!("Write header error: {}", e)))?;
-    stream
-        .write_all(&json_payload)
-        .map_err(|e| IpcError::from(format!("Write payload error: {}", e)))?;
+    // 2. Ensure connected
+    if guard.is_none() {
+        let stream = UnixStream::connect(socket_path())
+            .map_err(|e| IpcError::from(format!("Daemon not running: {}", e)))?;
+        stream.set_read_timeout(Some(std::time::Duration::from_secs(READ_TIMEOUT_SECS)))
+            .map_err(|e| IpcError::from(format!("Timeout config failed: {}", e)))?;
+        *guard = Some(stream);
+    }
 
-    // 4. Read response length
+    // 3. Send Request (with one retry on broken pipe)
+    let len = payload_size as u32;
+
+    // Use a scope to isolate the borrow of the stream
+    let write_result = {
+        let stream = guard.as_mut().unwrap();
+        stream.write_all(&len.to_be_bytes())
+    };
+
+    if let Err(_) = write_result {
+        // Write failed, assume stale connection. Reconnect.
+        // We can modify guard now because 'stream' borrow has ended.
+        let new_stream = UnixStream::connect(socket_path())
+            .map_err(|e| IpcError::from(format!("Reconnect failed: {}", e)))?;
+
+        new_stream.set_read_timeout(Some(std::time::Duration::from_secs(READ_TIMEOUT_SECS)))
+             .map_err(|e| IpcError::from(format!("Timeout config failed: {}", e)))?;
+
+        *guard = Some(new_stream);
+
+        // Retry write header with new stream
+        guard.as_mut().unwrap().write_all(&len.to_be_bytes())
+            .map_err(|e| IpcError::from(format!("Write header failed: {}", e)))?;
+    }
+
+    // Write payload
+    guard.as_mut().unwrap().write_all(&json_payload)
+        .map_err(|e| IpcError::from(format!("Write payload failed: {}", e)))?;
+
+    // 4. Read Response
     let mut len_buf = [0u8; 4];
-    stream
-        .read_exact(&mut len_buf)
-        .map_err(|e| IpcError::from(format!("Read header error: {}", e)))?;
+    if let Err(e) = guard.as_mut().unwrap().read_exact(&mut len_buf) {
+        *guard = None; // Invalidate connection
+        return Err(IpcError::from(format!("Read header failed: {}", e)));
+    }
 
     let response_len = u32::from_be_bytes(len_buf) as usize;
     if response_len > MAX_RESPONSE_SIZE {
+        *guard = None;
         return Err(IpcError {
             code: "PAYLOAD_TOO_LARGE".to_string(),
             message: format!("Response exceeds {} MB limit", MAX_RESPONSE_SIZE >> 20),
         });
     }
 
-    // 5. Read response body
     let mut response_buf = vec![0u8; response_len];
-    stream
-        .read_exact(&mut response_buf)
-        .map_err(|e| IpcError::from(format!("Read body error: {}", e)))?;
+    if let Err(e) = guard.as_mut().unwrap().read_exact(&mut response_buf) {
+        *guard = None;
+        return Err(IpcError::from(format!("Read body failed: {}", e)));
+    }
 
-    // 6. Deserialize and handle status
+    // 5. Deserialize
     let response: RawDaemonResponse = serde_json::from_slice(&response_buf)
         .map_err(|e| IpcError::from(format!("Invalid JSON response: {}", e)))?;
 
@@ -410,6 +451,58 @@ async fn shutdown_daemon(app: tauri::AppHandle) -> Result<DaemonState, IpcError>
     }
 }
 
+/// Transcribe a media file (video/audio) to text
+///
+/// Supports: MP4, MOV, MKV (video) and WAV, MP3, FLAC, M4A (audio)
+/// Forwards request to Python backend which handles efficient streaming extraction.
+#[tauri::command]
+async fn transcribe_file(app: tauri::AppHandle, file_path: String) -> Result<DaemonState, IpcError> {
+    #[cfg(debug_assertions)]
+    eprintln!("[IPC] Transcribing: {}", file_path);
+
+    let path = std::path::Path::new(&file_path);
+    let ext = path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .unwrap_or_default();
+
+    let video_extensions = ["mp4", "mov", "mkv", "avi", "webm"];
+    let is_video = video_extensions.contains(&ext.as_str());
+
+    // 1. Notify Frontend: Processing Started
+    let initial_step = if is_video { "extracting" } else { "transcribing" };
+    let _ = app.emit("v2m://export-status", json!({ "step": initial_step, "progress": 0 }));
+
+    let data = json!({ "file_path": file_path });
+
+    // 2. Call Backend
+    match send_json_request("TRANSCRIBE_FILE", Some(data)) {
+        Ok(json_value) => {
+             // Deserialize success state
+             let state: DaemonState = serde_json::from_value(json_value)
+                .map_err(|e| IpcError::from(format!("Parse error: {}", e)))?;
+
+             // Emit event for "Remote Control" UI listeners
+             let _ = app.emit("v2m://transcription-complete", &state);
+
+             // PERSISTENCE: Save state so frontend can recover it on mount
+             if let Ok(mut store) = get_last_export_store().lock() {
+                 *store = Some(state.clone());
+             }
+
+             Ok(state)
+        },
+        Err(e) => Err(e)
+    }
+}
+
+/// Retrieve the last successful export result
+/// Used by frontend on mount to check if a job finished while it was unmounted.
+#[tauri::command]
+fn get_last_export() -> Option<DaemonState> {
+    get_last_export_store().lock().ok().and_then(|g| g.clone())
+}
+
 // --- ENTRY POINT ---
 
 /// Configuración inicial de la aplicación Tauri.
@@ -417,6 +510,7 @@ async fn shutdown_daemon(app: tauri::AppHandle) -> Result<DaemonState, IpcError>
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             get_status,
             start_recording,
@@ -429,9 +523,11 @@ pub fn run() {
             update_config,
             get_config,
             restart_daemon,
-            shutdown_daemon
+            shutdown_daemon,
+            shutdown_daemon,
+            transcribe_file,
+            get_last_export
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

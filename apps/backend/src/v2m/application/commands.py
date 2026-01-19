@@ -1,17 +1,3 @@
-# This file is part of voice2machine.
-#
-# voice2machine is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# voice2machine is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 Definición de Comandos Específicos de la Aplicación.
@@ -121,3 +107,21 @@ class ResumeDaemonCommand(Command):
     """
 
     pass
+
+
+class TranscribeFileCommand(Command):
+    """
+    Comando para transcribir un archivo de audio/video desde el disco.
+
+    Soporta formatos de video (MP4, MOV, MKV) y audio (WAV, MP3, FLAC, M4A).
+    Para archivos de video, extrae el audio primero usando FFmpeg.
+    """
+
+    def __init__(self, file_path: str) -> None:
+        """
+        Inicializa el comando.
+
+        Args:
+            file_path: Ruta absoluta al archivo a transcribir.
+        """
+        self.file_path = file_path

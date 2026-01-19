@@ -26,8 +26,10 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { cn } from "../utils/classnames";
 import { PlusIcon } from "../assets/Icons";
 import type { NoteTab } from "../hooks/useNoteTabs";
+import "../styles/components/tabbar.css";
 
 // ============================================
 // TIPOS
@@ -75,9 +77,11 @@ const SortableTab: React.FC<SortableTabProps> = React.memo(
       <div
         ref={setNodeRef}
         style={style}
-        className={`studio-tab ${isActive ? "active" : ""} ${
-          isDragging ? "dragging" : ""
-        }`}
+        className={cn(
+          "studio-tab",
+          isActive && "active",
+          isDragging && "dragging"
+        )}
         onClick={onSelect}
         {...attributes}
         {...listeners}

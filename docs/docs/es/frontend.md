@@ -1,125 +1,106 @@
-# GUÍA DE LA INTERFAZ GRÁFICA (GUI)
+# 🖥️ Arquitectura y Guía Frontend
 
-La GUI de **voice2machine** es una aplicación de escritorio nativa construida con Tauri que proporciona control visual del daemon de transcripción.
-
----
-
-## REQUISITOS PREVIOS
-
-Antes de usar la GUI, asegúrate de que:
-
-1. **El daemon v2m esté corriendo**:
-   ```bash
-   # verificar si está activo
-   pgrep -f v2m
-
-   # o iniciar manualmente
-   ./scripts/v2m-daemon.sh start
-   ```
-
-2. **Socket disponible** en `/tmp/v2m.sock`
+!!! abstract "Stack Tecnológico 2026"
+El frontend de Voice2Machine es una aplicación **Tauri 2.0** que utiliza **React 19** y **TypeScript**. Está diseñado para ser ultraligero (<50MB RAM), reactivo y desacoplado del procesamiento pesado (Backend).
 
 ---
 
-## INICIAR LA GUI
+## 🏗️ Estructura Modular
 
-### Opción 1: Desde el binario (producción)
-```bash
-./apps/frontend/src-tauri/target/release/voice2machine
-```
+La aplicación se organiza en componentes funcionales aislados para facilitar el mantenimiento y testing.
 
-### Opción 2: En modo desarrollo
-```bash
-cd apps/frontend
-npm run tauri dev
-```
+### Componentes Core (`src/components/`)
 
----
+- **Sidebar**: Navegación principal y visualización de telemetría (CPU/GPU) en tiempo real.
+- **Studio**: Editor de texto avanzado para corrección y refinado de transcripciones.
+- **SettingsModal**: Panel de configuración gestionado con `react-hook-form` y `zod`.
+- **Transcriptions**: Lista virtualizada de historial de transcripciones.
 
-## INTERFAZ DE USUARIO
+### Gestión de Estado (Zustand Stores)
 
-### ELEMENTOS PRINCIPALES
+Implementamos una arquitectura de estados centralizada con **Zustand** dividida por dominios para maximizar el rendimiento y la legibilidad:
 
-```
-┌─────────────────────────────────────┐
-│  🎤 voice2machine      ● Listo      │  ← Header con estado
-├─────────────────────────────────────┤
-│                                     │
-│            [ 🎤 ]                   │  ← Botón principal
-│                                     │
-├─────────────────────────────────────┤
-│                                     │
-│   Texto transcrito aparece aquí...  │  ← Área de texto
-│                                     │
-├─────────────────────────────────────┤
-│    [ Copiar ]    [ Refinar IA ]     │  ← Acciones
-└─────────────────────────────────────┘
-```
-
-### ESTADOS DEL SISTEMA
-
-| Indicador | Estado | Significado |
-|-----------|--------|-------------|
-| 🟢 | Listo | Sistema preparado para grabar |
-| 🔴 | Grabando... | Capturando audio del micrófono |
-| 🔵 | Transcribiendo... | Procesando audio con Whisper |
-| 🔵 | Refinando con IA... | Mejorando texto con LLM |
-| ⚪ | Daemon desconectado | El daemon no está corriendo |
-| 🔴 | Error | Algo falló (ver mensaje) |
+1.  **`backendStore.ts`**: Fuente de verdad global para el estado del daemon (conexión, estatus de grabación, transcripción actual y errores).
+2.  **`telemetryStore.ts`**: Canal dedicado a métricas de alto rendimiento (CPU, RAM, GPU VRAM) procesadas de forma reactiva.
+3.  **`uiStore.ts`**: Gestiona el estado volátil de la interfaz (navegación, modales, alertas).
 
 ---
 
-## FLUJO DE USO
+## ⚡ Ciclo de Vida y Eventos
 
-1. **Iniciar grabación**: Click en el botón del micrófono
-2. **Hablar**: El sistema muestra "Grabando..." pulsando
-3. **Detener**: Click nuevamente para finalizar
-4. **Transcripción**: El texto aparece automáticamente
-5. **Refinar (opcional)**: Click en "Refinar IA" para mejorar el texto
-6. **Copiar**: Click en "Copiar" para enviarlo al portapapeles
+### Inicialización
 
----
+1.  La app Tauri arranca (`main-tauri.rs`).
+2.  React monta `App.tsx`.
+3.  El componente `BackendInitializer` carga el historial persistido e inicia la escucha de eventos.
+4.  Se sincroniza el estado inicial mediante un comando `get_status` al daemon.
 
-## ATAJOS DE TECLADO
+### Sincronización Bidireccional
 
-> [!NOTE]
-> Los atajos de teclado globales (`Super+V`) funcionan independientemente de la GUI y controlan el mismo daemon. Si activas la grabación por teclado, la GUI reflejará el estado automáticamente.
+El frontend refleja en tiempo real lo que ocurre en el backend mediante un sistema híbrido:
 
----
-
-## TROUBLESHOOTING
-
-### "Daemon desconectado"
-
-El socket `/tmp/v2m.sock` no existe o el daemon no responde.
-
-```bash
-# reiniciar el daemon
-./scripts/v2m-daemon.sh restart
-```
-
-### El botón no responde
-
-El sistema está en estado "transcribiendo" o "procesando". Espera a que termine.
-
-### No hay audio
-
-Verifica que el micrófono esté configurado correctamente en el sistema.
-
----
-
-## ARQUITECTURA TÉCNICA
-
-La GUI es un **cliente** del daemon Python. No contiene lógica de IA.
+- **Push**: Escucha eventos `v2m://state-update` emitidos por el puente Rust.
+- **Poll (Fallback)**: Si no hay actividad de eventos, el inicializador realiza consultas periódicas para asegurar que la UI no se desincronice.
 
 ```mermaid
-graph LR
-    GUI[Tauri App] -->|Socket Unix| Daemon[Python Daemon]
-    Daemon --> Whisper[Faster-Whisper]
-    Daemon --> LLM[Gemini/Local]
+sequenceDiagram
+    participant User
+    participant Script as Script Global (Bash)
+    participant Daemon as Backend (Python)
+    participant Frontend as Tauri GUI
+
+    User->>Script: Super+V (Toggle)
+    Script->>Daemon: IPC: start_recording
+    Daemon-->>Frontend: Broadcast: state_changed (recording: true)
+    Frontend->>User: UI Update (🔴 Recording)
 ```
 
-Esto garantiza:
-- **Zero overhead**: La GUI no afecta el rendimiento de inferencia
-- **Sincronización**: Múltiples clientes (GUI, scripts) comparten el mismo estado
-- **Footprint mínimo**: ~13MB, <50MB RAM
+---
+
+## 🛠️ Desarrollo
+
+### Comandos Clave
+
+```bash
+# Iniciar modo desarrollo (Hot Reload)
+npm run tauri dev
+
+# Construir binario optimizado
+npm run tauri build
+
+# Ejecutar tests (Vitest)
+npm run test
+```
+
+### Testing (Vitest + React Testing Library)
+
+Los tests se ubican junto al código fuente (`.spec.tsx`).
+
+- **Unitarios**: Verifican lógica de componentes aislados.
+- **Integración**: Verifican flujos completos (ej. Settings form validation).
+
+---
+
+## 🎨 Guía de Estilo UI
+
+Utilizamos **TailwindCSS** con un sistema de diseño consistente.
+
+- **Colores**: Paleta neutra (`slate`) con acentos semánticos (`rose` para grabación, `emerald` para éxito).
+- **Tipografía**: Sans-serif moderna (Inter/Roboto) optimizada para legibilidad.
+- **Modo Oscuro**: Soporte nativo de primera clase.
+
+---
+
+## 🐛 Troubleshooting Frontend
+
+### "Waiting for Daemon..."
+
+La UI se queda en gris o mostrando un spinner.
+
+- **Causa**: No hay conexión al socket IPC.
+- **Solución**: Verifica que el backend corre (`python scripts/verify_daemon.py`).
+
+### Gráficas congeladas
+
+- **Causa**: El `TelemetryContext` perdió el flujo de datos.
+- **Solución**: Reinicia la GUI (`Ctrl+R` en modo dev) o reconecta el backend.

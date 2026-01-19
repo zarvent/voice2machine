@@ -1,17 +1,3 @@
-# This file is part of voice2machine.
-#
-# voice2machine is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# voice2machine is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 Módulo de Configuración de la Aplicación.
@@ -97,16 +83,19 @@ class VadParametersConfig(BaseModel):
 
     Atributos:
         threshold: Umbral de probabilidad (0.0 a 1.0) para clasificar un segmento como habla.
-            Defecto: 0.3
+            Defecto: 0.4 (slightly higher to avoid breathing noise)
         min_speech_duration_ms: Duración mínima (ms) para ser considerado habla.
             Defecto: 250ms
         min_silence_duration_ms: Duración mínima de silencio (ms) para considerar que el habla terminó.
-            Defecto: 500ms
+            Defecto: 1000ms (Spanish prosody safe - preserves natural pauses)
+        speech_pad_ms: Relleno aplicado al inicio/fin de segmentos de habla detectados.
+            Defecto: 400ms (keeps the start/end of words)
     """
 
-    threshold: float = 0.3
+    threshold: float = 0.4
     min_speech_duration_ms: int = 250
-    min_silence_duration_ms: int = 500
+    min_silence_duration_ms: int = 1000
+    speech_pad_ms: int = 400
 
 
 class WhisperConfig(BaseModel):
@@ -144,6 +133,7 @@ class WhisperConfig(BaseModel):
     temperature: float | list[float] = 0.0
     vad_filter: bool = True
     audio_device_index: int | None = None
+    keep_warm: bool = Field(default=True)
     vad_parameters: VadParametersConfig = Field(default_factory=VadParametersConfig)
 
 

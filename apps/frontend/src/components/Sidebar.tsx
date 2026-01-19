@@ -16,6 +16,8 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { cn } from "../utils/classnames";
+import "../styles/components/sidebar.css";
 import {
   MicIcon,
   DashboardIcon,
@@ -25,6 +27,7 @@ import {
   DragHandleIcon,
   StudioIcon,
   GithubIcon,
+  VideoIcon,
 } from "../assets/Icons";
 
 export type NavItem =
@@ -32,6 +35,7 @@ export type NavItem =
   | "overview"
   | "transcriptions"
   | "snippets"
+  | "export"
   | "settings";
 
 interface SessionStats {
@@ -61,6 +65,7 @@ const SORTABLE_NAV_ITEMS: NavItemDef[] = [
   { id: "overview", label: "Vista General", Icon: DashboardIcon },
   { id: "transcriptions", label: "Transcripciones", Icon: DescriptionIcon },
   { id: "snippets", label: "Biblioteca", Icon: CodeIcon },
+  { id: "export", label: "Exportar", Icon: VideoIcon },
 ];
 
 const FIXED_NAV_ITEM: NavItemDef = {
@@ -109,7 +114,7 @@ interface SortableNavItemProps {
   onClick: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
-const SortableNavItem: React.FC<SortableNavItemProps> = ({
+const SortableNavItem: React.FC<SortableNavItemProps> = React.memo(({
   item,
   isActive,
   onClick,
@@ -138,9 +143,11 @@ const SortableNavItem: React.FC<SortableNavItemProps> = ({
       style={style}
       href="#"
       data-nav={item.id}
-      className={`nav-item${isActive ? " active" : ""}${
-        isDragging ? " dragging" : ""
-      }`}
+      className={cn(
+        "nav-item",
+        isActive && "active",
+        isDragging && "dragging"
+      )}
       onClick={onClick}
       aria-current={isActive ? "page" : undefined}
     >
@@ -156,7 +163,43 @@ const SortableNavItem: React.FC<SortableNavItemProps> = ({
       <span>{item.label}</span>
     </a>
   );
-};
+});
+
+SortableNavItem.displayName = "SortableNavItem";
+
+// --- SUB-COMPONENT: SESSION STATS ---
+// Este componente se aísla para evitar que sus re-renders (cada segundo)
+// afecten a toda la Sidebar y al DndContext.
+const SessionStatsDisplay: React.FC<{ stats: SessionStats }> = React.memo(({ stats }) => (
+  <div className="session-stats">
+    <h3 className="stats-title">Sesión Actual</h3>
+
+    <div className="stat-row">
+      <span className="stat-label">Duración</span>
+      <span className="stat-value mono">{stats.duration}</span>
+    </div>
+
+    <div className="stat-row">
+      <span className="stat-label">Palabras</span>
+      <span className="stat-value mono">{stats.words}</span>
+    </div>
+
+    <div className="stat-row">
+      <span className="stat-label">Confianza</span>
+      <div className="confidence-meter">
+        <div className="meter-track">
+          <div
+            className="meter-fill"
+            style={{ width: `${stats.confidencePercent}%` }}
+          />
+        </div>
+        <span className="confidence-value">{stats.confidence}</span>
+      </div>
+    </div>
+  </div>
+));
+
+SessionStatsDisplay.displayName = "SessionStatsDisplay";
 
 // --- COMPONENTE BARRA LATERAL PRINCIPAL ---
 
@@ -250,9 +293,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
           <a
             href="#"
             data-nav={FIXED_NAV_ITEM.id}
-            className={`nav-item nav-item-fixed${
-              activeNav === "settings" ? " active" : ""
-            }`}
+            className={cn(
+              "nav-item nav-item-fixed",
+              activeNav === "settings" && "active"
+            )}
             onClick={handleNavClick}
             aria-current={activeNav === "settings" ? "page" : undefined}
           >
@@ -261,35 +305,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
           </a>
         </nav>
 
-        {/* Estadísticas de Sesión */}
-        <div className="session-stats">
-          <h3 className="stats-title">Sesión Actual</h3>
-
-          <div className="stat-row">
-            <span className="stat-label">Duración</span>
-            <span className="stat-value mono">{sessionStats.duration}</span>
-          </div>
-
-          <div className="stat-row">
-            <span className="stat-label">Palabras</span>
-            <span className="stat-value mono">{sessionStats.words}</span>
-          </div>
-
-          <div className="stat-row">
-            <span className="stat-label">Confianza</span>
-            <div className="confidence-meter">
-              <div className="meter-track">
-                <div
-                  className="meter-fill"
-                  style={{ width: `${sessionStats.confidencePercent}%` }}
-                />
-              </div>
-              <span className="confidence-value">
-                {sessionStats.confidence}
-              </span>
-            </div>
-          </div>
-        </div>
+        {/* Estadísticas de Sesión (Aislado) */}
+        <SessionStatsDisplay stats={sessionStats} />
 
         {/* Pie de página GitHub */}
         <div className="sidebar-footer">

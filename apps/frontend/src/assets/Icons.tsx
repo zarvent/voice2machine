@@ -413,7 +413,7 @@ export const StudioIcon = () => (
 );
 
 /** Edit/Pencil icon for inline editing */
-export const EditIcon = () => (
+export const EditIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     width="14"
     height="14"
@@ -424,6 +424,7 @@ export const EditIcon = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
     aria-hidden="true"
+    {...props}
   >
     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -505,5 +506,67 @@ export const FileJsonIcon = () => (
     <polyline points="14 2 14 8 20 8" />
     <path d="M8 16s.5-2 2-2c1.5 0 2 2 2 2" />
     <path d="M12 16s.5-2 2-2c1.5 0 2 2 2 2" />
+  </svg>
+);
+
+/** Upload icon for file drop zone */
+export const UploadIcon = () => (
+  <svg
+    width="48"
+    height="48"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" />
+    <line x1="12" y1="3" x2="12" y2="15" />
+  </svg>
+);
+
+/** Video/Film icon */
+export const VideoIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+    <line x1="7" y1="2" x2="7" y2="22" />
+    <line x1="17" y1="2" x2="17" y2="22" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <line x1="2" y1="7" x2="7" y2="7" />
+    <line x1="2" y1="17" x2="7" y2="17" />
+    <line x1="17" y1="17" x2="22" y2="17" />
+    <line x1="17" y1="7" x2="22" y2="7" />
+  </svg>
+);
+
+/** Audio/Music icon */
+export const AudioIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M9 18V5l12-2v13" />
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="18" cy="16" r="3" />
   </svg>
 );

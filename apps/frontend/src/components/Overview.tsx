@@ -1,18 +1,8 @@
 import React, { useCallback, useState, useEffect } from "react";
-import type { Status, TelemetryData } from "../types";
 import { LoaderIcon, PlayIcon } from "../assets/Icons";
-
-interface OverviewProps {
-  status: Status;
-  isConnected: boolean;
-  lastPingTime: number | null;
-  telemetry: TelemetryData | null;
-  cpuHistory: number[];
-  ramHistory: number[];
-  onRestart: () => Promise<void>;
-  onShutdown: () => Promise<void>;
-  onResume: () => Promise<void>;
-}
+import { useTelemetryStore } from "../stores/telemetryStore";
+import { useBackendStore } from "../stores/backendStore";
+import "../styles/components/overview.css";
 
 /**
  * Overview - Panel de control del Demonio.
@@ -24,18 +14,15 @@ interface OverviewProps {
  *
  * También visualiza telemetría del sistema (CPU, RAM, GPU) en tiempo real.
  */
-export const Overview: React.FC<OverviewProps> = React.memo(
-  ({
-    status,
-    isConnected,
-    lastPingTime,
-    telemetry,
-    cpuHistory,
-    ramHistory,
-    onRestart,
-    onShutdown,
-    onResume,
-  }) => {
+export const Overview: React.FC = React.memo(() => {
+    const { telemetry, cpuHistory, ramHistory } = useTelemetryStore();
+    const status = useBackendStore((state) => state.status);
+    const isConnected = useBackendStore((state) => state.isConnected);
+    const lastPingTime = useBackendStore((state) => state.lastPingTime);
+    const onRestart = useBackendStore((state) => state.restartDaemon);
+    const onShutdown = useBackendStore((state) => state.shutdownDaemon);
+    const onResume = useBackendStore((state) => state.togglePause);
+
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [pendingAction, setPendingAction] = useState<
       "restart" | "shutdown" | null
@@ -352,8 +339,8 @@ export const Overview: React.FC<OverviewProps> = React.memo(
         )}
       </div>
     );
-  }
-);
+  });
+
 
 Overview.displayName = "Overview";
 

@@ -1,17 +1,3 @@
-# This file is part of voice2machine.
-#
-# voice2machine is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# voice2machine is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 Manejadores de Comandos (Command Handlers).
@@ -37,6 +23,7 @@ from v2m.application.commands import (
     ResumeDaemonCommand,
     StartRecordingCommand,
     StopRecordingCommand,
+    TranscribeFileCommand,
     TranslateTextCommand,
     UpdateConfigCommand,
 )
@@ -84,7 +71,10 @@ class StartRecordingHandler(CommandHandler):
         Se ejecuta en un hilo separado para no bloquear el Event Loop principal
         si la inicialización del dispositivo de audio toma tiempo.
         """
-        await asyncio.to_thread(self.transcription_service.start_recording)
+        # await asyncio.to_thread(self.transcription_service.start_recording)
+        # Fix: start_recording launches an async task and needs the running loop.
+        # Calling it directly is non-blocking.
+        self.transcription_service.start_recording()
 
         # Crear bandera de grabación para que scripts externos (Bash) sepan el estado.
         config.paths.recording_flag.touch()
@@ -139,8 +129,9 @@ class StopRecordingHandler(CommandHandler):
         self.notification_service.notify("⚡ v2m procesando", "procesando...")
 
         # Usar executor dedicado para ML - evita contención con otras tareas async
-        loop = asyncio.get_running_loop()
-        transcription = await loop.run_in_executor(_ml_executor, self.transcription_service.stop_and_transcribe)
+        # loop = asyncio.get_running_loop()
+        # Ahora el servicio es async y gestiona su propio threading via PersistentWhisperWorker
+        transcription = await self.transcription_service.stop_and_transcribe()
 
         # Si la transcripción está vacía no tiene sentido copiarla
         if not transcription.strip():
@@ -250,9 +241,7 @@ class TranslateTextHandler(CommandHandler):
                     self.llm_service.translate_text, command.text, command.target_lang
                 )
 
-            self.notification_service.notify(
-                f"✅ Traducción ({command.target_lang})", f"{translated_text[:80]}..."
-            )
+            self.notification_service.notify(f"✅ Traducción ({command.target_lang})", f"{translated_text[:80]}...")
             return translated_text
 
         except Exception as e:
@@ -363,3 +352,52 @@ class ResumeDaemonHandler(CommandHandler):
 
     def listen_to(self) -> type[Command]:
         return ResumeDaemonCommand
+
+
+class TranscribeFileHandler(CommandHandler):
+    """
+    Manejador para el comando `TranscribeFileCommand`.
+
+    Transcribe archivos de audio/video utilizando FFmpeg para extracción
+    y el modelo Whisper existente para la transcripción.
+    """
+
+    def __init__(self, file_transcription_service) -> None:
+        """
+        Inicializa el handler.
+
+        Args:
+            file_transcription_service: Servicio de transcripción de archivos.
+        """
+        from v2m.infrastructure.file_transcription_service import FileTranscriptionService
+
+        self.file_transcription_service: FileTranscriptionService = file_transcription_service
+
+    async def handle(self, command: TranscribeFileCommand) -> str:
+        """
+        Ejecuta la transcripción del archivo.
+
+        Utiliza el executor dedicado de ML para evitar bloquear el event loop.
+
+        Returns:
+            str: Texto transcrito.
+
+        Raises:
+            FileNotFoundError: Si el archivo no existe.
+            ValueError: Si el formato no es soportado.
+            RuntimeError: Si FFmpeg no está disponible para videos.
+        """
+        loop = asyncio.get_running_loop()
+
+        # Usar executor dedicado para ML - operación potencialmente larga
+        transcription = await loop.run_in_executor(
+            _ml_executor,
+            self.file_transcription_service.transcribe_file,
+            command.file_path,
+        )
+
+        return transcription
+
+    def listen_to(self) -> type[Command]:
+        """Se suscribe al tipo de comando `TranscribeFileCommand`."""
+        return TranscribeFileCommand

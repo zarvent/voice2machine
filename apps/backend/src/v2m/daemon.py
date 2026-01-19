@@ -1,17 +1,3 @@
-# This file is part of voice2machine.
-#
-# voice2machine is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# voice2machine is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 Demonio Voice2Machine.
@@ -28,6 +14,7 @@ El demonio es responsable de:
 
 import asyncio
 import atexit
+import contextlib
 import json
 import os
 import signal
@@ -41,7 +28,6 @@ try:
 except ImportError:
     torch = None
 
-import contextlib
 
 from v2m.application.commands import (
     GetConfigCommand,
@@ -50,6 +36,7 @@ from v2m.application.commands import (
     ResumeDaemonCommand,
     StartRecordingCommand,
     StopRecordingCommand,
+    TranscribeFileCommand,
     TranslateTextCommand,
     UpdateConfigCommand,
 )
@@ -105,144 +92,219 @@ class Daemon:
             await writer.drain()
         except Exception as e:
             logger.error(f"fallo al enviar respuesta: {e}")
-        finally:
+            # Cerrar conexión en error crítico
             writer.close()
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """
         Maneja las conexiones entrantes de clientes IPC.
+        Soporta conexiones persistentes y streaming de eventos.
         """
-        response: IPCResponse
-        cmd_name = "unknown"
+        # Registrar sesión para streaming (Events)
+        if hasattr(container, "client_session_manager") and container.client_session_manager:
+            await container.client_session_manager.register(writer)
 
         try:
-            # Leer cabecera de 4 bytes (big endian)
-            header_data = await reader.readexactly(HEADER_SIZE)
-            length = int.from_bytes(header_data, byteorder="big")
+            while True:
+                response: IPCResponse
+                cmd_name = "unknown"
 
-            if length > MAX_PAYLOAD_SIZE:
-                logger.warning(f"carga rechazada: {length} bytes > límite de {MAX_PAYLOAD_SIZE}")
-                response = IPCResponse(
-                    status="error", error=f"la carga excede el límite de {MAX_PAYLOAD_SIZE // (1024 * 1024)}MB"
-                )
+                try:
+                    # Leer cabecera de 4 bytes (big endian)
+                    try:
+                        header_data = await reader.readexactly(HEADER_SIZE)
+                    except asyncio.IncompleteReadError:
+                        # Cliente cerró la conexión (EOF normal)
+                        break
+
+                    length = int.from_bytes(header_data, byteorder="big")
+
+                    if length > MAX_PAYLOAD_SIZE:
+                        # Detect raw JSON (protocol mismatch): if header decodes to '{...'
+                        # it means client sent raw JSON without 4-byte length prefix
+                        try:
+                            header_ascii = header_data.decode("ascii", errors="ignore")
+                            if header_ascii.startswith("{"):
+                                logger.error(
+                                    f"protocolo incorrecto: cliente envió JSON sin prefijo de longitud. "
+                                    f"Header bytes: {header_data.hex()} = '{header_ascii}'"
+                                )
+                            else:
+                                logger.warning(f"carga rechazada: {length} bytes > límite de {MAX_PAYLOAD_SIZE}")
+                        except Exception:
+                            logger.warning(f"carga rechazada: {length} bytes > límite de {MAX_PAYLOAD_SIZE}")
+
+                        response = IPCResponse(
+                            status="error", error="protocolo IPC inválido: use prefijo de longitud de 4 bytes"
+                        )
+                        await self._send_response(writer, response)
+                        # Error de protocolo irrecuperable, cerrar conexión
+                        break
+
+                    payload_data = await reader.readexactly(length)
+                    message = payload_data.decode("utf-8").strip()
+
+                except asyncio.IncompleteReadError:
+                    logger.warning("lectura incompleta del payload")
+                    break
+                except Exception as e:
+                    logger.error(f"error leyendo mensaje ipc: {e}")
+                    break
+
+                logger.debug(f"ipc: {message[:100]}")
+
+                # Parsear JSON
+                try:
+                    req = IPCRequest.from_json(message)
+                    cmd_name = req.cmd
+                    data = req.data or {}
+                except (json.JSONDecodeError, KeyError) as e:
+                    logger.warning(f"json inválido, rechazando: {e}")
+                    response = IPCResponse(status="error", error=f"formato JSON inválido: {e!s}")
+                    await self._send_response(writer, response)
+                    continue
+
+                try:
+                    if cmd_name == IPCCommand.START_RECORDING:
+                        if self.paused:
+                            response = IPCResponse(status="error", error="el demonio está pausado")
+                        else:
+                            await self.command_bus.dispatch(StartRecordingCommand())
+                            response = IPCResponse(
+                                status="success", data={"state": "recording", "message": "grabación iniciada"}
+                            )
+
+                    elif cmd_name == IPCCommand.STOP_RECORDING:
+                        if self.paused:
+                            response = IPCResponse(status="error", error="el demonio está pausado")
+                        else:
+                            result = await self.command_bus.dispatch(StopRecordingCommand())
+                            if result:
+                                response = IPCResponse(
+                                    status="success", data={"state": "idle", "transcription": result}
+                                )
+                            else:
+                                response = IPCResponse(status="error", error="no se detectó voz")
+
+                    elif cmd_name == IPCCommand.PROCESS_TEXT:
+                        if self.paused:
+                            response = IPCResponse(status="error", error="el demonio está pausado")
+                        else:
+                            text = data.get("text")
+                            if not text:
+                                response = IPCResponse(status="error", error="falta data.text en la carga útil")
+                            else:
+                                result = await self.command_bus.dispatch(ProcessTextCommand(text))
+                                response = IPCResponse(status="success", data={"refined_text": result, "state": "idle"})
+
+                    elif cmd_name == IPCCommand.TRANSLATE_TEXT:
+                        if self.paused:
+                            response = IPCResponse(status="error", error="el demonio está pausado")
+                        else:
+                            text = data.get("text")
+                            target_lang = data.get("target_lang", "en")
+                            if not text:
+                                response = IPCResponse(status="error", error="falta data.text en la carga útil")
+                            else:
+                                result = await self.command_bus.dispatch(TranslateTextCommand(text, target_lang))
+                                response = IPCResponse(status="success", data={"refined_text": result, "state": "idle"})
+
+                    elif cmd_name == IPCCommand.UPDATE_CONFIG:
+                        updates = data.get("updates")
+                        if not updates:
+                            response = IPCResponse(status="error", error="falta data.updates en la carga útil")
+                        else:
+                            result = await self.command_bus.dispatch(UpdateConfigCommand(updates))
+                            response = IPCResponse(status="success", data=result)
+
+                    elif cmd_name == IPCCommand.GET_CONFIG:
+                        result = await self.command_bus.dispatch(GetConfigCommand())
+                        response = IPCResponse(status="success", data={"config": result})
+
+                    elif cmd_name == IPCCommand.PAUSE_DAEMON:
+                        await self.command_bus.dispatch(PauseDaemonCommand())
+                        self.paused = True
+                        response = IPCResponse(status="success", data={"state": "paused"})
+
+                    elif cmd_name == IPCCommand.RESUME_DAEMON:
+                        await self.command_bus.dispatch(ResumeDaemonCommand())
+                        self.paused = False
+                        response = IPCResponse(status="success", data={"state": "running"})
+
+                    elif cmd_name == IPCCommand.PING:
+                        response = IPCResponse(status="success", data={"message": "PONG"})
+
+                    elif cmd_name == IPCCommand.GET_STATUS:
+                        state = (
+                            "paused"
+                            if self.paused
+                            else ("recording" if config.paths.recording_flag.exists() else "idle")
+                        )
+                        metrics = self.system_monitor.get_system_metrics()
+                        response = IPCResponse(status="success", data={"state": state, "telemetry": metrics})
+
+                    elif cmd_name == IPCCommand.SHUTDOWN:
+                        self.running = False
+                        response = IPCResponse(status="success", data={"message": "SHUTTING_DOWN"})
+
+                    elif cmd_name == IPCCommand.TRANSCRIBE_FILE:
+                        if self.paused:
+                            response = IPCResponse(status="error", error="el demonio está pausado")
+                        else:
+                            file_path = data.get("file_path")
+                            if not file_path:
+                                response = IPCResponse(status="error", error="falta data.file_path en la carga útil")
+                            else:
+                                logger.info(f"transcribiendo archivo: {file_path}")
+                                result = await self.command_bus.dispatch(TranscribeFileCommand(file_path))
+                                response = IPCResponse(
+                                    status="success", data={"state": "idle", "transcription": result}
+                                )
+
+                    elif cmd_name == IPCCommand.TOGGLE_RECORDING:
+                        if self.paused:
+                            response = IPCResponse(status="error", error="el demonio está pausado")
+                        else:
+                            # Verificar estado (si existe la bandera, estamos grabando)
+                            is_recording = config.paths.recording_flag.exists()
+                            if is_recording:
+                                result = await self.command_bus.dispatch(StopRecordingCommand())
+                                if result:
+                                    response = IPCResponse(
+                                        status="success", data={"state": "idle", "transcription": result}
+                                    )
+                                else:
+                                    response = IPCResponse(status="error", error="no se detectó voz")
+                            else:
+                                await self.command_bus.dispatch(StartRecordingCommand())
+                                response = IPCResponse(
+                                    status="success", data={"state": "recording", "message": "grabación iniciada"}
+                                )
+
+                    else:
+                        logger.warning(f"comando desconocido: {cmd_name}")
+                        response = IPCResponse(status="error", error=f"comando desconocido: {cmd_name}")
+
+                except Exception as e:
+                    logger.error(f"error manejando comando {cmd_name}: {e}")
+                    response = IPCResponse(status="error", error=str(e))
+
                 await self._send_response(writer, response)
-                return
 
-            payload_data = await reader.readexactly(length)
-            message = payload_data.decode("utf-8").strip()
-        except asyncio.IncompleteReadError:
-            logger.warning("lectura incompleta del cliente")
-            writer.close()
-            await writer.wait_closed()
-            return
-        except Exception as e:
-            logger.error(f"error leyendo mensaje ipc: {e}")
-            writer.close()
-            await writer.wait_closed()
-            return
-
-        logger.info(f"mensaje ipc recibido: {message[:200]}...")
-
-        # Parsear JSON
-        try:
-            req = IPCRequest.from_json(message)
-            cmd_name = req.cmd
-            data = req.data or {}
-        except (json.JSONDecodeError, KeyError) as e:
-            logger.warning(f"json inválido, rechazando: {e}")
-            response = IPCResponse(status="error", error=f"formato JSON inválido: {e!s}")
-            await self._send_response(writer, response)
-            return
-
-        try:
-            if cmd_name == IPCCommand.START_RECORDING:
-                if self.paused:
-                    response = IPCResponse(status="error", error="el demonio está pausado")
-                else:
-                    await self.command_bus.dispatch(StartRecordingCommand())
-                    response = IPCResponse(
-                        status="success", data={"state": "recording", "message": "grabación iniciada"}
-                    )
-
-            elif cmd_name == IPCCommand.STOP_RECORDING:
-                if self.paused:
-                    response = IPCResponse(status="error", error="el demonio está pausado")
-                else:
-                    result = await self.command_bus.dispatch(StopRecordingCommand())
-                    if result:
-                        response = IPCResponse(status="success", data={"state": "idle", "transcription": result})
-                    else:
-                        response = IPCResponse(status="error", error="no se detectó voz")
-
-            elif cmd_name == IPCCommand.PROCESS_TEXT:
-                if self.paused:
-                    response = IPCResponse(status="error", error="el demonio está pausado")
-                else:
-                    text = data.get("text")
-                    if not text:
-                        response = IPCResponse(status="error", error="falta data.text en la carga útil")
-                    else:
-                        result = await self.command_bus.dispatch(ProcessTextCommand(text))
-                        response = IPCResponse(status="success", data={"refined_text": result})
-
-            elif cmd_name == IPCCommand.TRANSLATE_TEXT:
-                if self.paused:
-                    response = IPCResponse(status="error", error="el demonio está pausado")
-                else:
-                    text = data.get("text")
-                    target_lang = data.get("target_lang", "en")
-                    if not text:
-                        response = IPCResponse(status="error", error="falta data.text en la carga útil")
-                    else:
-                        result = await self.command_bus.dispatch(TranslateTextCommand(text, target_lang))
-                        response = IPCResponse(status="success", data={"refined_text": result, "state": "idle"})
-
-            elif cmd_name == IPCCommand.UPDATE_CONFIG:
-                updates = data.get("updates")
-                if not updates:
-                    response = IPCResponse(status="error", error="falta data.updates en la carga útil")
-                else:
-                    result = await self.command_bus.dispatch(UpdateConfigCommand(updates))
-                    response = IPCResponse(status="success", data=result)
-
-            elif cmd_name == IPCCommand.GET_CONFIG:
-                result = await self.command_bus.dispatch(GetConfigCommand())
-                response = IPCResponse(status="success", data={"config": result})
-
-            elif cmd_name == IPCCommand.PAUSE_DAEMON:
-                await self.command_bus.dispatch(PauseDaemonCommand())
-                self.paused = True
-                response = IPCResponse(status="success", data={"state": "paused"})
-
-            elif cmd_name == IPCCommand.RESUME_DAEMON:
-                await self.command_bus.dispatch(ResumeDaemonCommand())
-                self.paused = False
-                response = IPCResponse(status="success", data={"state": "running"})
-
-            elif cmd_name == IPCCommand.PING:
-                response = IPCResponse(status="success", data={"message": "PONG"})
-
-            elif cmd_name == IPCCommand.GET_STATUS:
-                state = "paused" if self.paused else ("recording" if config.paths.recording_flag.exists() else "idle")
-                metrics = self.system_monitor.get_system_metrics()
-                response = IPCResponse(status="success", data={"state": state, "telemetry": metrics})
-
-            elif cmd_name == IPCCommand.SHUTDOWN:
-                self.running = False
-                response = IPCResponse(status="success", data={"message": "SHUTTING_DOWN"})
-
-            else:
-                logger.warning(f"comando desconocido: {cmd_name}")
-                response = IPCResponse(status="error", error=f"comando desconocido: {cmd_name}")
+                if cmd_name == IPCCommand.SHUTDOWN:
+                    self.stop()
+                    break
 
         except Exception as e:
-            logger.error(f"error manejando comando {cmd_name}: {e}")
-            response = IPCResponse(status="error", error=str(e))
+            logger.error(f"error en bucle de cliente: {e}")
+        finally:
+            # Limpiar sesión
+            if hasattr(container, "client_session_manager") and container.client_session_manager:
+                await container.client_session_manager.unregister()
 
-        await self._send_response(writer, response)
-
-        if cmd_name == IPCCommand.SHUTDOWN:
-            self.stop()
+            writer.close()
+            with contextlib.suppress(Exception):
+                await writer.wait_closed()
 
     async def start_server(self) -> None:
         """
@@ -294,12 +356,10 @@ class Daemon:
                     is_v2m_binary = proc_name == "v2m"
 
                     if is_v2m_module or is_v2m_binary:
-                        logger.warning(f"🧹 matando proceso v2m huérfano pid {proc.pid}: {cmdline_str[:50]}...")
                         proc.kill()
                         with contextlib.suppress(psutil.TimeoutExpired):
                             proc.wait(timeout=3)
                         killed_count += 1
-                        logger.info(f"✅ proceso {proc.pid} eliminado")
 
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     pass

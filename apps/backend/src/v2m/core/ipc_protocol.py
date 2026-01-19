@@ -1,17 +1,3 @@
-# This file is part of voice2machine.
-#
-# voice2machine is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# voice2machine is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with voice2machine.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 Protocolo de Comunicación Inter-Procesos (IPC) para Voice2Machine.
@@ -34,10 +20,19 @@ Estructura de Mensajes:
     - Response: `{"status": "success|error", "data": {...}, "error": "..."}`
 """
 
-from enum import Enum
-import json
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
+
+# SOTA 2026: orjson is 3-10x faster than stdlib json
+try:
+    import orjson
+
+    _USE_ORJSON = True
+except ImportError:
+    import json
+
+    _USE_ORJSON = False
 
 # Límite de payload para prevenir ataques de Denegación de Servicio (DoS)
 # por agotamiento de memoria. 1MB es suficiente para texto largo.
@@ -77,11 +72,14 @@ class IPCCommand(str, Enum):
     GET_CONFIG = "GET_CONFIG"
     PAUSE_DAEMON = "PAUSE_DAEMON"
     RESUME_DAEMON = "RESUME_DAEMON"
+    TRANSCRIBE_FILE = "TRANSCRIBE_FILE"
+    TOGGLE_RECORDING = "TOGGLE_RECORDING"
 
 
 # =============================================================================
 # PROTOCOLO JSON SEGURO (v2.0)
 # =============================================================================
+
 
 @dataclass(slots=True)
 class IPCRequest:
@@ -109,9 +107,10 @@ class IPCRequest:
 
     def to_json(self) -> str:
         """Serializa el request a cadena JSON."""
-        # OPTIMIZACIÓN: Construcción manual del dict
-        # Evita la llamada costosa a asdict() que realiza copias profundas.
-        return json.dumps({"cmd": self.cmd, "data": self.data}, ensure_ascii=False)
+        payload = {"cmd": self.cmd, "data": self.data}
+        if _USE_ORJSON:
+            return orjson.dumps(payload).decode("utf-8")
+        return json.dumps(payload, ensure_ascii=False)
 
     @classmethod
     def from_json(cls, json_str: str) -> "IPCRequest":
@@ -122,7 +121,7 @@ class IPCRequest:
             json.JSONDecodeError: Si el JSON es inválido.
             KeyError: Si falta el campo obligatorio 'cmd'.
         """
-        obj = json.loads(json_str)
+        obj = orjson.loads(json_str) if _USE_ORJSON else json.loads(json_str)
         return cls(cmd=obj["cmd"], data=obj.get("data"))
 
 
@@ -152,12 +151,15 @@ class IPCResponse:
 
     def to_json(self) -> str:
         """Serializa el response a cadena JSON."""
-        return json.dumps({"status": self.status, "data": self.data, "error": self.error}, ensure_ascii=False)
+        payload = {"status": self.status, "data": self.data, "error": self.error}
+        if _USE_ORJSON:
+            return orjson.dumps(payload).decode("utf-8")
+        return json.dumps(payload, ensure_ascii=False)
 
     @classmethod
     def from_json(cls, json_str: str) -> "IPCResponse":
         """Deserializa una cadena JSON a un objeto IPCResponse."""
-        obj = json.loads(json_str)
+        obj = orjson.loads(json_str) if _USE_ORJSON else json.loads(json_str)
         return cls(status=obj["status"], data=obj.get("data"), error=obj.get("error"))
 
 
@@ -175,3 +177,13 @@ def get_socket_path() -> str:
 
 # Ruta del socket (Evaluada al importar el módulo)
 SOCKET_PATH = get_socket_path()
+
+HEADER_SIZE = 4
+
+
+async def send_ipc_message(writer, message: IPCResponse) -> None:
+    """Helper para enviar mensaje IPC con framing."""
+    resp_bytes = message.to_json().encode("utf-8")
+    resp_len = len(resp_bytes)
+    writer.write(resp_len.to_bytes(HEADER_SIZE, byteorder="big") + resp_bytes)
+    await writer.drain()
