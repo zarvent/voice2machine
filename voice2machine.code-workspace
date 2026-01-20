@@ -2,11 +2,11 @@
   "folders": [
     {
       "name": "book for llms",
-      "path": "../llm-book",
+      "path": "../llm-vault/+llm-book",
     },
     {
       "name": "agents skills",
-      "path": "../llm-skills",
+      "path": "../llm-vault/+llm-skills",
     },
     {
       "name": "backend",
