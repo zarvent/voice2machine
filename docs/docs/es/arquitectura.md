@@ -1,7 +1,15 @@
+---
+title: Arquitectura del Sistema
+description: Descripción de la arquitectura basada en Workflows y Features de Voice2Machine.
+ai_context: "Arquitectura Hexagonal, Workflows, Domain Driven Design, FastAPI, SOTA 2026"
+depends_on: []
+status: stable
+---
+
 # 🧩 Arquitectura del Sistema
 
 !!! abstract "Filosofía Técnica"
-    **Voice2Machine** implementa una **Arquitectura Hexagonal (Ports & Adapters)** estricta, priorizando el desacoplamiento, la testabilidad y la independencia tecnológica. El sistema se adhiere a estándares SOTA 2026 como tipos estáticos en Python (Protocol) y separación Frontend/Backend mediante IPC binario.
+**Voice2Machine** implementa una **Arquitectura Hexagonal (Ports & Adapters)** estricta, priorizando el desacoplamiento, la testabilidad y la independencia tecnológica. El sistema se adhiere a estándares SOTA 2026 como tipos estáticos en Python (Protocol) y separación Frontend/Backend mediante API REST.
 
 ---
 
@@ -9,82 +17,171 @@
 
 ```mermaid
 graph TD
-    subgraph Frontend ["🖥️ Frontend (Tauri)"]
-        React["React 19 GUI"]
-        Rust["Rust Core"]
+    subgraph Clients ["🔌 Clientes (CLI / Scripts / GUI / Tauri)"]
+        ClientApp["Cualquier cliente HTTP"]
     end
 
-    subgraph Backend ["🐍 Backend (Python)"]
-        Daemon["Daemon Loop"]
+    subgraph Backend ["🐍 Backend Daemon (Python + FastAPI)"]
+        API["FastAPI Package<br>(api/)"]
 
-        subgraph Hexagon ["Hexagon (Core)"]
-            App["Application<br>(Use Cases)"]
-            Domain["Domain<br>(Interfaces/Models)"]
+        subgraph Workflows ["🧠 Workflows (Orchestration)"]
+            RecWF["RecordingWorkflow"]
+            LLMWF["LLMWorkflow"]
         end
 
-        subgraph Infra ["Infrastructure (Adapters)"]
-            Whisper["Whisper Adapter"]
-            Audio["Audio Engine<br>(Rust Ext)"]
-            LLM["LLM Providers<br>(Ollama/Gemini)"]
+        subgraph Features ["🧩 Features (Domain + Logic)"]
+            AudioFeat["Audio Service"]
+            TranscFeat["Transcription Service"]
+            LLMFeat["LLM Service"]
+        end
+
+        subgraph Shared ["⚙️ Shared (Foundation)"]
+            Config["Config"]
+            Errors["Errors"]
+            Interfaces["Interfaces"]
         end
     end
 
-    React <-->|Events| Rust
-    Rust <-->|Unix Socket (IPC)| Daemon
-    Daemon --> App
-    App --> Domain
-    Whisper -.->|Implements| Domain
-    Audio -.->|Implements| Domain
-    LLM -.->|Implements| Domain
+    ClientApp <-->|REST + WebSocket| API
+    API --> Workflows
+    Workflows --> Features
+    Features --> Shared
 
-    style Frontend fill:#e3f2fd,stroke:#1565c0
+    style Clients fill:#e3f2fd,stroke:#1565c0
     style Backend fill:#e8f5e9,stroke:#2e7d32
-    style Hexagon fill:#fff3e0,stroke:#ef6c00
-    style Infra fill:#f3e5f5,stroke:#7b1fa2
+    style Workflows fill:#fff3e0,stroke:#ef6c00
+    style Features fill:#f3e5f5,stroke:#7b1fa2
+    style Shared fill:#eceff1,stroke:#455a64
 ```
 
 ---
 
 ## 📦 Componentes del Backend
 
-### 1. Core (El Hexágono)
-Ubicado en `apps/backend/src/v2m/core/` y `domain/`.
-*   **Puertos (Interfaces)**: Definidos usando `typing.Protocol` + `@runtime_checkable` para chequeo estructural en tiempo de ejecución.
-*   **CQRS**: Toda acción es un `Command` (DTO Pydantic) procesado por un `CommandHandler` vía un `CommandBus`.
+### 1. API Layer (FastAPI)
 
-### 2. Application
-Ubicado en `apps/backend/src/v2m/application/`.
-*   Orquesta la lógica de negocio pura.
-*   Ejemplo: `TranscribeAudioHandler` recibe el audio, invoca al puerto `TranscriptionService`, y notifica eventos.
+Ubicado en `apps/daemon/backend/src/v2m/api/`.
 
-### 3. Infrastructure
-Ubicado en `apps/backend/src/v2m/infrastructure/`.
-*   **WhisperAdapter**: Implementación concreta usando `faster-whisper`. Gestiona la carga diferida (lazy loading) para ahorrar VRAM.
-*   **SystemMonitor**: Servicio crítico que monitorea uso de GPU/CPU en tiempo real para telemetría.
-*   **ProviderRegistry**: Patrón Factory para instanciar dinámicamente proveedores LLM (Gemini/Ollama) según configuración.
+- **Módulos**: `app.py`, `routes/`, `schemas.py`
+- **Endpoints REST**: `/toggle`, `/start`, `/stop`, `/status`, `/health`
+- **WebSocket**: `/ws/events` para streaming de transcripción en tiempo real
+- **Documentación automática**: Swagger UI en `/docs`
+
+!!! info "Estructura Moderna"
+A partir de la v0.3.0, la API se organiza como un paquete completo, separando rutas y esquemas para mayor mantenibilidad.
+
+### 2. Workflows (Orquestación)
+
+Ubicado en `apps/daemon/backend/src/v2m/orchestration/`.
+
+En lugar de un Orchestrator monolítico, el sistema utiliza Workflows especializados para cada flujo de negocio:
+
+- **RecordingWorkflow**: Gestiona el ciclo de vida de captura y transcripción.
+- **LLMWorkflow**: Coordina el procesamiento de texto y traducción.
+
+Este enfoque permite que cada flujo evolucione de forma independiente sin afectar al resto del sistema.
+
+### 3. Features (Dominios)
+
+Ubicado en `apps/daemon/backend/src/v2m/features/`.
+
+Cada carpeta en `features/` representa un dominio de conocimiento autocontenido que incluye sus propios servicios y lógica:
+
+| Feature           | Responsabilidad                                          |
+| ----------------- | -------------------------------------------------------- |
+| **transcription** | Implementaciones de Whisper (`faster-whisper`).          |
+| **audio**         | Captura de audio y manejo del motor Rust (`v2m_engine`). |
+| **llm**           | Integraciones con Gemini, Ollama y otros proveedores.    |
+
+### 4. Shared (Base Común)
+
+Ubicado en `apps/daemon/backend/src/v2m/shared/`.
+
+- **Interfaces**: Definiciones globales mediante `typing.Protocol`.
+- **Config**: Gestión de `config.toml` mediante Pydantic Settings.
+- **Errors**: Jerarquías de excepciones compartidas.
 
 ---
 
-## ⚡ Comunicación Frontend-Backend (IPC)
+## ⚡ Comunicación Cliente-Backend
 
-Voice2Machine evita HTTP/REST para maximizar rendimiento local. Utiliza **Unix Domain Sockets** con un protocolo personalizado:
+Voice2Machine utiliza **FastAPI REST + WebSocket** para la comunicación:
 
-1.  **Header**: 4 bytes (Big Endian) indicando longitud.
-2.  **Payload**: JSON utf-8.
-3.  **Persistencia**: La conexión se mantiene viva (Keep-Alive), eliminando el *handshake overhead*.
+### REST (Síncrono)
+
+```bash
+# Toggle grabación
+curl -X POST http://localhost:8765/toggle | jq
+
+# Verificar estado
+curl http://localhost:8765/status | jq
+```
+
+### WebSocket (Streaming)
+
+```javascript
+const ws = new WebSocket("ws://localhost:8765/ws/events");
+ws.onmessage = (e) => {
+  const { event, data } = JSON.parse(e.data);
+  if (event === "transcription_update") {
+    console.log(data.text, data.final);
+  }
+};
+```
 
 ---
 
 ## 🦀 Extensiones Nativas (Rust)
 
 Para tareas críticas donde el GIL de Python es un cuello de botella, utilizamos extensiones nativas compiladas en Rust (`v2m_engine`):
-*   **Audio I/O**: Escritura de WAVs directa a disco (Zero-copy).
-*   **VAD**: Detección de voz de ultra-baja latencia.
+
+| Componente      | Función                                               |
+| --------------- | ----------------------------------------------------- |
+| **Audio I/O**   | Escritura de WAVs directa a disco (zero-copy)         |
+| **VAD**         | Detección de voz de ultra-baja latencia (Silero ONNX) |
+| **Buffer Ring** | Buffer circular lock-free para audio en tiempo real   |
+
+---
+
+## 🔄 Flujo de Datos
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client as Cliente HTTP
+    participant API as FastAPI
+    participant WF as Workflows
+    participant Audio as AudioService
+    participant Whisper as TranscriptionService
+
+    User->>Client: Presiona atajo
+    Client->>API: POST /toggle
+    API->>WF: toggle() (RecordingWorkflow)
+
+    alt No grabando
+        WF->>Audio: start_recording()
+        Audio-->>WF: OK
+        WF-->>API: status=recording
+    else Grabando
+        WF->>Audio: stop_recording()
+        Audio-->>WF: audio_buffer
+        WF->>Whisper: transcribe(buffer)
+        Whisper-->>WF: texto
+        WF-->>API: status=idle, text=...
+    end
+
+    API-->>Client: ToggleResponse
+    Client->>User: Copia al clipboard
+```
 
 ---
 
 ## 🛡️ Principios de Diseño 2026
 
-1.  **Local-First & Privacy-By-Design**: Ningún dato sale de la máquina a menos que se configure explícitamente un proveedor de nube.
-2.  **Resiliencia**: El Daemon implementa recuperación automática de errores y reinicio de subsistemas (ej. si el driver de audio crashea).
-3.  **Observabilidad**: Logging estructurado (OpenTelemetry standard) y métricas en tiempo real expuestas al frontend.
+| Principio                 | Implementación                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------------- |
+| **Local-First**           | Ningún dato sale de la máquina a menos que se configure explícitamente un proveedor cloud |
+| **Privacy-By-Design**     | Audio procesado en memoria, archivos temporales eliminados después de transcripción       |
+| **Resiliencia**           | Recuperación automática de errores, reinicio de subsistemas si fallan                     |
+| **Observabilidad**        | Logging estructurado (OpenTelemetry), métricas en tiempo real                             |
+| **Performance is Design** | FastAPI async, Rust para hot paths, modelo warm en VRAM                                   |

@@ -1,37 +1,149 @@
-site_name: Voice2Machine
-site_description: Documentación oficial de Voice2Machine - Dictado por voz local-first.
-site_url: https://voice2machine.local/
-repo_url: https://github.com/v2m-lab/voice2machine
-edit_uri: edit/main/docs/docs/
+# ==============================================================================
+# Voice2Machine Documentation
+# https://squidfunk.github.io/mkdocs-material/
+# ==============================================================================
+#
+# This configuration follows the principle: "Simple, Solid, Sustainable"
+# - Only essential features enabled
+# - Multi-app ready structure
+# - No over-engineering
+#
 
-# Configuration relative to mkdocs.yml location (root)
+# ------------------------------------------------------------------------------
+# Site Metadata
+# ------------------------------------------------------------------------------
+site_name: Voice2Machine
+site_description: Sistema de dictado por voz local con Whisper
+site_author: zarvent
+site_url: https://zarvent.github.io/v2m-lab/
+repo_url: https://github.com/zarvent/v2m-lab
+repo_name: zarvent/v2m-lab
+edit_uri: edit/main/docs/docs/
+copyright: Copyright &copy; 2024-2026 Voice2Machine Contributors
+
 docs_dir: docs/docs
 
+# ------------------------------------------------------------------------------
+# Theme
+# ------------------------------------------------------------------------------
 theme:
   name: material
   language: es
+  logo: assets/logo.svg
+  favicon: assets/favicon.ico
+
+  font:
+    text: Inter
+    code: JetBrains Mono
+
   palette:
-    - scheme: default
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
       primary: teal
-      accent: purple
+      accent: deep purple
       toggle:
         icon: material/brightness-7
         name: Cambiar a modo oscuro
-    - scheme: slate
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
       primary: teal
-      accent: purple
+      accent: deep purple
       toggle:
         icon: material/brightness-4
         name: Cambiar a modo claro
+
   features:
-    - navigation.instant
-    - navigation.tracking
+    # Navigation - Essential only
+    - navigation.instant.progress
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
-    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+
+    # Content - Essential only
     - content.code.copy
+    - content.code.annotate
+
+    # Search - Essential only
+    - search.highlight
+    - search.suggest
+
   icon:
     repo: fontawesome/brands/github
 
+# ------------------------------------------------------------------------------
+# Extra
+# ------------------------------------------------------------------------------
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/zarvent/v2m-lab
+      name: GitHub
+  generator: false
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+# ------------------------------------------------------------------------------
+# Plugins
+# ------------------------------------------------------------------------------
+plugins:
+  - search:
+      lang: [es, en]
+
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: es
+          name: Español
+          default: true
+        - locale: en
+          name: English
+          nav_translations:
+            Inicio: Home
+            Guías: Guides
+            Referencia: Reference
+            Arquitectura: Architecture
+            Comunidad: Community
+            Guía Rápida: Quick Start
+            Instalación: Installation
+            Configuración: Configuration
+            Glosario: Glossary
+            Atajos de Teclado: Keyboard Shortcuts
+            Solución de Problemas: Troubleshooting
+            API REST: REST API
+            API Python: Python API
+            Dominios: Domain
+            Interfaces: Interfaces
+            Servicios: Services
+            Flujos (Workflows): Workflows
+            Endpoints (FastAPI): Endpoints (FastAPI)
+            Transcripción: Transcription
+            Daemon: Daemon
+            Decisiones (ADR): Decisions (ADR)
+            Plantilla: Template
+            Contribuir: Contributing
+            Guía de Estilo: Style Guide
+
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [apps/daemon/backend/src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            heading_level: 2
+
+  - git-revision-date-localized:
+      type: timeago
+      fallback_to_build_date: true
+
+# ------------------------------------------------------------------------------
+# Markdown Extensions - Essential only
+# ------------------------------------------------------------------------------
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -42,28 +154,77 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
   - toc:
       permalink: true
+  - attr_list
+  - md_in_html
+  - tables
+  - def_list
+  - abbr
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.keys
 
+# ------------------------------------------------------------------------------
+# Navigation - Multi-App Architecture
+# ------------------------------------------------------------------------------
+# Structure:
+#   Inicio     → Getting started, quick wins
+#   Guías      → How-to guides, tutorials
+#   Referencia → API docs, technical reference
+#   Comunidad  → Contributing, changelog
+#
 nav:
-  - Exploración:
-    - Inicio: es/index.md
-    - Guía Rápida: es/guia_rapida.md
-    - Glosario: es/glosario.md
-  - Procedimientos:
-    - Instalación: es/instalacion.md
-    - Contribución: es/contribucion.md
+  - Inicio:
+      - index.md
+      - Guía Rápida: guia_rapida.md
+      - Instalación: instalacion.md
+      - Configuración: configuracion.md
+      - Glosario: glosario.md
+
+  - Guías:
+      - Atajos de Teclado: atajos_teclado.md
+      - Solución de Problemas: troubleshooting.md
+
   - Referencia:
-    - Configuración: es/configuracion.md
-    - Atajos de Teclado: es/atajos_teclado.md
-    - API: es/referencia_api.md
-  - Conceptos:
-    - Arquitectura: es/arquitectura.md
-    - Frontend: es/frontend.md
-    - Decisiones (ADR): es/adr/index.md
-  - Diagnóstico:
-    - Troubleshooting: es/troubleshooting.md
-  - Mantenimiento:
-    - Changelog: es/changelog.md
-  - Gobernanza:
-    - Guía de Estilo: es/style_guide.md
+      - API REST: referencia_api.md
+      - API Python:
+          - api/index.md
+          - Dominios: api/domain.md
+          - Interfaces: api/interfaces.md
+          - Servicios: api/services.md
+          - Daemon:
+              - api/backend/index.md
+              - Flujos (Workflows): api/backend/workflows.md
+              - Endpoints (FastAPI): api/backend/api.md
+              - Configuración: api/backend/config.md
+              - Transcripción: api/backend/transcription.md
+              - LLM: api/backend/llm.md
+          # Future apps go here:
+          # - Frontend:
+          #     - api/frontend/index.md
+          # - CLI:
+          #     - api/cli/index.md
+
+  - Arquitectura:
+      - arquitectura.md
+      - Decisiones (ADR):
+          - adr/index.md
+          - Plantilla: adr/template.md
+          - adr/001-fastapi-migration.md
+          - adr/002-orchestrator-pattern.md
+          - adr/003-faster-whisper.md
+          - adr/004-hexagonal-architecture.md
+          - adr/005-rust-audio-engine.md
+          - adr/006-local-first.md
+
+  - Comunidad:
+      - Contribuir: contribucion.md
+      - Guía de Estilo: style_guide.md
+      - Changelog: changelog.md

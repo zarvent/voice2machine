@@ -1,4 +1,5 @@
 # 🗣️ voice2machine
+
 _voice dictation for any text field in your OS_
 
 ---
@@ -21,12 +22,12 @@ The premise is simple: speaking is faster than typing. This project allows you t
 
 ## how it works
 
-Two global keyboard shortcuts:
+The system runs as a **Background Daemon** that exposes a **FastAPI REST API** on `localhost:8765`.
 
-| script          | function                                                        |
-| --------------- | --------------------------------------------------------------- |
-| `v2m-toggle.sh` | records → transcribes → copies to clipboard                     |
-| `v2m-llm.sh`    | takes text from clipboard → refines it with LLM → replaces it   |
+| component   | role                                                                                   |
+| ----------- | -------------------------------------------------------------------------------------- |
+| `daemon`    | Handles audio recording, Whisper transcription, and LLM processing via REST endpoints. |
+| `shortcuts` | Global keyboard shortcuts that send HTTP requests to the daemon.                       |
 
 ---
 
