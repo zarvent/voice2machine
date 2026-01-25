@@ -15,9 +15,9 @@
 site_name: Voice2Machine
 site_description: Sistema de dictado por voz local con Whisper
 site_author: zarvent
-site_url: https://zarvent.github.io/v2m-lab/
-repo_url: https://github.com/zarvent/v2m-lab
-repo_name: zarvent/v2m-lab
+site_url: https://zarvent.github.io/voice2machine/
+repo_url: https://github.com/zarvent/voice2machine
+repo_name: zarvent/voice2machine
 edit_uri: edit/main/docs/docs/
 copyright: Copyright &copy; 2024-2026 Voice2Machine Contributors
 
@@ -78,7 +78,7 @@ theme:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/zarvent/v2m-lab
+      link: https://github.com/zarvent/voice2machine
       name: GitHub
   generator: false
 
