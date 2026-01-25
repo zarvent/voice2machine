@@ -2782,8 +2782,8 @@ compute_type: Precisión numérica ('float16', 'int8_float16', 'int8').
     Defecto: 'int8_float16'
 device_index: Índice de GPU a utilizar. Defecto: 0
 num_workers: Número de workers para procesamiento paralelo. Defecto: 4
-beam_size: Tamaño del beam search. Defecto: 2
-best_of: Número de candidatos a considerar. Defecto: 2
+beam_size: Tamaño del beam search. Defecto: 5 (SOTA 2026 - óptimo para large-v3-turbo)
+best_of: Número de candidatos a considerar. Defecto: 5
 temperature: Temperatura de muestreo (0.0 para determinístico).
     Defecto: 0.0
 vad_filter: Activar filtrado VAD. Defecto: True
@@ -2864,8 +2864,8 @@ log_prob_threshold: Umbral de log-probabilidad para filtrar
 <a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">            Defecto: &#39;int8_float16&#39;</span>
 <a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">        device_index: Índice de GPU a utilizar. Defecto: 0</span>
 <a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        num_workers: Número de workers para procesamiento paralelo. Defecto: 4</span>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">        beam_size: Tamaño del beam search. Defecto: 2</span>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        best_of: Número de candidatos a considerar. Defecto: 2</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">        beam_size: Tamaño del beam search. Defecto: 5 (SOTA 2026 - óptimo para large-v3-turbo)</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        best_of: Número de candidatos a considerar. Defecto: 5</span>
 <a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        temperature: Temperatura de muestreo (0.0 para determinístico).</span>
 <a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">            Defecto: 0.0</span>
 <a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">        vad_filter: Activar filtrado VAD. Defecto: True</span>
@@ -2885,8 +2885,8 @@ log_prob_threshold: Umbral de log-probabilidad para filtrar
 <a id="__codelineno-0-129" name="__codelineno-0-129"></a>    <span class="n">compute_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;int8_float16&quot;</span>
 <a id="__codelineno-0-130" name="__codelineno-0-130"></a>    <span class="n">device_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
 <a id="__codelineno-0-131" name="__codelineno-0-131"></a>    <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span>
-<a id="__codelineno-0-132" name="__codelineno-0-132"></a>    <span class="n">beam_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
-<a id="__codelineno-0-133" name="__codelineno-0-133"></a>    <span class="n">best_of</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+<a id="__codelineno-0-132" name="__codelineno-0-132"></a>    <span class="n">beam_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+<a id="__codelineno-0-133" name="__codelineno-0-133"></a>    <span class="n">best_of</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
 <a id="__codelineno-0-134" name="__codelineno-0-134"></a>    <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
 <a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="n">vad_filter</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <a id="__codelineno-0-136" name="__codelineno-0-136"></a>    <span class="n">audio_device_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
@@ -2947,7 +2947,7 @@ y reducir alucinaciones del modelo.</p>
 <details class="atributos" open>
   <summary>Atributos</summary>
   <p>threshold: Umbral de probabilidad (0.0 a 1.0) para clasificar un segmento como habla.
-    Defecto: 0.4 (slightly higher to avoid breathing noise)
+    Defecto: 0.35 (SOTA 2026 - preserva vocales finales del español)
 min_speech_duration_ms: Duración mínima (ms) para ser considerado habla.
     Defecto: 250ms
 min_silence_duration_ms: Duración mínima de silencio (ms) para considerar que el habla terminó.
@@ -2992,7 +2992,7 @@ speech_pad_ms: Relleno aplicado al inicio/fin de segmentos de habla detectados.
 <a id="__codelineno-0-79" name="__codelineno-0-79"></a>
 <a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">    Atributos:</span>
 <a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">        threshold: Umbral de probabilidad (0.0 a 1.0) para clasificar un segmento como habla.</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">            Defecto: 0.4 (slightly higher to avoid breathing noise)</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">            Defecto: 0.35 (SOTA 2026 - preserva vocales finales del español)</span>
 <a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">        min_speech_duration_ms: Duración mínima (ms) para ser considerado habla.</span>
 <a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">            Defecto: 250ms</span>
 <a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">        min_silence_duration_ms: Duración mínima de silencio (ms) para considerar que el habla terminó.</span>
@@ -3001,7 +3001,7 @@ speech_pad_ms: Relleno aplicado al inicio/fin de segmentos de habla detectados.
 <a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">            Defecto: 400ms (keeps the start/end of words)</span>
 <a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-90" name="__codelineno-0-90"></a>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a>    <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.4</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a>    <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.35</span>
 <a id="__codelineno-0-92" name="__codelineno-0-92"></a>    <span class="n">min_speech_duration_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">250</span>
 <a id="__codelineno-0-93" name="__codelineno-0-93"></a>    <span class="n">min_silence_duration_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>
 <a id="__codelineno-0-94" name="__codelineno-0-94"></a>    <span class="n">speech_pad_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">400</span>

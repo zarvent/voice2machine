@@ -2062,6 +2062,45 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unreleased_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [Unreleased]
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[Unreleased]">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
           <li class="md-nav__item">
   <a href="#planned" class="md-nav__link">
     <span class="md-ellipsis">
@@ -2091,7 +2130,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_3" class="md-nav__link">
+  <a href="#added_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2293,6 +2332,45 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unreleased_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [Unreleased]
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[Unreleased]">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
           <li class="md-nav__item">
   <a href="#planned" class="md-nav__link">
     <span class="md-ellipsis">
@@ -2322,7 +2400,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_3" class="md-nav__link">
+  <a href="#added_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2427,6 +2505,16 @@ y este proyecto se adhiere a <a href="https://semver.org/lang/es/">Semantic Vers
 <li><strong>Gestión de Memoria</strong>: Reinicio forzado de la caché de CUDA (<code>torch.cuda.empty_cache()</code>) al descargar modelos para liberar VRAM de forma efectiva.</li>
 <li><strong>Higiene de Código</strong>: Refactorización de imports y corrección de errores de linting (<code>ruff</code>) en toda la base de código del backend.</li>
 </ul>
+<h2 id="unreleased_1">[Unreleased]<a class="headerlink" href="#unreleased_1" title="Permanent link">&para;</a></h2>
+<h3 id="added_3">Added<a class="headerlink" href="#added_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Motor de Audio Zero-Copy</strong>: Implementaciu00f3n de <code>ZeroCopyAudioRecorder</code> en Rust usando memoria compartida (/dev/shm) para transferencia de audio sin copias.</li>
+</ul>
+<h3 id="changed_3">Changed<a class="headerlink" href="#changed_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Configuraciu00f3n Whisper Avanzada</strong>: Incrementado <code>beam_size</code> y <code>best_of</code> a 5 para mejorar la calidad de transcripciu00f3n en el modelo "large-v3-turbo".</li>
+<li><strong>Optimizaciu00f3n VAD</strong>: Ajustado el umbral a 0.35 para preservar mejor las vocales finales del espau00f1ol.</li>
+</ul>
 <h3 id="planned">Planned<a class="headerlink" href="#planned" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Soporte para múltiples idiomas de transcripción simultáneos</li>
@@ -2434,7 +2522,7 @@ y este proyecto se adhiere a <a href="https://semver.org/lang/es/">Semantic Vers
 <li>Integración con más proveedores LLM</li>
 </ul>
 <h2 id="010-2024-03-20">[0.1.0] - 2024-03-20<a class="headerlink" href="#010-2024-03-20" title="Permanent link">&para;</a></h2>
-<h3 id="added_3">Added<a class="headerlink" href="#added_3" title="Permanent link">&para;</a></h3>
+<h3 id="added_4">Added<a class="headerlink" href="#added_4" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Versión inicial del sistema Voice2Machine</li>
 <li>Soporte para transcripción local con Whisper (faster-whisper)</li>
