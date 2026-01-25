@@ -26,24 +26,24 @@ La documentación está organizada para servir a diferentes necesidades:
 
 ### 🚀 Exploración
 
-- [**Guía Rápida**](guia_rapida.md): Comienza a dictar en minutos.
-- [**Glosario**](glosario.md): Define términos clave como _Daemon_, _Whisper_ y _API REST_.
+- [**Guía Rápida**](quick_start.md): Comienza a dictar en minutos.
+- [**Glosario**](glossary.md): Define términos clave como _Daemon_, _Whisper_ y _API REST_.
 
 ### 🛠️ Procedimientos
 
-- [**Instalación**](instalacion.md): Guía paso a paso para Ubuntu/Debian.
-- [**Contribución**](contribucion.md): Cómo colaborar en el proyecto.
+- [**Instalación**](installation.md): Guía paso a paso para Ubuntu/Debian.
+- [**Contribución**](contributing.md): Cómo colaborar en el proyecto.
 
 ### ⚙️ Referencia
 
-- [**Configuración**](configuracion.md): Ajusta modelos, dispositivos y comportamientos.
-- [**Atajos de Teclado**](atajos_teclado.md): Referencia de comandos globales.
-- [**API REST**](referencia_api.md): Documentación de endpoints HTTP y WebSocket.
+- [**Configuración**](configuration.md): Ajusta modelos, dispositivos y comportamientos.
+- [**Atajos de Teclado**](keyboard_shortcuts.md): Referencia de comandos globales.
+- [**API REST**](api_reference.md): Documentación de endpoints HTTP y WebSocket.
 - [**API Python**](api/index.md): Referencia de clases y métodos del backend.
 
 ### 🧠 Conceptos
 
-- [**Arquitectura**](arquitectura.md): Diseño Hexagonal y componentes del sistema.
+- [**Arquitectura**](architecture.md): Diseño Hexagonal y componentes del sistema.
 - [**Decisiones (ADR)**](adr/index.md): Registro de decisiones técnicas importantes.
 
 ### 🔧 Mantenimiento

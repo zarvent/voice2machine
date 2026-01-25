@@ -186,17 +186,17 @@ markdown_extensions:
 nav:
   - Inicio:
       - index.md
-      - Guía Rápida: guia_rapida.md
-      - Instalación: instalacion.md
-      - Configuración: configuracion.md
-      - Glosario: glosario.md
+      - Guía Rápida: quick_start.md
+      - Instalación: installation.md
+      - Configuración: configuration.md
+      - Glosario: glossary.md
 
   - Guías:
-      - Atajos de Teclado: atajos_teclado.md
+      - Atajos de Teclado: keyboard_shortcuts.md
       - Solución de Problemas: troubleshooting.md
 
   - Referencia:
-      - API REST: referencia_api.md
+      - API REST: api_reference.md
       - API Python:
           - api/index.md
           - Dominios: api/domain.md
@@ -216,7 +216,7 @@ nav:
           #     - api/cli/index.md
 
   - Arquitectura:
-      - arquitectura.md
+      - architecture.md
       - Decisiones (ADR):
           - adr/index.md
           - Plantilla: adr/template.md
@@ -228,6 +228,6 @@ nav:
           - adr/006-local-first.md
 
   - Comunidad:
-      - Contribuir: contribucion.md
+      - Contribuir: contributing.md
       - Guía de Estilo: style_guide.md
       - Changelog: changelog.md
