@@ -92,6 +92,9 @@ plugins:
   - search:
       lang: [es, en]
 
+  - include-markdown:
+      preserve_includer_indent: false
+
   - i18n:
       docs_structure: folder
       languages:
