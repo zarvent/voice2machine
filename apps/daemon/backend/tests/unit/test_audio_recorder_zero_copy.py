@@ -44,7 +44,7 @@ class TestAudioRecorderZeroCopy(unittest.TestCase):
         # Force Python fallback path for these tests (tests are designed for Python impl)
         self.patcher = patch("v2m.features.audio.recorder.HAS_RUST_ENGINE", False)
         self.patcher.start()
-        self.recorder = AudioRecorder()
+        self.recorder = AudioRecorder(mode="fallback")
 
     def tearDown(self) -> None:
         """Limpia el entorno de prueba después de cada test."""
@@ -199,7 +199,7 @@ class TestAudioRecorderZeroCopy(unittest.TestCase):
     def test_zero_copy_with_multichannel_audio(self, mock_sd: MagicMock) -> None:
         """Verifica que zero-copy funciona correctamente con audio multicanal."""
         # ARRANGE: Crear recorder estéreo
-        recorder_stereo = AudioRecorder(channels=2)
+        recorder_stereo = AudioRecorder(mode="fallback", channels=2)
         mock_stream = MagicMock()
         mock_sd.InputStream.return_value = mock_stream
 

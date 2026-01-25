@@ -78,7 +78,7 @@ class TestAudioRecorder(unittest.TestCase):
         # Force Python fallback path for these tests (tests are designed for Python impl)
         self.patcher = patch("v2m.features.audio.recorder.HAS_RUST_ENGINE", False)
         self.patcher.start()
-        self.recorder = AudioRecorder()
+        self.recorder = AudioRecorder(mode="fallback")
 
     def tearDown(self) -> None:
         """Limpia el entorno de prueba después de cada test."""

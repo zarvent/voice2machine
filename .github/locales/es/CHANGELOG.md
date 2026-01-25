@@ -75,6 +75,17 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - **Gestión de Memoria**: Reinicio forzado de la caché de CUDA (`torch.cuda.empty_cache()`) al descargar modelos para liberar VRAM de forma efectiva.
 - **Higiene de Código**: Refactorización de imports y corrección de errores de linting (`ruff`) en toda la base de código del backend.
 
+## [Unreleased]
+
+### Added
+
+- **Motor de Audio Zero-Copy**: Implementaciu00f3n de `ZeroCopyAudioRecorder` en Rust usando memoria compartida (/dev/shm) para transferencia de audio sin copias.
+
+### Changed
+
+- **Configuraciu00f3n Whisper Avanzada**: Incrementado `beam_size` y `best_of` a 5 para mejorar la calidad de transcripciu00f3n en el modelo "large-v3-turbo".
+- **Optimizaciu00f3n VAD**: Ajustado el umbral a 0.35 para preservar mejor las vocales finales del espau00f1ol.
+
 ### Planned
 
 - Soporte para múltiples idiomas de transcripción simultáneos

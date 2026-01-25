@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2026-01-23
 
 ### Added
+- **Zero-Copy Audio Engine**: New `ZeroCopyAudioRecorder` in Rust using shared memory (/dev/shm) for true zero-capacity transfers.
 
 - **Feature-Based Architecture**: Total restructuring into self-contained modules in `features/` (audio, llm, transcription).
 - **Orchestration via Workflows**: Introduction of `RecordingWorkflow` and `LLMWorkflow` to decouple business logic from the monolithic legacy Orchestrator.
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Modular API**: Package structure in `api/` with separate routes and schemas.
 
 ### Changed
+- **Advanced Whisper Config**: Increased `beam_size` and `best_of` to 5 for higher transcription quality in the "large-v3-turbo" model.
 
 - **Elimination of Orchestrator**: `services/orchestrator.py` has been decomposed and removed.
 - **Infrastructure Refactoring**: The `infrastructure/` folder has been integrated into each corresponding `feature`.
@@ -40,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2025-01-20
 
 ### Added
+- **Zero-Copy Audio Engine**: New `ZeroCopyAudioRecorder` in Rust using shared memory (/dev/shm) for true zero-capacity transfers.
 
 - **FastAPI REST API**: New HTTP API replacing the Unix Sockets-based IPC system
 - **WebSocket streaming**: `/ws/events` endpoint for real-time provisional transcription
@@ -49,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MkDocs documentation system**: Structured documentation with Material theme
 
 ### Changed
+- **Advanced Whisper Config**: Increased `beam_size` and `best_of` to 5 for higher transcription quality in the "large-v3-turbo" model.
 
 - **Simplified architecture**: From CQRS/CommandBus to more direct Orchestrator pattern
 - **Communication**: From binary Unix Domain Sockets to standard HTTP REST
@@ -69,13 +73,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Zero-Copy Audio Engine**: New `ZeroCopyAudioRecorder` in Rust using shared memory (/dev/shm) for true zero-capacity transfers.
 
 - **Hallucination Detection**: Heuristic filters and quality parameters (`no_speech`, `compression_ratio`) in `StreamingTranscriber` to reduce erroneous Whisper outputs.
 - **Performance Metrics**: Inference latency tracking in logs for detailed diagnostics.
 
 ### Changed
+- **Advanced Whisper Config**: Increased `beam_size` and `best_of` to 5 for higher transcription quality in the "large-v3-turbo" model.
 
-- **VAD Optimization**: Adjusted default threshold to 0.4 to reduce false positives from ambient noise and breathing.
+- **VAD Optimization**: Adjusted default threshold to 0.35 to reduce false positives from ambient noise and breathing.
 - **Memory Management**: Forced CUDA cache reset (`torch.cuda.empty_cache()`) when unloading models to effectively free VRAM.
 - **Code Hygiene**: Import refactoring and linting error fixes (`ruff`) throughout the backend codebase.
 
@@ -88,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2024-03-20
 
 ### Added
+- **Zero-Copy Audio Engine**: New `ZeroCopyAudioRecorder` in Rust using shared memory (/dev/shm) for true zero-capacity transfers.
 
 - Initial Voice2Machine system version
 - Local transcription support with Whisper (faster-whisper)

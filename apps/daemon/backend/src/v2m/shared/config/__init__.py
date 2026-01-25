@@ -79,7 +79,7 @@ class VadParametersConfig(BaseModel):
 
     Atributos:
         threshold: Umbral de probabilidad (0.0 a 1.0) para clasificar un segmento como habla.
-            Defecto: 0.4 (slightly higher to avoid breathing noise)
+            Defecto: 0.35 (SOTA 2026 - preserva vocales finales del español)
         min_speech_duration_ms: Duración mínima (ms) para ser considerado habla.
             Defecto: 250ms
         min_silence_duration_ms: Duración mínima de silencio (ms) para considerar que el habla terminó.
@@ -88,7 +88,7 @@ class VadParametersConfig(BaseModel):
             Defecto: 400ms (keeps the start/end of words)
     """
 
-    threshold: float = 0.4
+    threshold: float = 0.35
     min_speech_duration_ms: int = 250
     min_silence_duration_ms: int = 1000
     speech_pad_ms: int = 400
@@ -108,8 +108,8 @@ class WhisperConfig(BaseModel):
             Defecto: 'int8_float16'
         device_index: Índice de GPU a utilizar. Defecto: 0
         num_workers: Número de workers para procesamiento paralelo. Defecto: 4
-        beam_size: Tamaño del beam search. Defecto: 2
-        best_of: Número de candidatos a considerar. Defecto: 2
+        beam_size: Tamaño del beam search. Defecto: 5 (SOTA 2026 - óptimo para large-v3-turbo)
+        best_of: Número de candidatos a considerar. Defecto: 5
         temperature: Temperatura de muestreo (0.0 para determinístico).
             Defecto: 0.0
         vad_filter: Activar filtrado VAD. Defecto: True
@@ -129,8 +129,8 @@ class WhisperConfig(BaseModel):
     compute_type: str = "int8_float16"
     device_index: int = 0
     num_workers: int = 4
-    beam_size: int = 2
-    best_of: int = 2
+    beam_size: int = 5
+    best_of: int = 5
     temperature: float | list[float] = 0.0
     vad_filter: bool = True
     audio_device_index: int | None = None

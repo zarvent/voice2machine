@@ -23,7 +23,7 @@ class TestAudioRecorderRegressions(unittest.TestCase):
         # Force Python fallback path for these tests (tests are designed for Python impl)
         self.patcher = patch("v2m.features.audio.recorder.HAS_RUST_ENGINE", False)
         self.patcher.start()
-        self.recorder = AudioRecorder()
+        self.recorder = AudioRecorder(mode="fallback")
 
     def tearDown(self):
         self.patcher.stop()
@@ -74,7 +74,7 @@ class TestAudioRecorderRegressions(unittest.TestCase):
             - El array retornado por `stop()` no debe cambiar si se modifica el buffer interno.
         """
         # Arrange
-        recorder = AudioRecorder(sample_rate=16000, max_duration_sec=1)
+        recorder = AudioRecorder(mode="fallback", sample_rate=16000, max_duration_sec=1)
 
         # Simular estado de grabación manual para evitar depender de sounddevice real
         recorder._recording = True

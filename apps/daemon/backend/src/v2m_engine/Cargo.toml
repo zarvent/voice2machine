@@ -25,6 +25,10 @@ tokio = { version = "1.37", features = ["full"] }
 # VAD: Detección de Actividad de Voz WebRTC (estado del arte 2026)
 webrtc-vad = "0.4"
 
+# Zero-Copy Bridge: Shared Memory + Lock-Free Channels (SOTA 2026)
+shared_memory = "0.12"  # POSIX /dev/shm wrapper
+flume = "0.11"          # Lock-free MPSC channels (crossbeam-channel alternative)
+
 # Monitoreo GPU: NVIDIA Management Library (opcional en tiempo de ejecución)
 nvml-wrapper = { version = "0.10", optional = true }
 

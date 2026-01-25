@@ -5,6 +5,7 @@
 //! - Re-muestreo: Interpolación Sinc de banda limitada (rubato 0.16).
 //! - VAD: Detección de Actividad de Voz WebRTC.
 //! - Monitoreo: Llamadas al sistema nativas (sysinfo 0.33).
+//! - Zero-Copy Bridge: Shared Memory + Lock-Free Channels (SOTA 2026).
 
 use log::{error, info, warn};
 use numpy::PyArray1;
@@ -17,8 +18,10 @@ use rubato::{
     Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
 };
 use sysinfo::System;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, atomic::{AtomicUsize, AtomicBool, Ordering}};
 use tokio::sync::Notify;
+use shared_memory::{Shmem, ShmemConf};
+use flume::{Sender, Receiver};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
@@ -28,6 +31,15 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
 type RingProducer = ringbuf::HeapProd<f32>;
 type RingConsumer = ringbuf::HeapCons<f32>;
+
+/// Comandos para el canal lock-free de control del AudioRecorder.
+#[derive(Debug, Clone)]
+enum AudioCommand {
+    /// Notifica que hay datos nuevos disponibles
+    DataAvailable(usize),
+    /// Notifica que la grabación se detuvo
+    Stopped,
+}
 
 /// Implementación de AudioRecorder en Rust usando Búfer Circular Lock-Free.
 ///
@@ -255,6 +267,497 @@ impl AudioRecorder {
         };
 
         // PyO3 0.20: usar PyArray1::from_vec
+        Ok(PyArray1::from_vec(py, final_data))
+    }
+}
+
+// ============================================================================
+// SHARED AUDIO BUFFER - Zero-Copy Bridge via /dev/shm (SOTA 2026)
+// ============================================================================
+
+/// Wrapper thread-safe para puntero a memoria compartida.
+///
+/// Marcamos como Send+Sync porque el acceso a la memoria compartida es atómico
+/// y controlado vía AtomicUsize para write_pos.
+struct SharedMemPtr {
+    ptr: *mut f32,
+    capacity: usize,
+}
+
+// SAFETY: El puntero apunta a memoria compartida mapeada que es válida durante
+// la vida del SharedAudioBuffer. Los accesos están sincronizados via AtomicUsize.
+unsafe impl Send for SharedMemPtr {}
+unsafe impl Sync for SharedMemPtr {}
+
+/// Buffer de audio en memoria compartida para transferencia zero-copy Rust→Python.
+///
+/// Utiliza POSIX Shared Memory (/dev/shm en Linux) para permitir que Python
+/// acceda directamente a los datos de audio sin copias intermedias:
+///
+/// ```python
+/// # Python side: acceso zero-copy
+/// import numpy as np
+/// from multiprocessing import shared_memory
+///
+/// shm = shared_memory.SharedMemory(name=recorder.get_shm_name())
+/// audio = np.frombuffer(shm.buf[:recorder.get_data_len() * 4], dtype=np.float32)
+/// ```
+///
+/// Arquitectura:
+/// - Rust escribe audio al buffer compartido (lock-free)
+/// - Python lee directamente vía `np.frombuffer` (zero-copy)
+/// - Un AtomicUsize indica cuántos samples válidos hay
+#[pyclass(unsendable)]
+pub struct SharedAudioBuffer {
+    shmem: Option<Shmem>,
+    shm_name: String,
+    capacity: usize,
+    write_pos: Arc<AtomicUsize>,
+    is_finalized: Arc<AtomicBool>,
+}
+
+/// Datos compartidos entre el callback de audio y el struct principal.
+/// Separado para permitir Send+Sync en closure de cpal.
+struct SharedBufferState {
+    mem_ptr: SharedMemPtr,
+    write_pos: Arc<AtomicUsize>,
+    is_finalized: Arc<AtomicBool>,
+}
+
+// SAFETY: Los campos internos son thread-safe
+unsafe impl Send for SharedBufferState {}
+unsafe impl Sync for SharedBufferState {}
+
+impl SharedBufferState {
+    fn write_samples(&self, samples: &[f32]) -> usize {
+        if self.is_finalized.load(Ordering::Acquire) {
+            return 0;
+        }
+
+        let current_pos = self.write_pos.load(Ordering::Acquire);
+        let samples_to_write = samples.len().min(self.mem_ptr.capacity - current_pos);
+
+        if samples_to_write == 0 {
+            return 0;
+        }
+
+        // SAFETY: El puntero es válido y estamos dentro de los límites
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                samples.as_ptr(),
+                self.mem_ptr.ptr.add(current_pos),
+                samples_to_write,
+            );
+        }
+
+        self.write_pos.fetch_add(samples_to_write, Ordering::Release);
+        samples_to_write
+    }
+}
+
+impl SharedAudioBuffer {
+    fn new_internal(capacity_samples: usize) -> PyResult<Self> {
+        // Generar nombre único para el segment de memoria compartida
+        let shm_name = format!("v2m_audio_{}", std::process::id());
+        let byte_size = capacity_samples * std::mem::size_of::<f32>();
+
+        let shmem = ShmemConf::new()
+            .size(byte_size)
+            .os_id(&shm_name)
+            .create()
+            .map_err(|e| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Fallo al crear memoria compartida '{}': {}",
+                    shm_name, e
+                ))
+            })?;
+
+        info!(
+            "SharedAudioBuffer creado: name={}, capacity={} samples ({} bytes)",
+            shm_name, capacity_samples, byte_size
+        );
+
+        Ok(Self {
+            shmem: Some(shmem),
+            shm_name,
+            capacity: capacity_samples,
+            write_pos: Arc::new(AtomicUsize::new(0)),
+            is_finalized: Arc::new(AtomicBool::new(false)),
+        })
+    }
+
+    /// Crea el estado compartido para el callback de audio.
+    fn create_shared_state(&self) -> Option<SharedBufferState> {
+        self.shmem.as_ref().map(|shmem| SharedBufferState {
+            mem_ptr: SharedMemPtr {
+                ptr: shmem.as_ptr() as *mut f32,
+                capacity: self.capacity,
+            },
+            write_pos: self.write_pos.clone(),
+            is_finalized: self.is_finalized.clone(),
+        })
+    }
+
+    /// Reinicia el buffer para una nueva grabación.
+    fn reset(&self) {
+        self.write_pos.store(0, Ordering::Release);
+        self.is_finalized.store(false, Ordering::Release);
+    }
+
+    /// Marca el buffer como finalizado (grabación detenida).
+    fn finalize(&self) {
+        self.is_finalized.store(true, Ordering::Release);
+    }
+}
+
+#[pymethods]
+impl SharedAudioBuffer {
+    /// Crea un nuevo buffer de audio en memoria compartida.
+    ///
+    /// Args:
+    ///     capacity_samples: Número máximo de samples float32 a almacenar.
+    ///
+    /// Returns:
+    ///     SharedAudioBuffer con memoria asignada en /dev/shm
+    #[new]
+    #[pyo3(signature = (capacity_samples=9600000))]
+    fn new(capacity_samples: usize) -> PyResult<Self> {
+        let _ = pyo3_log::try_init();
+        Self::new_internal(capacity_samples)
+    }
+
+    /// Obtiene el nombre del segmento de memoria compartida.
+    ///
+    /// Python puede usar este nombre con `multiprocessing.shared_memory.SharedMemory(name=...)`.
+    fn get_shm_name(&self) -> &str {
+        &self.shm_name
+    }
+
+    /// Obtiene el número actual de samples válidos en el buffer.
+    fn get_data_len(&self) -> usize {
+        self.write_pos.load(Ordering::Acquire)
+    }
+
+    /// Obtiene la capacidad total del buffer en samples.
+    fn get_capacity(&self) -> usize {
+        self.capacity
+    }
+
+    /// Verifica si la grabación está finalizada.
+    fn is_finalized(&self) -> bool {
+        self.is_finalized.load(Ordering::Acquire)
+    }
+
+    /// Lee datos del buffer como NumPy array (fallback con copia si es necesario).
+    ///
+    /// Preferir acceso directo vía `get_shm_name()` + `np.frombuffer` para zero-copy.
+    fn read_as_numpy<'py>(&self, py: Python<'py>) -> PyResult<&'py PyArray1<f32>> {
+        let shmem = match &self.shmem {
+            Some(s) => s,
+            None => return Ok(PyArray1::from_vec(py, Vec::new())),
+        };
+
+        let data_len = self.write_pos.load(Ordering::Acquire);
+        if data_len == 0 {
+            return Ok(PyArray1::from_vec(py, Vec::new()));
+        }
+
+        // Copia los datos (fallback seguro)
+        let ptr = shmem.as_ptr() as *const f32;
+        let data: Vec<f32> = unsafe {
+            std::slice::from_raw_parts(ptr, data_len).to_vec()
+        };
+
+        Ok(PyArray1::from_vec(py, data))
+    }
+}
+
+impl Drop for SharedAudioBuffer {
+    fn drop(&mut self) {
+        if self.shmem.is_some() {
+            info!("SharedAudioBuffer '{}' liberado", self.shm_name);
+        }
+    }
+}
+
+// ============================================================================
+// ZERO-COPY AUDIO RECORDER - SharedMemory + Lock-Free Channel (SOTA 2026)
+// ============================================================================
+
+/// Grabador de audio con transferencia zero-copy vía memoria compartida.
+///
+/// Mejoras sobre `AudioRecorder`:
+/// - **Zero-Copy**: Audio almacenado en /dev/shm, accesible directamente por Python.
+/// - **Lock-Free Commands**: Canal `flume` para notificaciones sin bloqueo del GIL.
+/// - **Atomic State**: Contadores atómicos para lectura no bloqueante.
+///
+/// Uso recomendado desde Python:
+/// ```python
+/// recorder = ZeroCopyAudioRecorder()
+/// recorder.start()
+///
+/// # Polling loop (o await para async)
+/// while recorder.is_recording():
+///     await recorder.wait_for_data()
+///     # Acceso zero-copy
+///     shm = shared_memory.SharedMemory(name=recorder.get_shm_name())
+///     chunk_len = recorder.get_available_samples()
+///     audio = np.frombuffer(shm.buf[:chunk_len * 4], dtype=np.float32)
+///
+/// # Al finalizar
+/// final_audio = recorder.stop()  # o usar zero-copy
+/// ```
+#[pyclass(unsendable)]
+pub struct ZeroCopyAudioRecorder {
+    stream: Option<cpal::Stream>,
+    shared_buffer: SharedAudioBuffer,
+    command_tx: Sender<AudioCommand>,
+    command_rx: Receiver<AudioCommand>,
+    notify: Arc<Notify>,
+    requested_sample_rate: u32,
+    device_sample_rate: u32,
+    channels: u16,
+    is_recording: bool,
+}
+
+#[pymethods]
+impl ZeroCopyAudioRecorder {
+    #[new]
+    #[pyo3(signature = (sample_rate=16000, channels=1, max_duration_sec=600))]
+    fn new(sample_rate: u32, channels: u16, max_duration_sec: u32) -> PyResult<Self> {
+        let _ = pyo3_log::try_init();
+
+        let capacity = (sample_rate * max_duration_sec) as usize;
+        let shared_buffer = SharedAudioBuffer::new_internal(capacity)?;
+        let (command_tx, command_rx) = flume::unbounded();
+
+        Ok(ZeroCopyAudioRecorder {
+            stream: None,
+            shared_buffer,
+            command_tx,
+            command_rx,
+            notify: Arc::new(Notify::new()),
+            requested_sample_rate: sample_rate,
+            device_sample_rate: 0,
+            channels,
+            is_recording: false,
+        })
+    }
+
+    fn start(&mut self) -> PyResult<()> {
+        if self.is_recording {
+            return Err(pyo3::exceptions::PyRuntimeError::new_err(
+                "Grabación ya en curso",
+            ));
+        }
+
+        // Reset del buffer compartido
+        self.shared_buffer.reset();
+
+        let host = cpal::default_host();
+        let device = match host.default_input_device() {
+            Some(d) => d,
+            None => {
+                return Err(pyo3::exceptions::PyOSError::new_err(
+                    "No hay dispositivo de entrada disponible",
+                ))
+            }
+        };
+
+        let supported_configs = match device.supported_input_configs() {
+            Ok(c) => c,
+            Err(e) => {
+                return Err(pyo3::exceptions::PyOSError::new_err(format!(
+                    "Fallo al consultar configuraciones del dispositivo: {}",
+                    e
+                )))
+            }
+        };
+
+        let best_config_range = supported_configs
+            .into_iter()
+            .filter(|c| c.channels() == self.channels)
+            .max_by_key(|c| c.max_sample_rate());
+
+        let config: cpal::StreamConfig = match best_config_range {
+            Some(c) => {
+                let req_rate = cpal::SampleRate(self.requested_sample_rate);
+                let target_rate =
+                    if c.min_sample_rate() <= req_rate && c.max_sample_rate() >= req_rate {
+                        req_rate
+                    } else {
+                        c.max_sample_rate()
+                    };
+
+                self.device_sample_rate = target_rate.0;
+                c.with_sample_rate(target_rate).into()
+            }
+            None => {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "No se encontró configuración soportada para {} canales",
+                    self.channels
+                )));
+            }
+        };
+
+        info!(
+            "ZeroCopyAudioRecorder iniciando: Solicitado={}Hz, Dispositivo={}Hz",
+            self.requested_sample_rate, self.device_sample_rate
+        );
+
+        // Crear estado compartido thread-safe para el callback
+        let shared_state = self.shared_buffer.create_shared_state()
+            .ok_or_else(|| pyo3::exceptions::PyRuntimeError::new_err("SharedMemory no inicializada"))?;
+
+        let command_tx = self.command_tx.clone();
+        let notify = self.notify.clone();
+
+        let err_fn = move |err| {
+            error!("Error en flujo de audio: {}", err);
+        };
+
+        let stream = device
+            .build_input_stream(
+                &config,
+                move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                    let written = shared_state.write_samples(data);
+                    if written > 0 {
+                        // Notificación lock-free vía flume
+                        let _ = command_tx.try_send(AudioCommand::DataAvailable(written));
+                        notify.notify_one();
+                    }
+                },
+                err_fn,
+                None,
+            )
+            .map_err(|e| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Fallo al construir flujo de entrada: {}",
+                    e
+                ))
+            })?;
+
+        stream.play().map_err(|e| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("Fallo al iniciar flujo: {}", e))
+        })?;
+
+        self.stream = Some(stream);
+        self.is_recording = true;
+
+        info!("ZeroCopyAudioRecorder: grabación iniciada (shm={})", self.shared_buffer.shm_name);
+        Ok(())
+    }
+
+    /// Obtiene el nombre del segmento de memoria compartida.
+    fn get_shm_name(&self) -> &str {
+        &self.shared_buffer.shm_name
+    }
+
+    /// Obtiene el número de samples disponibles en el buffer.
+    fn get_available_samples(&self) -> usize {
+        self.shared_buffer.write_pos.load(Ordering::Acquire)
+    }
+
+    /// Verifica si está grabando actualmente.
+    fn is_recording(&self) -> bool {
+        self.is_recording
+    }
+
+    /// Espera de forma asíncrona a que haya nuevos datos (usa polling simple).
+    fn wait_for_data<'py>(&self, py: Python<'py>) -> PyResult<&'py PyAny> {
+        let notify = self.notify.clone();
+        let write_pos = self.shared_buffer.write_pos.clone();
+        let is_finalized = self.shared_buffer.is_finalized.clone();
+
+        pyo3_asyncio::tokio::future_into_py(py, async move {
+            loop {
+                if is_finalized.load(Ordering::Acquire) {
+                    return Err(pyo3::exceptions::PyRuntimeError::new_err("Stream closed"));
+                }
+
+                if write_pos.load(Ordering::Acquire) > 0 {
+                    return Ok(());
+                }
+
+                notify.notified().await;
+            }
+        })
+    }
+
+    /// Lee chunk de datos como NumPy array (copia necesaria para re-muestreo).
+    fn read_chunk<'py>(&self, py: Python<'py>) -> PyResult<&'py PyArray1<f32>> {
+        // Para streaming, usamos acceso directo vía shm_name + np.frombuffer en Python
+        // Este método es fallback con copia
+        self.shared_buffer.read_as_numpy(py)
+    }
+
+    /// Detiene la grabación y devuelve el audio re-muestreado.
+    fn stop<'py>(&mut self, py: Python<'py>) -> PyResult<&'py PyArray1<f32>> {
+        if !self.is_recording {
+            return Err(pyo3::exceptions::PyRuntimeError::new_err("No se está grabando"));
+        }
+
+        self.stream = None;
+        self.is_recording = false;
+        self.shared_buffer.finalize();
+
+        // Notificar cierre vía canal
+        let _ = self.command_tx.try_send(AudioCommand::Stopped);
+
+        // Leer datos del buffer compartido
+        let shmem = match &self.shared_buffer.shmem {
+            Some(s) => s,
+            None => return Ok(PyArray1::from_vec(py, Vec::new())),
+        };
+
+        let data_len = self.shared_buffer.write_pos.load(Ordering::Acquire);
+        if data_len == 0 {
+            return Ok(PyArray1::from_vec(py, Vec::new()));
+        }
+
+        let ptr = shmem.as_ptr() as *const f32;
+        let raw_data: Vec<f32> = unsafe {
+            std::slice::from_raw_parts(ptr, data_len).to_vec()
+        };
+
+        // Re-muestrear si es necesario
+        let final_data = if self.device_sample_rate != self.requested_sample_rate && !raw_data.is_empty() {
+            info!(
+                "Re-muestrando de {}Hz a {}Hz ({} samples)",
+                self.device_sample_rate, self.requested_sample_rate, raw_data.len()
+            );
+
+            let params = SincInterpolationParameters {
+                sinc_len: 256,
+                f_cutoff: 0.95,
+                interpolation: SincInterpolationType::Linear,
+                oversampling_factor: 256,
+                window: WindowFunction::BlackmanHarris2,
+            };
+
+            let f_ratio = self.requested_sample_rate as f64 / self.device_sample_rate as f64;
+            let mut resampler = SincFixedIn::<f32>::new(
+                f_ratio,
+                256.0,
+                params,
+                raw_data.len(),
+                1,
+            )
+            .map_err(|e| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Fallo init re-muestreador: {}", e))
+            })?;
+
+            let waves = vec![raw_data];
+            let resampled_waves = resampler.process(&waves, None).map_err(|e| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Fallo al re-muestrear: {}", e))
+            })?;
+
+            resampled_waves[0].clone()
+        } else {
+            raw_data
+        };
+
+        info!("ZeroCopyAudioRecorder: grabación detenida ({} samples finales)", final_data.len());
         Ok(PyArray1::from_vec(py, final_data))
     }
 }
@@ -548,6 +1051,8 @@ impl SystemMonitor {
 #[pymodule]
 fn v2m_engine(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<AudioRecorder>()?;
+    m.add_class::<SharedAudioBuffer>()?;
+    m.add_class::<ZeroCopyAudioRecorder>()?;
     m.add_class::<VoiceActivityDetector>()?;
     m.add_class::<SystemMonitor>()?;
     Ok(())
