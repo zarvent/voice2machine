@@ -14,13 +14,17 @@ if TYPE_CHECKING:
 
 
 class LLMWorkflow:
+    """Orquestador para el refinamiento y traducción de texto mediante LLM."""
+
     def __init__(self) -> None:
+        """Inicializa el workflow de LLM."""
         self._llm_service: Any | None = None
         self._clipboard: LinuxClipboardAdapter | None = None
         self._notifications: LinuxNotificationService | None = None
 
     @property
     def clipboard(self):
+        """Adaptador de portapapeles (Linux)."""
         if self._clipboard is None:
             from v2m.features.desktop.linux_adapters import LinuxClipboardAdapter
 
@@ -29,6 +33,7 @@ class LLMWorkflow:
 
     @property
     def notifications(self):
+        """Servicio de notificaciones del sistema."""
         if self._notifications is None:
             from v2m.features.desktop.notification_service import LinuxNotificationService
 
@@ -37,6 +42,7 @@ class LLMWorkflow:
 
     @property
     def llm_service(self) -> Any:
+        """Servicio LLM configurado (Gemini, Ollama o Local)."""
         if self._llm_service is None:
             backend = config.llm.backend
             if backend == "gemini":
@@ -55,6 +61,7 @@ class LLMWorkflow:
         return self._llm_service
 
     async def process_text(self, text: str) -> "LLMResponse":
+        """Refina el texto usando el LLM y lo copia al portapapeles."""
         from v2m.api.schemas import LLMResponse
 
         backend_name = config.llm.backend
@@ -73,6 +80,7 @@ class LLMWorkflow:
             return LLMResponse(text=text, backend=f"{backend_name} (fallback)")
 
     async def translate_text(self, text: str, target_lang: str) -> "LLMResponse":
+        """Traduce el texto al idioma especificado usando el LLM."""
         from v2m.api.schemas import LLMResponse
 
         backend_name = config.llm.backend

@@ -21,20 +21,39 @@ if TYPE_CHECKING:
 
 
 class BroadcastFn(Protocol):
-    async def __call__(self, event_type: str, data: dict[str, Any]) -> None: ...
+    """Protocolo para funciones que emiten eventos a través de WebSocket."""
+
+    async def __call__(self, event_type: str, data: dict[str, Any]) -> None:
+        """Emite un evento con su tipo y datos asociados."""
+        ...
 
 
 class WebSocketSessionAdapter:
+    """Adaptador que envuelve una función de broadcast para emitir eventos."""
+
     def __init__(self, broadcast_fn: BroadcastFn | None = None) -> None:
+        """Inicializa el adaptador.
+
+        Args:
+            broadcast_fn: Función opcional para emitir eventos.
+        """
         self._broadcast_fn = broadcast_fn
 
     async def emit_event(self, event_type: str, data: dict[str, Any]) -> None:
+        """Emite un evento usando la función de broadcast configurada."""
         if self._broadcast_fn:
             await self._broadcast_fn(event_type, data)
 
 
 class RecordingWorkflow:
+    """Orquestador para el flujo de grabación y transcripción asíncrona."""
+
     def __init__(self, broadcast_fn: BroadcastFn | None = None) -> None:
+        """Inicializa el workflow.
+
+        Args:
+            broadcast_fn: Función opcional para emitir actualizaciones de estado.
+        """
         self._is_recording = False
         self._model_loaded = False
         self._broadcast_fn = broadcast_fn

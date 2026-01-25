@@ -26,6 +26,7 @@ def _safe_log(level: int, msg: str) -> None:
 
 class PersistentWhisperWorker:
     """Gestiona una instancia persistente del modelo Whisper en un hilo dedicado.
+
     Implementa política de 'keep-warm' por defecto, liberando recursos solo bajo presión de memoria.
     """
 
@@ -38,6 +39,16 @@ class PersistentWhisperWorker:
         num_workers: int = 1,
         keep_warm: bool = True,
     ):
+        """Inicializa el trabajador persistente de Whisper.
+
+        Args:
+            model_size: Tamaño del modelo Whisper (tiny, base, etc.).
+            device: Dispositivo de cómputo (cuda o cpu).
+            compute_type: Precisión de cómputo (float16, int8, etc.).
+            device_index: Índice de la GPU si se usa cuda.
+            num_workers: Número de hilos internos de Whisper.
+            keep_warm: Si se debe mantener el modelo en memoria tras la inferencia.
+        """
         self.model_size = model_size
         self.device = device
         self.compute_type = compute_type
@@ -80,6 +91,7 @@ class PersistentWhisperWorker:
 
     async def run_inference(self, func, *args, **kwargs):
         """Ejecuta una función de inferencia (que usa el modelo) en el executor dedicado.
+
         La función `func` debe aceptar `model` como primer argumento.
         Incluye métricas de latencia para diagnóstico.
         """

@@ -64,6 +64,13 @@ class StreamingTranscriber:
         session_manager: SessionManager,
         recorder: AudioRecorder,
     ):
+        """Inicializa el transcriptor de streaming.
+
+        Args:
+            worker: Trabajador persistente de Whisper para inferencia.
+            session_manager: Gestor de sesiones para emitir eventos.
+            recorder: Grabador de audio para capturar chunks.
+        """
         self.worker = worker
         self.session_manager = session_manager
         self.recorder = recorder
