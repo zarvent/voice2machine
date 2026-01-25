@@ -2041,6 +2041,28 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#planned" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2069,7 +2091,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_2" class="md-nav__link">
+  <a href="#added_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2250,6 +2272,28 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#planned" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2278,7 +2322,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_2" class="md-nav__link">
+  <a href="#added_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2372,6 +2416,17 @@ y este proyecto se adhiere a <a href="https://semver.org/lang/es/">Semantic Vers
 <li><strong>System Monitor</strong>: Telemetría de sistema eliminada por simplificación del core.</li>
 </ul>
 <h2 id="unreleased">[Unreleased]<a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h3 id="added_2">Added<a class="headerlink" href="#added_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Detección de Alucinaciones</strong>: Filtros heurísticos y parámetros de calidad (<code>no_speech</code>, <code>compression_ratio</code>) en <code>StreamingTranscriber</code> para reducir salidas erróneas en Whisper.</li>
+<li><strong>Métricas de Rendimiento</strong>: Seguimiento de latencia de inferencia en logs para diagnóstico detallado.</li>
+</ul>
+<h3 id="changed_2">Changed<a class="headerlink" href="#changed_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Optimización de VAD</strong>: Ajuste del umbral por defecto a 0.4 para reducir falsos positivos por ruido ambiental y respiración.</li>
+<li><strong>Gestión de Memoria</strong>: Reinicio forzado de la caché de CUDA (<code>torch.cuda.empty_cache()</code>) al descargar modelos para liberar VRAM de forma efectiva.</li>
+<li><strong>Higiene de Código</strong>: Refactorización de imports y corrección de errores de linting (<code>ruff</code>) en toda la base de código del backend.</li>
+</ul>
 <h3 id="planned">Planned<a class="headerlink" href="#planned" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Soporte para múltiples idiomas de transcripción simultáneos</li>
@@ -2379,7 +2434,7 @@ y este proyecto se adhiere a <a href="https://semver.org/lang/es/">Semantic Vers
 <li>Integración con más proveedores LLM</li>
 </ul>
 <h2 id="010-2024-03-20">[0.1.0] - 2024-03-20<a class="headerlink" href="#010-2024-03-20" title="Permanent link">&para;</a></h2>
-<h3 id="added_2">Added<a class="headerlink" href="#added_2" title="Permanent link">&para;</a></h3>
+<h3 id="added_3">Added<a class="headerlink" href="#added_3" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Versión inicial del sistema Voice2Machine</li>
 <li>Soporte para transcripción local con Whisper (faster-whisper)</li>

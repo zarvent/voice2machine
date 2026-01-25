@@ -2045,6 +2045,28 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#planned" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2073,7 +2095,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_2" class="md-nav__link">
+  <a href="#added_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2254,6 +2276,28 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#planned" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2282,7 +2326,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_2" class="md-nav__link">
+  <a href="#added_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2379,6 +2423,17 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>Memory leaks in WebSocket connections</li>
 </ul>
 <h2 id="unreleased">[Unreleased]<a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h3 id="added_2">Added<a class="headerlink" href="#added_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Hallucination Detection</strong>: Heuristic filters and quality parameters (<code>no_speech</code>, <code>compression_ratio</code>) in <code>StreamingTranscriber</code> to reduce erroneous Whisper outputs.</li>
+<li><strong>Performance Metrics</strong>: Inference latency tracking in logs for detailed diagnostics.</li>
+</ul>
+<h3 id="changed_2">Changed<a class="headerlink" href="#changed_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>VAD Optimization</strong>: Adjusted default threshold to 0.4 to reduce false positives from ambient noise and breathing.</li>
+<li><strong>Memory Management</strong>: Forced CUDA cache reset (<code>torch.cuda.empty_cache()</code>) when unloading models to effectively free VRAM.</li>
+<li><strong>Code Hygiene</strong>: Import refactoring and linting error fixes (<code>ruff</code>) throughout the backend codebase.</li>
+</ul>
 <h3 id="planned">Planned<a class="headerlink" href="#planned" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Support for multiple simultaneous transcription languages</li>
@@ -2386,7 +2441,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li>Integration with more LLM providers</li>
 </ul>
 <h2 id="010-2024-03-20">[0.1.0] - 2024-03-20<a class="headerlink" href="#010-2024-03-20" title="Permanent link">&para;</a></h2>
-<h3 id="added_2">Added<a class="headerlink" href="#added_2" title="Permanent link">&para;</a></h3>
+<h3 id="added_3">Added<a class="headerlink" href="#added_3" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Initial Voice2Machine system version</li>
 <li>Local transcription support with Whisper (faster-whisper)</li>

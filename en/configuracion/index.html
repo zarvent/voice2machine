@@ -678,6 +678,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#parametros-de-calidad-y-anti-alucinacion-sota-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parámetros de Calidad y Anti-Alucinación (SOTA 2026)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2123,6 +2134,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#parametros-de-calidad-y-anti-alucinacion-sota-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parámetros de Calidad y Anti-Alucinación (SOTA 2026)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2299,8 +2321,39 @@
 <p>El sistema utiliza <strong>Silero VAD</strong> (versión Rust en <code>v2m_engine</code>) para filtrar silencio antes de invocar a Whisper, ahorrando GPU.</p>
 <ul>
 <li><strong><code>vad_filter</code></strong> (<code>true</code>): Activa el pre-filtrado.</li>
-<li><strong><code>vad_parameters</code></strong>: Ajuste fino de sensibilidad (umbral de silencio, duración mínima de voz).</li>
+<li><strong><code>vad_parameters</code></strong>: Ajuste fino de sensibilidad.</li>
+<li><code>threshold</code> (<code>0.4</code>): Umbral de probabilidad. Valores más altos reducen falsos positivos por ruido o respiración.</li>
+<li><code>min_speech_duration_ms</code> (<code>150</code>): Duración mínima para considerar un segmento como voz.</li>
+<li><code>min_silence_duration_ms</code> (<code>1000</code>): Tiempo de silencio para cortar un segmento (ajustado para español).</li>
 </ul>
+<h3 id="parametros-de-calidad-y-anti-alucinacion-sota-2026">Parámetros de Calidad y Anti-Alucinación (SOTA 2026)<a class="headerlink" href="#parametros-de-calidad-y-anti-alucinacion-sota-2026" title="Permanent link">&para;</a></h3>
+<p>Para evitar que Whisper genere texto repetitivo o "alucine" en entornos ruidosos, se incluyen parámetros de control de calidad:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parámetro</th>
+<th style="text-align: left;">Default</th>
+<th style="text-align: left;">Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>no_speech_threshold</code></td>
+<td style="text-align: left;"><code>0.6</code></td>
+<td style="text-align: left;">Filtra segmentos con alta probabilidad de no contener habla.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>compression_ratio_threshold</code></td>
+<td style="text-align: left;"><code>2.4</code></td>
+<td style="text-align: left;">Detecta y descarta transcripciones altamente repetitivas (alucinaciones).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>log_prob_threshold</code></td>
+<td style="text-align: left;"><code>-1.0</code></td>
+<td style="text-align: left;">Umbral de confianza del modelo. Filtra transcripciones de baja probabilidad.</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="2-servicios-llm-llm">2. Servicios LLM (<code>[llm]</code>)<a class="headerlink" href="#2-servicios-llm-llm" title="Permanent link">&para;</a></h2>
 <p>Voice2Machine implementa un patrón de <strong>Proveedor</strong> para soportar múltiples backends de IA para el refinado de texto.</p>
@@ -2382,7 +2435,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="24 de enero de 2026 23:55:54 UTC"><span class="timeago" datetime="2026-01-24T23:55:54+00:00" locale="es"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="24 de enero de 2026 23:55:54 UTC">2026-01-24</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="25 de enero de 2026 16:03:05 UTC"><span class="timeago" datetime="2026-01-25T16:03:05+00:00" locale="es"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="25 de enero de 2026 16:03:05 UTC">2026-01-25</span>
   </span>
 
     
