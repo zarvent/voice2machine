@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voice2machine"
-version = "0.3.0"
+version = "0.4.0"
 description = "Interfaz de Voz a Máquina de última generación (SOTA)"
 requires-python = ">=3.12"
 dependencies = [

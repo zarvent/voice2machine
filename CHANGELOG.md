@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-01-25
+
 ### Added
 - **Zero-Copy Audio Engine**: New `ZeroCopyAudioRecorder` in Rust using shared memory (/dev/shm) for true zero-capacity transfers.
 - **Hallucination Detection**: Heuristic filters and quality parameters (`no_speech`, `compression_ratio`) in `StreamingTranscriber` to reduce erroneous Whisper outputs.
