@@ -56,7 +56,8 @@ python -m v2m.main toggle       # Send toggle command
 | Linting        | Ruff (SOTA 2026)                                      |
 | Testing        | Pytest + `pytest-asyncio`                             |
 | Audio          | Rust `v2m_engine` (primary), `sounddevice` (fallback) |
-| ML             | `faster-whisper`, Google GenAI (Gemini)               |
+| Voice Activity | **Silero VAD (ONNX)**                                 |
+| ML             | `faster-whisper`, Google GenAI, Ollama                |
 
 ---
 
@@ -67,9 +68,9 @@ src/v2m/
 ├── api/                 # FastAPI (app, routes, schemas)
 ├── main.py              # Entry point (uvicorn runner)
 ├── orchestration/       # Business Workflows (Recording, LLM)
-├── features/            # Domain logic (audio, llm, transcription)
-├── shared/              # Foundation (config, errors, interfaces)
-└── core/                # Logging and low-level utilities
+├── features/            # Domain logic (audio, llm, transcr., shared mem)
+├── shared/              # Foundation (logging, config, errors, interfaces)
+└── v2m_engine/          # Rust core (Audio capture & preprocessing)
 ```
 
 **Eliminated (Refactor SOTA 2026):**
@@ -77,6 +78,7 @@ src/v2m/
 - ~~services/orchestrator.py~~ → `orchestration/` Workflows
 - ~~infrastructure/~~ → Integrated into `features/`
 - ~~api.py monolítico~~ → `api/` package
+- ~~core/~~ → Integrated into `shared/` (e.g., `shared/logging.py`)
 - ~~config.py~~ → `shared/config/`
 
 ---
@@ -99,23 +101,24 @@ src/v2m/
 
 ## Performance Architecture
 
-### Phase 1: Rust-Python Bridge
+### Phase 1: Rust-Python Bridge (Zero-Copy)
 
 - Audio capture via `v2m_engine` (lock-free ring buffer, GIL-free)
-- `wait_for_data()` is awaitable—no polling
-- Fallback to `sounddevice` if Rust not compiled
+- **Zero-Copy Memory**: Audio samples shared via `/dev/shm` (Linux Shared Memory)
+- `wait_for_data()` is awaitable—no polling overhead
 
 ### Phase 2: Persistent Model Worker
 
 - `PersistentWhisperWorker` keeps model in VRAM ("always warm")
 - GPU ops isolated in dedicated `ThreadPoolExecutor`
-- Memory pressure detection via `psutil` (>90% triggers unload)
+- Memory pressure detection via `psutil` (>90% triggers auto-unload)
 
-### Phase 3: Streaming Inference
+### Phase 3: Streaming & VAD
 
+- **Silero VAD**: High-precision speech detection (local ONNX)
 - `StreamingTranscriber` emits provisional text every 500ms
 - WebSocket broadcast at `/ws/events`
-- Events: `transcription_update`, `heartbeat`
+- Events: `transcription_update`, `heartbeat`, `vad_state`
 
 ### Phase 4: Async Hygiene
 
@@ -201,10 +204,11 @@ venv/bin/pytest tests/integration/ -v
 
 ## Security Considerations
 
-- **No telemetry**: All processing is local
-- **Secrets**: Use environment variables (`GEMINI_API_KEY`)
-- **Server**: Binds to `127.0.0.1` only (not exposed to network)
-- **Config**: Validate with Pydantic before use
+- **Privacy**: Audio processing is strictly LOCAL. No audio data ever leaves the machine.
+- **Provider Choice**: If using Gemini/Ollama Cloud, only _transcribed text_ is sent securely.
+- **Secrets**: Use environment variables (`GEMINI_API_KEY`) or `.env` file.
+- **Server**: Binds to `127.0.0.1` by default (internal isolation).
+- **Config**: Strict Pydantic V2 validation for all inputs.
 
 ---
 

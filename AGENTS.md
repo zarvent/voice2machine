@@ -34,9 +34,10 @@
 
 ## 🧠 Core Philosophy
 
-1.  **Local-First**: Privacy is supreme. Audio never leaves the machine.
-2.  **Modular**: The Daemon is the core. Any client (CLI, Scripts) connects via IPC.
-3.  **Hexagonal**: Dependencies point inwards. `Domain` knows nothing about `Infrastructure`.
+1.  **Local-First (SOTA 2026)**: User privacy is absolute. Audio capture and speech recognition (ASR) are strictly local.
+2.  **Rust/Python Hybrid**: High-performance audio engine in Rust (`v2m_engine`) with Zero-Copy throughput to Python.
+3.  **Modular Hexagonal**: Domain logic is isolated. Infrastructure (Audio, LLM, API) is swappable.
+4.  **Async-Everything**: Non-blocking I/O via FastAPI, WebSockets, and `uvloop`.
 
 ---
 
@@ -49,8 +50,9 @@
 ### Backend (Python 3.12+)
 
 - **Core**: `asyncio`, `uvloop`, `pydantic` (v2).
-- **ML/AI**: `faster-whisper` (Local ASR), `google-genai` (Gemini).
-- **Run**: `python -m v2m.main --daemon`
+- **ML/AI**: `faster-whisper` (Local ASR), `silero-vad` (ONNX), Google GenAI/Ollama.
+- **Engine**: Rust `v2m_engine` + Zero-Copy Shared Memory (`/dev/shm`).
+- **Run**: `python -m v2m.main` (Starts FastAPI + WebSockets)
 - **Test**: `pytest tests/` (Unit: `tests/unit`, Integration: `tests/integration`)
 - **Lint**: `ruff check src/ --fix` (Strict rules enabled)
 - **Format**: `ruff format src/`
@@ -105,6 +107,7 @@ apps/daemon/backend/src/v2m/
 When generating code:
 
 - **Python**: Pydantic V2, robust `ApplicationError` hierarchy.
-- **IPC**: Focus on Unix Socket protocol stability.
+- **API**: FastAPI + WebSockets (replaces legacy IPC sockets).
+- **Rust Bridge**: Ensure `v2m_engine` binary is utilized for high-perf audio paths.
 - **Hardware**: Assume **CUDA 12** context for GPU operations.
 - **Language**: All documentation and comments must be in Native Latin American Spanish.
