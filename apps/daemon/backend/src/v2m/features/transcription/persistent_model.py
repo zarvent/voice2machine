@@ -2,6 +2,7 @@ import asyncio
 import gc
 import logging
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -80,6 +81,7 @@ class PersistentWhisperWorker:
     async def run_inference(self, func, *args, **kwargs):
         """Ejecuta una función de inferencia (que usa el modelo) en el executor dedicado.
         La función `func` debe aceptar `model` como primer argumento.
+        Incluye métricas de latencia para diagnóstico.
         """
         async with self._lock:
             if self._model is None:
@@ -93,11 +95,16 @@ class PersistentWhisperWorker:
                 logger.warning("Memoria crítica detectada (>90%), procediendo con inferencia.")
 
             loop = asyncio.get_running_loop()
+            start_time = time.perf_counter()
             try:
                 # Ejecutar la función pasando el modelo
-                return await loop.run_in_executor(self._executor, lambda: func(self._model, *args, **kwargs))
+                result = await loop.run_in_executor(self._executor, lambda: func(self._model, *args, **kwargs))
+                inference_duration = time.perf_counter() - start_time
+                logger.debug(f"Inferencia completada en {inference_duration:.3f}s")
+                return result
             except Exception as e:
-                logger.error(f"Error de inferencia: {e}")
+                inference_duration = time.perf_counter() - start_time
+                logger.error(f"Error de inferencia tras {inference_duration:.3f}s: {e}")
                 raise
 
     async def transcribe(self, audio: Any, **kwargs):
@@ -156,5 +163,14 @@ class PersistentWhisperWorker:
                 logger.info("Modelo descargado.")
 
     def _gc_collect(self):
+        """Fuerza liberación de memoria incluyendo caché de CUDA."""
         gc.collect()
-        # Si hubiera torch disponible, torch.cuda.empty_cache()
+        # Limpiar caché de CUDA si está disponible
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                logger.debug("CUDA cache liberada")
+        except ImportError:
+            pass

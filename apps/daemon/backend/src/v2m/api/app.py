@@ -7,32 +7,37 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from v2m.shared.logging import logger
-from v2m.orchestration.recording_workflow import RecordingWorkflow
+
 from v2m.orchestration.llm_workflow import LLMWorkflow
+from v2m.orchestration.recording_workflow import RecordingWorkflow
+from v2m.shared.logging import logger
 
 
 class DaemonState:
     """Estado global del daemon (Singleton para la API)."""
 
     def __init__(self) -> None:
+        """Inicializa los componentes del estado global."""
         self._recording_workflow: RecordingWorkflow | None = None
         self._llm_workflow: LLMWorkflow | None = None
         self._websocket_clients: set[WebSocket] = set()
 
     @property
     def recording(self) -> RecordingWorkflow:
+        """Obtiene la instancia perezosa del workflow de grabación."""
         if self._recording_workflow is None:
             self._recording_workflow = RecordingWorkflow(broadcast_fn=self.broadcast_event)
         return self._recording_workflow
 
     @property
     def llm(self) -> LLMWorkflow:
+        """Obtiene la instancia perezosa del workflow de LLM."""
         if self._llm_workflow is None:
             self._llm_workflow = LLMWorkflow()
         return self._llm_workflow
 
     async def broadcast_event(self, event_type: str, data: dict[str, Any]) -> None:
+        """Emite un evento a todos los clientes WebSocket conectados."""
         if not self._websocket_clients:
             return
 
@@ -80,7 +85,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    from v2m.api.routes import recording, llm, status
+    from v2m.api.routes import llm, recording, status
 
     app.include_router(recording.router)
     app.include_router(llm.router)

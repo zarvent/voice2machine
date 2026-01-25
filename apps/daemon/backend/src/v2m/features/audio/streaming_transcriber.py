@@ -10,6 +10,7 @@ Este módulo implementa un sistema de transcripción streaming basado en segment
 
 import asyncio
 import logging
+import re
 import time
 from collections import deque
 
@@ -32,10 +33,10 @@ except ImportError:
     load_silero_vad = None
     _SILERO_AVAILABLE = False
 
-from v2m.shared.config import config
-from v2m.shared.interfaces import SessionManagerInterface as SessionManager
 from v2m.features.audio.recorder import AudioRecorder
 from v2m.features.transcription.persistent_model import PersistentWhisperWorker
+from v2m.shared.config import config
+from v2m.shared.interfaces import SessionManagerInterface as SessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -382,7 +383,7 @@ class StreamingTranscriber:
             is_speech = val > self._speech_threshold
             if is_speech:
                 logger.debug(f"VAD Silero: speech_prob={val:.4f} > {self._speech_threshold}")
-            
+
             return is_speech
 
         except Exception as e:
@@ -399,8 +400,45 @@ class StreamingTranscriber:
         rms = np.sqrt(np.mean(chunk**2))
         is_speech = rms > threshold
         if is_speech:
-             logger.debug(f"VAD Energy: rms={rms:.4f} > {threshold}")
+            logger.debug(f"VAD Energy: rms={rms:.4f} > {threshold}")
         return is_speech
+
+    # =========================================================================
+    # Detección de Alucinaciones y Calidad
+    # =========================================================================
+
+    def _is_hallucination(self, text: str) -> bool:
+        """Detecta patrones comunes de alucinación en transcripciones Whisper.
+
+        Whisper puede generar texto repetitivo o artefactos cuando:
+        - El audio tiene bajo SNR (ruido de fondo)
+        - Hay silencio prolongado que no fue filtrado por VAD
+        - El modelo "imagina" subtítulos u otros artefactos
+
+        Args:
+            text: Texto transcrito a verificar.
+
+        Returns:
+            True si el texto parece ser una alucinación.
+        """
+        if not text or len(text) < 20:
+            return False
+
+        # Patrones de alucinación comunes en Whisper
+        patterns = [
+            r"(.{5,})\1{3,}",  # Frases repetidas 3+ veces
+            r"^[\.\,\!\?\s]+$",  # Solo puntuación
+            r"(?i)subtítulos|subtitles|thanks for watching",  # Artefactos de YouTube
+            r"(?i)gracias por ver|suscríbete|like and subscribe",  # Más artefactos
+            r"(?i)música|♪|♫",  # Indicadores de música sin habla
+        ]
+
+        for pattern in patterns:
+            if re.search(pattern, text):
+                logger.warning(f"Alucinación detectada (patrón: {pattern[:20]}...): {text[:50]}...")
+                return True
+
+        return False
 
     # =========================================================================
     # Inferencia Whisper
@@ -459,12 +497,14 @@ class StreamingTranscriber:
     async def _infer_final(self, audio_chunks: list[np.ndarray]) -> str:
         """High-quality final inference for committed segments.
 
-        Uses configured beam search and VAD parameters.
+        Uses configured beam search, VAD parameters, and quality filters
+        (no_speech_threshold, compression_ratio_threshold) to reduce hallucinations.
         """
         if not audio_chunks:
             return ""
 
         full_audio = np.concatenate(audio_chunks)
+        audio_duration = len(full_audio) / 16000  # Duración en segundos
         whisper_config = config.transcription.whisper
         context_prompt = self._build_context_prompt()
 
@@ -473,7 +513,7 @@ class StreamingTranscriber:
             if whisper_config.vad_filter:
                 vad_params = whisper_config.vad_parameters.model_dump()
 
-            segments, _info = model.transcribe(
+            segments, info = model.transcribe(
                 full_audio,
                 language=whisper_config.language if whisper_config.language != "auto" else None,
                 task="transcribe",
@@ -484,14 +524,31 @@ class StreamingTranscriber:
                 condition_on_previous_text=False,  # Avoid conflict with manual prompt
                 vad_filter=whisper_config.vad_filter,
                 vad_parameters=vad_params,
+                # Parámetros de calidad para reducir alucinaciones
+                no_speech_threshold=getattr(whisper_config, "no_speech_threshold", 0.6),
+                compression_ratio_threshold=getattr(whisper_config, "compression_ratio_threshold", 2.4),
+                log_prob_threshold=getattr(whisper_config, "log_prob_threshold", -1.0),
             )
-            return list(segments)
+            return list(segments), info
 
         try:
-            segments = await self.worker.run_inference(_inference_func)
+            segments, info = await self.worker.run_inference(_inference_func)
             text = " ".join(s.text.strip() for s in segments if s.text)
+
+            # Diagnóstico de transcripción vacía
             if not text:
-                logger.debug("Final inference empty (VAD filtered or silence)")
+                rms_energy = np.sqrt(np.mean(full_audio**2))
+                logger.warning(
+                    f"Transcripción vacía: duration={audio_duration:.2f}s, "
+                    f"rms={rms_energy:.4f}, language_prob={getattr(info, 'language_probability', 'N/A')}"
+                )
+                return ""
+
+            # Filtrar alucinaciones
+            if self._is_hallucination(text):
+                logger.warning(f"Texto filtrado por alucinación: {text[:80]}...")
+                return ""
+
             return text
         except Exception as e:
             logger.error(f"Final inference error: {e}")

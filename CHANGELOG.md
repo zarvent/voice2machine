@@ -1,11 +1,13 @@
 > 🇪🇸 **Español**: Consulta el historial de cambios en español en [.github/locales/es/CHANGELOG.md](.github/locales/es/CHANGELOG.md).
 
 ---
+
 title: Changelog
 description: Change log for the Voice2Machine project.
 ai_context: "Versions, Change History, SemVer"
 depends_on: []
 status: stable
+
 ---
 
 # Changelog
@@ -65,6 +67,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Memory leaks in WebSocket connections
 
 ## [Unreleased]
+
+### Added
+
+- **Hallucination Detection**: Heuristic filters and quality parameters (`no_speech`, `compression_ratio`) in `StreamingTranscriber` to reduce erroneous Whisper outputs.
+- **Performance Metrics**: Inference latency tracking in logs for detailed diagnostics.
+
+### Changed
+
+- **VAD Optimization**: Adjusted default threshold to 0.4 to reduce false positives from ambient noise and breathing.
+- **Memory Management**: Forced CUDA cache reset (`torch.cuda.empty_cache()`) when unloading models to effectively free VRAM.
+- **Code Hygiene**: Import refactoring and linting error fixes (`ruff`) throughout the backend codebase.
 
 ### Planned
 

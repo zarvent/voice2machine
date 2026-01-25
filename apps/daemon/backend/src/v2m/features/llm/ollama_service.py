@@ -17,11 +17,11 @@ import httpx
 from ollama import AsyncClient
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from v2m.features.llm.schemas import CorrectionResult
 from v2m.features.llm.service import LLMService
 from v2m.shared.config import BASE_DIR, config
-from v2m.shared.logging import logger
 from v2m.shared.errors import LLMError
-from v2m.features.llm.schemas import CorrectionResult
+from v2m.shared.logging import logger
 
 
 class OllamaLLMService(LLMService):

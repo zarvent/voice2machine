@@ -1,175 +1,19 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "Restart Daemon",
-			"type": "shell",
-			"command": "./apps/daemon/backend/scripts/operations/daemon/restart_daemon.sh",
-			"problemMatcher": [],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"group": {
-				"kind": "build",
-				"isDefault": false
-			}
-		},
-		{
-			"label": "mkdocs build",
-			"type": "shell",
-			"command": "apps/daemon/backend/venv/bin/mkdocs",
-			"args": [
-				"build"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Fix relative paths",
-			"type": "shell",
-			"command": "sed -i 's|\\.\\./\\.\\./\\.github|\\.\\./\\.\\./\\.\\./\\.github|g'",
-			"args": [
-				"docs/docs/es/contribucion.md",
-				"docs/docs/en/contributing.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "mkdocs build fixed",
-			"type": "shell",
-			"command": "apps/daemon/backend/venv/bin/python -m mkdocs",
-			"args": [
-				"build"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Fix relative paths python",
-			"type": "shell",
-			"command": "apps/daemon/backend/venv/bin/python -c \"import sys, pathlib; [pathlib.Path(f).write_text(pathlib.Path(f).read_text().replace('../../.github', '../../../.github')) for f in sys.argv[1:]]\"",
-			"args": [
-				"docs/docs/es/contribucion.md",
-				"docs/docs/en/contributing.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Add spanish link to contributing",
-			"type": "shell",
-			"command": "apps/daemon/backend/venv/bin/python -c \"import sys, pathlib; p=pathlib.Path(sys.argv[1]); t=p.read_text(); p.write_text('> 🇪🇸 **Español**: Si buscas la guía en español, consulta [locales/es/CONTRIBUTING.md](locales/es/CONTRIBUTING.md).\\n\\n' + t) if 'Español' not in t else None\"",
-			"args": [
-				".github/CONTRIBUTING.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Add spanish link to code of conduct",
-			"type": "shell",
-			"command": "apps/daemon/backend/venv/bin/python -c \"import sys, pathlib; p=pathlib.Path(sys.argv[1]); t=p.read_text(); p.write_text('> 🇪🇸 **Español**: versión en español disponible en [locales/es/CODE_OF_CONDUCT.md](locales/es/CODE_OF_CONDUCT.md).\\n\\n' + t) if 'Español' not in t else None\"",
-			"args": [
-				".github/CODE_OF_CONDUCT.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Fix spanish include",
-			"type": "shell",
-			"command": "echo \"{% include \\\"../../../.github/locales/es/CONTRIBUTING.md\\\" %}\" > docs/docs/es/contribucion.md",
-			"args": [
-				"docs/docs/es/contribucion.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Fix english include",
-			"type": "shell",
-			"command": "echo \"{% include \\\"../../../.github/CONTRIBUTING.md\\\" %}\" > docs/docs/en/contributing.md",
-			"args": [
-				"docs/docs/en/contributing.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Fix spanish include direct",
-			"type": "shell",
-			"command": "/bin/echo \"{% include \\\"../../../.github/locales/es/CONTRIBUTING.md\\\" %}\" > docs/docs/es/contribucion.md",
-			"args": [
-				"docs/docs/es/contribucion.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Fix english include direct",
-			"type": "shell",
-			"command": "/bin/echo \"{% include \\\"../../../.github/CONTRIBUTING.md\\\" %}\" > docs/docs/en/contributing.md",
-			"args": [
-				"docs/docs/en/contributing.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Add spanish link to contributing sed",
-			"type": "shell",
-			"command": "sed -i '1s|^|> 🇪🇸 **Español**: Si buscas la guía en español, consulta [locales/es/CONTRIBUTING.md](locales/es/CONTRIBUTING.md).\\\\n\\\\n|' .github/CONTRIBUTING.md",
-			"args": [
-				".github/CONTRIBUTING.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Add spanish link to code of conduct sed",
-			"type": "shell",
-			"command": "sed -i '1s|^|> 🇪🇸 **Español**: versión en español disponible en [locales/es/CODE_OF_CONDUCT.md](locales/es/CODE_OF_CONDUCT.md).\\\\n\\\\n|' .github/CODE_OF_CONDUCT.md",
-			"args": [
-				".github/CODE_OF_CONDUCT.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Overwrite contribucion.md",
-			"type": "shell",
-			"command": "echo \"{% include \\\"../../../.github/locales/es/CONTRIBUTING.md\\\" %}\" > \"docs/docs/es/contribucion.md\"",
-			"args": [],
-			"group": "build"
-		},
-		{
-			"label": "Overwrite contributing.md",
-			"type": "shell",
-			"command": "echo \"{% include \\\"../../../.github/CONTRIBUTING.md\\\" %}\" > \"docs/docs/en/contributing.md\"",
-			"args": [],
-			"group": "build"
-		},
-		{
-			"label": "Update contributing header python",
-			"type": "shell",
-			"command": "apps/daemon/backend/venv/bin/python -c \"import pathlib; p=pathlib.Path('/home/zarvent/developer/voice2machine/.github/CONTRIBUTING.md'); txt=p.read_text(); p.write_text(txt.replace('---\\n\\n# ❤️ Contributing Guide', '---\\n\\n> 🇪🇸 **Español**: Si buscas la guía en español, consulta [locales/es/CONTRIBUTING.md](locales/es/CONTRIBUTING.md).\\n\\n# ❤️ Contributing Guide'))\"",
-			"args": [
-				"/home/zarvent/developer/voice2machine/.github/CONTRIBUTING.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Update code of conduct header python",
-			"type": "shell",
-			"command": "apps/daemon/backend/venv/bin/python -c \"import pathlib; p=pathlib.Path('/home/zarvent/developer/voice2machine/.github/CODE_OF_CONDUCT.md'); txt=p.read_text(); p.write_text('> 🇪🇸 **Español**: versión en español disponible en [locales/es/CODE_OF_CONDUCT.md](locales/es/CODE_OF_CONDUCT.md).\\n\\n' + txt) if 'Español' not in txt else None\"",
-			"args": [
-				"/home/zarvent/developer/voice2machine/.github/CODE_OF_CONDUCT.md"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Overwrite includes",
-			"type": "shell",
-			"command": "/bin/echo \"{% include \\\"../../../.github/locales/es/CONTRIBUTING.md\\\" %}\" > \"docs/docs/es/contribucion.md\" && /bin/echo \"{% include \\\"../../../.github/CONTRIBUTING.md\\\" %}\" > \"docs/docs/en/contributing.md\"",
-			"args": [],
-			"group": "build"
-		},
-		{
-			"label": "Update changelog stubs",
-			"type": "shell",
-			"command": "echo \"{% include \\\"../../../.github/locales/es/CHANGELOG.md\\\" %}\" > docs/docs/es/changelog.md && echo \"{% include \\\"../../CHANGELOG.md\\\" %}\" > docs/docs/en/changelog.md",
-			"args": [],
-			"group": "build"
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Restart Daemon",
+      "type": "shell",
+      "command": "./apps/daemon/backend/scripts/operations/daemon/restart_daemon.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    }
+  ]
 }

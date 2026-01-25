@@ -64,6 +64,17 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Added
+
+- **Detección de Alucinaciones**: Filtros heurísticos y parámetros de calidad (`no_speech`, `compression_ratio`) en `StreamingTranscriber` para reducir salidas erróneas en Whisper.
+- **Métricas de Rendimiento**: Seguimiento de latencia de inferencia en logs para diagnóstico detallado.
+
+### Changed
+
+- **Optimización de VAD**: Ajuste del umbral por defecto a 0.4 para reducir falsos positivos por ruido ambiental y respiración.
+- **Gestión de Memoria**: Reinicio forzado de la caché de CUDA (`torch.cuda.empty_cache()`) al descargar modelos para liberar VRAM de forma efectiva.
+- **Higiene de Código**: Refactorización de imports y corrección de errores de linting (`ruff`) en toda la base de código del backend.
+
 ### Planned
 
 - Soporte para múltiples idiomas de transcripción simultáneos

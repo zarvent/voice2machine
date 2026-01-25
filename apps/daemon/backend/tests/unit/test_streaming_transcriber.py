@@ -34,7 +34,20 @@ def mock_worker():
     async def fake_inference(func):
         segment = MagicMock()
         segment.text = " hello world"
-        return [segment]
+        # Crear mock de info para _infer_final que ahora retorna (segments, info)
+        info = MagicMock()
+        info.language_probability = 0.99
+        # Ejecutar la función para determinar qué formato retorna
+        # _infer_provisional retorna list, _infer_final retorna tuple
+        # Usamos un modelo mock para ejecutar la función real
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = (iter([segment]), info)
+        try:
+            result = func(mock_model)
+            return result  # Retorna lo que la función real retornaría
+        except Exception:
+            # Fallback: retornar tuple (formato de _infer_final)
+            return ([segment], info)
 
     worker.run_inference = fake_inference
     return worker
@@ -124,7 +137,15 @@ async def test_streaming_emits_partials(mock_worker, mock_session, mock_recorder
     async def fake_infer(func):
         seg = MagicMock()
         seg.text = " hello"
-        return [seg]
+        info = MagicMock()
+        info.language_probability = 0.99
+        # Ejecutar la función con un modelo mock
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = (iter([seg]), info)
+        try:
+            return func(mock_model)
+        except Exception:
+            return ([seg], info)
 
     mock_worker.run_inference = fake_infer
 
@@ -143,20 +164,14 @@ async def test_streaming_emits_partials(mock_worker, mock_session, mock_recorder
     await streamer.stop()
 
     # At minimum, final on stop should be called
-    all_calls = [
-        c
-        for c in mock_session.emit_event.call_args_list
-        if c[0][0] == "transcription_update"
-    ]
+    all_calls = [c for c in mock_session.emit_event.call_args_list if c[0][0] == "transcription_update"]
     assert len(all_calls) >= 1, "Expected at least one transcription event"
 
 
 @pytest.mark.asyncio
 async def test_commit_on_silence(mock_worker, mock_session, mock_recorder_speech_then_silence):
     """Test that silence triggers segment commit with final event."""
-    streamer = StreamingTranscriber(
-        mock_worker, mock_session, mock_recorder_speech_then_silence
-    )
+    streamer = StreamingTranscriber(mock_worker, mock_session, mock_recorder_speech_then_silence)
     # Patch silence threshold to be faster than test execution speed (0.1s)
     streamer._silence_commit_ms = 100
 
@@ -178,13 +193,9 @@ async def test_commit_on_silence(mock_worker, mock_session, mock_recorder_speech
 
 
 @pytest.mark.asyncio
-async def test_context_window_builds(
-    mock_worker, mock_session, mock_recorder_speech_then_silence
-):
+async def test_context_window_builds(mock_worker, mock_session, mock_recorder_speech_then_silence):
     """Test that context window is populated after segment commit."""
-    streamer = StreamingTranscriber(
-        mock_worker, mock_session, mock_recorder_speech_then_silence
-    )
+    streamer = StreamingTranscriber(mock_worker, mock_session, mock_recorder_speech_then_silence)
     # Patch silence threshold to be faster than test execution speed (0.1s)
     streamer._silence_commit_ms = 100
 
@@ -196,9 +207,7 @@ async def test_context_window_builds(
 
     # Context should contain transcribed text after commit
     # Note: context is updated on _infer_final commits, not just on stop
-    assert (
-        "hello world" in streamer._context_window
-    ), f"Expected 'hello world' in context: '{streamer._context_window}'"
+    assert "hello world" in streamer._context_window, f"Expected 'hello world' in context: '{streamer._context_window}'"
 
 
 @pytest.mark.asyncio
@@ -230,7 +239,15 @@ async def test_queue_backpressure(mock_worker, mock_session):
         await asyncio.sleep(0.1)  # Simulate slow Whisper
         segment = MagicMock()
         segment.text = f" chunk{call_count}"
-        return [segment]
+        info = MagicMock()
+        info.language_probability = 0.99
+        # Ejecutar la función con un modelo mock
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = (iter([segment]), info)
+        try:
+            return func(mock_model)
+        except Exception:
+            return ([segment], info)
 
     mock_worker.run_inference = slow_inference
 
@@ -264,7 +281,9 @@ async def test_producer_consumer_isolation(mock_worker, mock_session):
         await inference_can_continue.wait()  # Block until signaled
         segment = MagicMock()
         segment.text = " test"
-        return [segment]
+        info = MagicMock()
+        info.language_probability = 0.99
+        return ([segment], info)
 
     mock_worker.run_inference = blocking_inference
 
@@ -290,4 +309,3 @@ async def test_producer_consumer_isolation(mock_worker, mock_session):
 
     # Producer filled queue independently of Consumer state
     # (exact assertion depends on timing, but architecture is validated)
-

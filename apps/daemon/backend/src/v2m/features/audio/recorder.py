@@ -9,8 +9,8 @@ try:
 except OSError:
     sd = None
 
-from v2m.shared.logging import logger
 from v2m.shared.errors import RecordingError
+from v2m.shared.logging import logger
 
 # Intenta importar el motor de audio Rust
 try:

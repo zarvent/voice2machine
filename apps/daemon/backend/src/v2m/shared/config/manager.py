@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 class ConfigManager:
     """Gestor de configuración para `config.toml`.
+
     Actúa como una fachada para las operaciones de E/S de configuración.
     """
 
@@ -51,6 +52,7 @@ class ConfigManager:
 
     def update_config(self, new_config: dict[str, Any]) -> None:
         """Actualiza el archivo de configuración con nuevos valores.
+
         Realiza un merge profundo simple (sobrescribe claves existentes).
 
         Args:

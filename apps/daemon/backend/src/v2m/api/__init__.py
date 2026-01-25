@@ -10,10 +10,10 @@ from v2m.api.schemas import (
 )
 
 __all__ = [
-    "ToggleResponse",
-    "StatusResponse",
+    "HealthResponse",
     "LLMResponse",
     "ProcessTextRequest",
+    "StatusResponse",
+    "ToggleResponse",
     "TranslateTextRequest",
-    "HealthResponse",
 ]

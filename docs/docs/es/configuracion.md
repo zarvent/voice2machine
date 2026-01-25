@@ -31,7 +31,20 @@ El corazón del sistema. Estos parámetros controlan el motor **Faster-Whisper**
 El sistema utiliza **Silero VAD** (versión Rust en `v2m_engine`) para filtrar silencio antes de invocar a Whisper, ahorrando GPU.
 
 - **`vad_filter`** (`true`): Activa el pre-filtrado.
-- **`vad_parameters`**: Ajuste fino de sensibilidad (umbral de silencio, duración mínima de voz).
+- **`vad_parameters`**: Ajuste fino de sensibilidad.
+  - `threshold` (`0.4`): Umbral de probabilidad. Valores más altos reducen falsos positivos por ruido o respiración.
+  - `min_speech_duration_ms` (`150`): Duración mínima para considerar un segmento como voz.
+  - `min_silence_duration_ms` (`1000`): Tiempo de silencio para cortar un segmento (ajustado para español).
+
+### Parámetros de Calidad y Anti-Alucinación (SOTA 2026)
+
+Para evitar que Whisper genere texto repetitivo o "alucine" en entornos ruidosos, se incluyen parámetros de control de calidad:
+
+| Parámetro                     | Default | Descripción                                                                  |
+| :---------------------------- | :------ | :--------------------------------------------------------------------------- |
+| `no_speech_threshold`         | `0.6`   | Filtra segmentos con alta probabilidad de no contener habla.                 |
+| `compression_ratio_threshold` | `2.4`   | Detecta y descarta transcripciones altamente repetitivas (alucinaciones).    |
+| `log_prob_threshold`          | `-1.0`  | Umbral de confianza del modelo. Filtra transcripciones de baja probabilidad. |
 
 ---
 

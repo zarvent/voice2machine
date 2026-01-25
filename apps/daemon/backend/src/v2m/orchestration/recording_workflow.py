@@ -5,6 +5,7 @@ llega al portapapeles.
 """
 
 import asyncio
+import contextlib
 from typing import TYPE_CHECKING, Any, Protocol
 
 from v2m.shared.config import config
@@ -146,16 +147,15 @@ class RecordingWorkflow:
             self.notifications.notify("⚡ v2m procesando", "procesando...")
             transcription = await self.transcriber.stop()
             if not transcription or not transcription.strip():
-                # Diagnóstico adicional: ¿El recorder capturó algo?
+                # Diagnóstico mejorado: reportar estado de la cola y duración de grabación
                 try:
-                    # Intentar leer el buffer final de audio para diagnóstico
-                    if self.recorder._rust_recorder:
-                        # Para rust engine en streaming, el stop() del transcriber ya cerró
-                        # pero podemos ver si hubo actividad reportada en logs
-                        logger.debug("Verificar actividad de audio en transcriber stop")
-                    
-                except Exception:
-                    pass
+                    queue_size = self.transcriber._audio_queue.qsize()
+                    logger.warning(
+                        f"Transcripción vacía: audio_queue_size={queue_size}, "
+                        f"verificar logs de VAD y Whisper para diagnóstico detallado"
+                    )
+                except Exception as diag_err:
+                    logger.debug(f"Error obteniendo diagnóstico: {diag_err}")
 
                 self.notifications.notify("❌ whisper", "no se detectó voz en el audio")
                 return ToggleResponse(status="idle", message="❌ No se detectó voz", text=None)
@@ -176,15 +176,14 @@ class RecordingWorkflow:
         return StatusResponse(state=state, recording=self._is_recording, model_loaded=self._model_loaded)
 
     async def shutdown(self) -> None:
+        """Apaga el workflow, deteniendo grabaciones y descargando modelos."""
         if self._is_recording:
-            try:
+            with contextlib.suppress(Exception):
                 await self.stop()
-            except Exception:
-                pass
+
         if self._worker:
-            try:
+            with contextlib.suppress(Exception):
                 await self._worker.unload()
-            except Exception as e:
-                logger.warning(f"Error descargando modelo: {e}")
+
         if self._notifications:
             self._notifications.shutdown(wait=False)

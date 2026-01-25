@@ -13,8 +13,8 @@
       "path": ".",
     },
     {
-      "name": "agents skills",
-      "path": "../llm-skills",
+      "name": "v2m-skills",
+      "path": "../v2m-skills",
     },
     {
       "name": "cesarszv custom agents",

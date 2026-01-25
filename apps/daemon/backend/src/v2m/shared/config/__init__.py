@@ -115,6 +115,12 @@ class WhisperConfig(BaseModel):
         vad_filter: Activar filtrado VAD. Defecto: True
         vad_parameters: Configuración detallada del VAD.
         audio_device_index: Índice del dispositivo de entrada de audio (None para defecto).
+        no_speech_threshold: Umbral de probabilidad de no-habla (0.0-1.0).
+            Valores altos filtran más segmentos sin habla. Defecto: 0.6
+        compression_ratio_threshold: Umbral de ratio de compresión para detectar
+            salidas repetitivas/alucinaciones. Defecto: 2.4
+        log_prob_threshold: Umbral de log-probabilidad para filtrar
+            transcripciones de baja confianza. Defecto: -1.0
     """
 
     model: str = "large-v2"
@@ -130,6 +136,10 @@ class WhisperConfig(BaseModel):
     audio_device_index: int | None = None
     keep_warm: bool = Field(default=True)
     vad_parameters: VadParametersConfig = Field(default_factory=VadParametersConfig)
+    # Parámetros de calidad para reducir alucinaciones (SOTA 2026)
+    no_speech_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
+    compression_ratio_threshold: float = Field(default=2.4, ge=1.0, le=5.0)
+    log_prob_threshold: float = Field(default=-1.0, ge=-5.0, le=0.0)
 
 
 class GeminiConfig(BaseModel):
