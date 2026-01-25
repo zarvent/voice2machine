@@ -3,9 +3,6 @@
 # v2m-toggle.sh - Voice-to-Machine Recording Toggle (SOTA 2026)
 # ═══════════════════════════════════════════════════════════════════════════════
 #
-# SIMPLIFICADO: Usa curl para comunicarse con el servidor FastAPI.
-# Un Junior puede entender este script en 30 segundos.
-#
 # Usage:
 #   v2m-toggle.sh           # Toggle recording state
 #   v2m-toggle.sh --status  # Check current state
@@ -24,6 +21,7 @@ readonly V2M_URL="http://127.0.0.1:${V2M_PORT}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 readonly SCRIPT_DIR
+readonly RESTART_SCRIPT="${SCRIPT_DIR}/../daemon/restart_daemon.sh"
 readonly LIB_DIR="${SCRIPT_DIR}/lib"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -72,7 +70,9 @@ show_status() {
     local response
     response=$(curl -s "${V2M_URL}/status" 2>/dev/null) || {
         echo "❌ Daemon not running at ${V2M_URL}"
-        echo "   Start with: ./scripts/operations/daemon/start_daemon.sh"
+        echo "   Iniciando daemon con: ${RESTART_SCRIPT}"
+        "${RESTART_SCRIPT}" >/dev/null 2>&1 &
+        echo "   Espera unos segundos y vuelve a intentar."
         exit 1
     }
 
@@ -101,9 +101,10 @@ toggle_recording() {
 
     # Send toggle command via HTTP POST
     response=$(curl -s -w "\n%{http_code}" -X POST "${V2M_URL}/toggle" 2>/dev/null) || {
-        v2m_notify_daemon_required
         echo "❌ Cannot connect to ${V2M_URL}"
-        echo "   Start daemon: ./scripts/operations/daemon/start_daemon.sh"
+        echo "   Intentando iniciar daemon..."
+        "${RESTART_SCRIPT}" >/dev/null 2>&1 &
+        v2m_notify_error "Daemon offline. Iniciando..."
         exit 1
     }
 

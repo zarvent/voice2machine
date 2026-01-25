@@ -5,16 +5,24 @@
       "path": "../llm-book",
     },
     {
-      "name": "agents skills",
-      "path": "../llm-skills",
-    },
-    {
       "name": "daemon backend",
       "path": "apps/daemon/backend",
     },
     {
       "name": "voice2machine",
       "path": ".",
+    },
+    {
+      "name": "agents skills",
+      "path": "../llm-skills",
+    },
+    {
+      "name": "cesarszv custom agents",
+      "path": "../custom-agents (cesarszv)",
+    },
+    {
+      "name": "zarvent custom agents",
+      "path": "../custom-agents (zarvent)",
     },
   ],
   "settings": {

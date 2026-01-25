@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: voice2machine
-Version: 0.2.0
+Version: 0.3.0
 Summary: Interfaz de Voz a Máquina de última generación (SOTA)
 Requires-Python: >=3.12
 Requires-Dist: faster-whisper
@@ -18,3 +18,9 @@ Requires-Dist: coloredlogs
 Requires-Dist: psutil
 Requires-Dist: uvloop
 Requires-Dist: aiofiles
+Requires-Dist: toml
+Requires-Dist: python-json-logger
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: tenacity>=8.2.0
+Requires-Dist: silero-vad
+Requires-Dist: ollama>=0.3.0

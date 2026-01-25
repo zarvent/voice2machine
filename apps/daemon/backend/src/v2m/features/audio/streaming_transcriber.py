@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 CONTEXT_WINDOW_CHARS = 200  # Ventana deslizante para inyección de prompt
 PROVISIONAL_INTERVAL = 0.5  # Intervalo entre inferencias provisionales (segundos)
 PRE_ROLL_CHUNKS = 3  # Mantener últimos 3 chunks (~300ms) para no cortar palabras
-MIN_SEGMENT_DURATION = 0.5  # Segundos de habla requeridos para commit
+MIN_SEGMENT_DURATION = 0.3  # Segundos de habla requeridos para commit
 DEFAULT_SILENCE_COMMIT_MS = 1000  # Duración de silencio por defecto para trigger commit
 CONTEXT_RESET_MS = 3000  # Resetear contexto si silencio excede esto (previene alucinaciones)
 HEARTBEAT_INTERVAL = 2.0  # Intervalo de heartbeat en segundos
@@ -379,7 +379,11 @@ class StreamingTranscriber:
             # Manejar retorno tensor o escalar
             val = speech_prob.item() if hasattr(speech_prob, "item") else float(speech_prob)
 
-            return val > self._speech_threshold
+            is_speech = val > self._speech_threshold
+            if is_speech:
+                logger.debug(f"VAD Silero: speech_prob={val:.4f} > {self._speech_threshold}")
+            
+            return is_speech
 
         except Exception as e:
             now = time.time()
@@ -388,12 +392,15 @@ class StreamingTranscriber:
                 self._last_vad_error_time = now
             return self._detect_speech_energy(chunk)
 
-    def _detect_speech_energy(self, chunk: np.ndarray, threshold: float = 0.015) -> bool:
+    def _detect_speech_energy(self, chunk: np.ndarray, threshold: float = 0.01) -> bool:
         """Fallback: detección basada en energía RMS."""
         if len(chunk) == 0:
             return False
-        energy = np.sqrt(np.mean(chunk**2))
-        return energy > threshold
+        rms = np.sqrt(np.mean(chunk**2))
+        is_speech = rms > threshold
+        if is_speech:
+             logger.debug(f"VAD Energy: rms={rms:.4f} > {threshold}")
+        return is_speech
 
     # =========================================================================
     # Inferencia Whisper

@@ -31,6 +31,8 @@ export PYTHONPATH="src:${PYTHONPATH:-}"
 # Puerto configurable (default: 8765)
 PORT="${V2M_PORT:-8765}"
 
+VENV_PYTHON="$PROJECT_ROOT/venv/bin/python3"
+
 echo "🚀 Iniciando V2M Server en http://127.0.0.1:${PORT}"
 echo "📚 Documentación: http://127.0.0.1:${PORT}/docs"
 echo ""
@@ -40,5 +42,5 @@ echo "   curl http://localhost:${PORT}/status           # Ver estado"
 echo ""
 
 # Usamos exec para que el proceso python reemplace al shell y reciba señales (Ctrl+C)
-exec python3 -m v2m.main --port "$PORT"
+exec "$VENV_PYTHON" -m v2m.main --port "$PORT"
 

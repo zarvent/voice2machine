@@ -13,3 +13,9 @@ coloredlogs
 psutil
 uvloop
 aiofiles
+toml
+python-json-logger
+python-dotenv>=1.0.0
+tenacity>=8.2.0
+silero-vad
+ollama>=0.3.0

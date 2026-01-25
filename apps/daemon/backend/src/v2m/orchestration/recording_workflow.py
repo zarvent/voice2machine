@@ -146,6 +146,17 @@ class RecordingWorkflow:
             self.notifications.notify("⚡ v2m procesando", "procesando...")
             transcription = await self.transcriber.stop()
             if not transcription or not transcription.strip():
+                # Diagnóstico adicional: ¿El recorder capturó algo?
+                try:
+                    # Intentar leer el buffer final de audio para diagnóstico
+                    if self.recorder._rust_recorder:
+                        # Para rust engine en streaming, el stop() del transcriber ya cerró
+                        # pero podemos ver si hubo actividad reportada en logs
+                        logger.debug("Verificar actividad de audio en transcriber stop")
+                    
+                except Exception:
+                    pass
+
                 self.notifications.notify("❌ whisper", "no se detectó voz en el audio")
                 return ToggleResponse(status="idle", message="❌ No se detectó voz", text=None)
             self.clipboard.copy(transcription)

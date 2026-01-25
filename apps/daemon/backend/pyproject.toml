@@ -28,6 +28,13 @@ dependencies = [
     "psutil",
     "uvloop",
     "aiofiles",
+    "toml",
+    "python-json-logger",
+    "python-dotenv>=1.0.0",
+    "tenacity>=8.2.0",
+    # Audio/ML Additional
+    "silero-vad",
+    "ollama>=0.3.0",
 ]
 
 [tool.ruff]
