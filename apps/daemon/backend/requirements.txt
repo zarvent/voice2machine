@@ -35,7 +35,7 @@ tqdm==4.67.1
 typer-slim==0.20.0
 typing_extensions==4.15.0
 uvloop>=0.19.0  # Event loop optimizado para Linux (2-4x más rápido)
-wheel==0.45.1
+wheel==0.46.2
 toml
 python-json-logger
 pydantic-settings
