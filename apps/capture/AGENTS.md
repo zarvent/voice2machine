@@ -27,12 +27,13 @@ Ctrl+Shift+Space → grabar → VAD → Whisper → clipboard
 
 ## Principles
 
-| Principio | Implementación |
-| :-- | :-- |
-| **Simplicity** | Un propósito, bien ejecutado |
-| **Performance** | Latencia mínima entre hablar y obtener texto |
-| **Privacy** | Cero datos enviados a servidores externos (por defecto) |
-| **Flexibility** | Local-first, con opción de cloud vía API key (futuro) |
+| Principio       | Implementación                                           |
+| :-------------- | :------------------------------------------------------- |
+| **Simplicity**  | Un propósito, bien ejecutado                             |
+| **Performance** | Latencia mínima entre hablar y obtener texto             |
+| **Privacy**     | Cero datos enviados a servidores externos (por defecto)  |
+| **Flexibility** | Local-first, con opción de cloud vía API key (futuro)    |
+| **Pragmatic**   | Soluciones pragmaticas que tengan robustez y estabilidad |
 
 ---
 
@@ -183,14 +184,15 @@ Estados de VadStateMachine:
 
 **Captura de audio del micrófono.**
 
-| Archivo | Propósito |
-| :-- | :-- |
-| `capture.rs` | `AudioCapture` — cpal stream, ring buffer, crossbeam channel |
-| `resampler.rs` | `AudioResampler` — rubato, conversión a 16kHz mono |
-| `devices.rs` | `list_input_devices()` — enumeración de mics |
-| `playback.rs` | `play_sound_if_enabled()` — audio cues |
+| Archivo        | Propósito                                                    |
+| :------------- | :----------------------------------------------------------- |
+| `capture.rs`   | `AudioCapture` — cpal stream, ring buffer, crossbeam channel |
+| `resampler.rs` | `AudioResampler` — rubato, conversión a 16kHz mono           |
+| `devices.rs`   | `list_input_devices()` — enumeración de mics                 |
+| `playback.rs`  | `play_sound_if_enabled()` — audio cues                       |
 
 **Configuración:**
+
 - Sample rate nativo del device → resampling a 16kHz
 - Channels nativos → mixdown a mono
 - Buffer: chunks de ~32ms
@@ -199,30 +201,30 @@ Estados de VadStateMachine:
 
 **Voice Activity Detection.**
 
-| Archivo | Propósito |
-| :-- | :-- |
-| `detector.rs` | `VadDetector` — Silero VAD wrapper, `predict() → bool` |
+| Archivo            | Propósito                                                       |
+| :----------------- | :-------------------------------------------------------------- |
+| `detector.rs`      | `VadDetector` — Silero VAD wrapper, `predict() → bool`          |
 | `state_machine.rs` | `VadStateMachine` — estados, debouncing, `process() → VadEvent` |
-| `buffer.rs` | `SpeechBuffer` — pre-buffer + acumulación de speech |
+| `buffer.rs`        | `SpeechBuffer` — pre-buffer + acumulación de speech             |
 
 **Configuración (VadConfig):**
 
-| Parámetro | Default | Propósito |
-| :-- | :-- | :-- |
-| `threshold` | 0.35 | Probabilidad mínima para considerar voz |
-| `min_speech_duration_ms` | 100 | Debounce para confirmar inicio de voz |
-| `min_silence_duration_ms` | 200 | Debounce para confirmar fin de voz |
-| `speech_pad_ms` | 50 | Contexto incluido antes del speech |
-| `energy_fallback_threshold` | 0.005 | Fallback por energía si VAD es muy agresivo |
+| Parámetro                   | Default | Propósito                                   |
+| :-------------------------- | :------ | :------------------------------------------ |
+| `threshold`                 | 0.35    | Probabilidad mínima para considerar voz     |
+| `min_speech_duration_ms`    | 100     | Debounce para confirmar inicio de voz       |
+| `min_silence_duration_ms`   | 200     | Debounce para confirmar fin de voz          |
+| `speech_pad_ms`             | 50      | Contexto incluido antes del speech          |
+| `energy_fallback_threshold` | 0.005   | Fallback por energía si VAD es muy agresivo |
 
 ### transcription/
 
 **Speech-to-text con Whisper.**
 
-| Archivo | Propósito |
-| :-- | :-- |
-| `whisper.rs` | `WhisperTranscriber` — wrapper de whisper-rs, inferencia |
-| `model.rs` | `ModelDownloader` — descarga de Hugging Face con progreso |
+| Archivo      | Propósito                                                 |
+| :----------- | :-------------------------------------------------------- |
+| `whisper.rs` | `WhisperTranscriber` — wrapper de whisper-rs, inferencia  |
+| `model.rs`   | `ModelDownloader` — descarga de Hugging Face con progreso |
 
 **Configuración de Whisper:**
 
@@ -244,11 +246,12 @@ params.set_suppress_nst(true);
 
 **Orquestación del flujo.**
 
-| Archivo | Propósito |
-| :-- | :-- |
+| Archivo           | Propósito                                           |
+| :---------------- | :-------------------------------------------------- |
 | `orchestrator.rs` | `Pipeline` — state machine, coordinación de módulos |
 
 **Estados:**
+
 ```rust
 pub enum RecordingState {
     Idle,       // Esperando. Listo para grabar.
@@ -258,6 +261,7 @@ pub enum RecordingState {
 ```
 
 **Eventos:**
+
 ```rust
 pub enum PipelineEvent {
     StateChanged(RecordingState),
@@ -273,11 +277,12 @@ pub enum PipelineEvent {
 
 **Configuración de la aplicación.**
 
-| Archivo | Propósito |
-| :-- | :-- |
+| Archivo       | Propósito                                         |
+| :------------ | :------------------------------------------------ |
 | `settings.rs` | `AppConfig`, `VadConfig`, `RecordingState`, paths |
 
 **AppConfig:**
+
 ```rust
 pub struct AppConfig {
     pub audio_device_id: Option<String>,
@@ -291,11 +296,12 @@ pub struct AppConfig {
 
 **Salida del texto.**
 
-| Archivo | Propósito |
-| :-- | :-- |
+| Archivo        | Propósito                            |
+| :------------- | :----------------------------------- |
 | `clipboard.rs` | `ClipboardManager` — arboard wrapper |
 
 **Extensibilidad:** Diseñado para agregar providers:
+
 - Notificaciones del sistema
 - Archivo de logs
 - Integración con apps (futuro)
@@ -304,8 +310,8 @@ pub struct AppConfig {
 
 **System tray.**
 
-| Archivo | Propósito |
-| :-- | :-- |
+| Archivo      | Propósito                                    |
+| :----------- | :------------------------------------------- |
 | `manager.rs` | `TrayManager` — ícono, menú, feedback visual |
 
 ---
@@ -314,12 +320,12 @@ pub struct AppConfig {
 
 ### Code conventions
 
-| Contexto | Idioma |
-| :-- | :-- |
-| Comentarios in-code | Español latinoamericano |
-| Variables, funciones, tipos | English (American) |
-| Docs (README, AGENTS) | Español |
-| Commits | Conventional commits, inglés |
+| Contexto                    | Idioma                       |
+| :-------------------------- | :--------------------------- |
+| Comentarios in-code         | Español latinoamericano      |
+| Variables, funciones, tipos | English (American)           |
+| Docs (README, AGENTS)       | Español                      |
+| Commits                     | Conventional commits, inglés |
 
 ### Hardware philosophy
 
@@ -350,11 +356,11 @@ return Err(e.into());
 
 ### Async model
 
-| Contexto | Runtime | Razón |
-| :-- | :-- | :-- |
-| IPC commands | tokio (vía Tauri) | Async handlers |
-| Audio capture | thread dedicado | cpal no es Send, usa crossbeam |
-| Transcripción | `spawn_blocking` | CPU-bound, no bloquear runtime |
+| Contexto      | Runtime           | Razón                          |
+| :------------ | :---------------- | :----------------------------- |
+| IPC commands  | tokio (vía Tauri) | Async handlers                 |
+| Audio capture | thread dedicado   | cpal no es Send, usa crossbeam |
+| Transcripción | `spawn_blocking`  | CPU-bound, no bloquear runtime |
 
 ### Concurrency patterns
 
@@ -380,25 +386,25 @@ if cancel_flag.load(Ordering::Relaxed) { break; }
 
 ### Frontend
 
-| Library | Purpose | Docs |
-| :-- | :-- | :-- |
-| **Tauri 2.0** | Desktop app framework, IPC, global shortcuts | [tauri.app](https://tauri.app) |
-| **React** | UI components | [react.dev](https://react.dev) |
-| **TypeScript** | Type safety | [typescriptlang.org](https://typescriptlang.org) |
+| Library        | Purpose                                      | Docs                                             |
+| :------------- | :------------------------------------------- | :----------------------------------------------- |
+| **Tauri 2.0**  | Desktop app framework, IPC, global shortcuts | [tauri.app](https://tauri.app)                   |
+| **React**      | UI components                                | [react.dev](https://react.dev)                   |
+| **TypeScript** | Type safety                                  | [typescriptlang.org](https://typescriptlang.org) |
 
 ### Backend
 
-| Library | Purpose | Docs |
-| :-- | :-- | :-- |
-| **cpal** | Cross-platform audio capture | [docs.rs/cpal](https://docs.rs/cpal) |
-| **rubato** | Audio resampling (→16kHz mono) | [docs.rs/rubato](https://docs.rs/rubato) |
-| **vad-rs** | Silero VAD wrapper | [github.com/nkeenan38/vad-rs](https://github.com/nkeenan38/vad-rs) |
-| **whisper-rs** | whisper.cpp FFI bindings | [github.com/tazz4843/whisper-rs](https://github.com/tazz4843/whisper-rs) |
-| **whisper.cpp** | Local whisper inference | [github.com/ggerganov/whisper.cpp](https://github.com/ggerganov/whisper.cpp) |
-| **arboard** | Clipboard access | [docs.rs/arboard](https://docs.rs/arboard) |
-| **crossbeam** | Lock-free channels | [docs.rs/crossbeam](https://docs.rs/crossbeam) |
-| **tokio** | Async runtime (via Tauri) | [tokio.rs](https://tokio.rs) |
-| **anyhow** | Error handling | [docs.rs/anyhow](https://docs.rs/anyhow) |
+| Library         | Purpose                        | Docs                                                                         |
+| :-------------- | :----------------------------- | :--------------------------------------------------------------------------- |
+| **cpal**        | Cross-platform audio capture   | [docs.rs/cpal](https://docs.rs/cpal)                                         |
+| **rubato**      | Audio resampling (→16kHz mono) | [docs.rs/rubato](https://docs.rs/rubato)                                     |
+| **vad-rs**      | Silero VAD wrapper             | [github.com/nkeenan38/vad-rs](https://github.com/nkeenan38/vad-rs)           |
+| **whisper-rs**  | whisper.cpp FFI bindings       | [github.com/tazz4843/whisper-rs](https://github.com/tazz4843/whisper-rs)     |
+| **whisper.cpp** | Local whisper inference        | [github.com/ggerganov/whisper.cpp](https://github.com/ggerganov/whisper.cpp) |
+| **arboard**     | Clipboard access               | [docs.rs/arboard](https://docs.rs/arboard)                                   |
+| **crossbeam**   | Lock-free channels             | [docs.rs/crossbeam](https://docs.rs/crossbeam)                               |
+| **tokio**       | Async runtime (via Tauri)      | [tokio.rs](https://tokio.rs)                                                 |
+| **anyhow**      | Error handling                 | [docs.rs/anyhow](https://docs.rs/anyhow)                                     |
 
 ---
 
@@ -511,10 +517,10 @@ RUST_LOG=debug pnpm tauri dev
 
 ## Known trade-offs
 
-| Decisión | Trade-off | Razón |
-| :-- | :-- | :-- |
-| `spawn_blocking` para audio | Overhead de thread | cpal no es Send, necesario |
-| `no_speech_thold: 0.4` | Más falsos positivos de Whisper | VAD ya filtra, evita doble filtrado |
-| large-v3-turbo | ~3GB de modelo | Balance óptimo velocidad/calidad |
-| Silero VAD | Dependency adicional | Mucho más rápido que VAD de Whisper |
-| crossbeam vs tokio channels | Dos tipos de channels | crossbeam para sync, tokio para async |
+| Decisión                    | Trade-off                       | Razón                                 |
+| :-------------------------- | :------------------------------ | :------------------------------------ |
+| `spawn_blocking` para audio | Overhead de thread              | cpal no es Send, necesario            |
+| `no_speech_thold: 0.4`      | Más falsos positivos de Whisper | VAD ya filtra, evita doble filtrado   |
+| large-v3-turbo              | ~3GB de modelo                  | Balance óptimo velocidad/calidad      |
+| Silero VAD                  | Dependency adicional            | Mucho más rápido que VAD de Whisper   |
+| crossbeam vs tokio channels | Dos tipos de channels           | crossbeam para sync, tokio para async |
