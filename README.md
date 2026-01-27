@@ -1,70 +1,58 @@
-# 🗣️ voice2machine
 
-_voice dictation for any text field in your OS_
+# voice2machine
 
----
+Herramientas de transcripción de voz a texto.
 
-## what is this
-
-A tool that converts your voice to text using your local GPU.
-
-The premise is simple: speaking is faster than typing. This project allows you to dictate in any application without depending on cloud services.
+**Local-first.** Tus datos no salen de tu equipo por defecto. Rápido, privado, sin suscripciones.
 
 ---
 
-## philosophy
+## Por qué existe
 
-- **local-first**: your audio never leaves your machine
-- **modular**: started as a script, now it's an app with separated responsibilities
-- **gpu-powered**: transcription speed using WHISPER locally
+Los servicios de transcripción en la nube son lentos, costosos y comprometen tu privacidad. Cada palabra que dictas viaja a servidores externos, se almacena, se procesa. voice2machine nace de una premisa simple: **deberías poder elegir**.
 
----
-
-## how it works
-
-The system runs as a **Background Daemon** that exposes a **FastAPI REST API** on `localhost:8765`.
-
-| component   | role                                                                                   |
-| ----------- | -------------------------------------------------------------------------------------- |
-| `daemon`    | Handles audio recording, Whisper transcription, and LLM processing via REST endpoints. |
-| `shortcuts` | Global keyboard shortcuts that send HTTP requests to the daemon.                       |
+**Local-first, no local-only.** Priorizamos el procesamiento local porque es más rápido, más privado y no depende de conexión. Pero no estamos en contra de la nube — en futuras versiones podrás alternar entre procesamiento local y APIs externas vía tu propia API key, según tus necesidades.
 
 ---
 
-## documentation
+## Para qué sirve
 
-All technical info is in `/docs` (consolidated in Spanish):
+Para convertir tu voz en texto de forma instantánea:
 
-- [installation](docs/es/instalacion.md)
-- [architecture](docs/es/arquitectura.md)
-- [configuration](docs/es/configuracion.md)
-- [keyboard shortcuts](docs/es/atajos_teclado.md) ⌨️
-- [troubleshooting](docs/es/troubleshooting.md)
+- Sin latencia de red cuando usas procesamiento local
+- Sin límites de uso ni costos recurrentes
+- Con la opción futura de usar servicios cloud cuando lo prefieras
 
 ---
 
-## visual flows
+## Estructura del monorepo
 
-### voice → text
+### `apps/`
 
-```mermaid
-flowchart LR
-A[🎤 record] --> B{whisper}
-B --> C[📋 clipboard]
+Aplicaciones productivas del ecosistema voice2machine.
+
+| App | Descripción |
+| :-- | :-- |
+| **[capture](apps/capture/)** | Utilidad de voz a texto en tiempo real. Presiona `Ctrl+Shift+Space` → habla → el texto se copia a tu clipboard. |
+
+---
+
+## Filosofía técnica
+
+### Principios
+
+| Principio | Implementación |
+| :-- | :-- |
+| **Privacidad por defecto** | Procesamiento 100% local, sin telemetría, sin conexiones externas |
+| **Rendimiento nativo** | Rust para el backend, modelos optimizados para CPU y GPU |
+| **Simplicidad radical** | Una herramienta, un propósito, bien ejecutado |
+| **Flexibilidad consciente** | Local-first, con opción de cloud vía API key en el futuro |
+
+### Stack técnico
+
 ```
-
-### text → improved text
-
-```mermaid
-flowchart LR
-A[📋 copy] --> B{LLM}
-B --> C[📋 replace]
+Frontend:  React + TypeScript + Tauri 2.0
+Backend:   Rust + whisper.cpp + Silero VAD
+Audio:     cpal (captura) + rubato (resampling)
+Output:    arboard (clipboard)
 ```
-
-> if you don't see the diagrams, you need a mermaid extension
-
----
-
-## license
-
-This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for more details.

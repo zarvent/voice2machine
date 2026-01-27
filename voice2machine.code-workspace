@@ -1,51 +1,36 @@
 {
   "folders": [
     {
-      "name": "prompts book",
-      "path": "../llm-book",
-    },
-    {
-      "name": "daemon backend",
-      "path": "apps/daemon/backend",
+      "name": "capture app",
+      "path": "apps/capture"
     },
     {
       "name": "voice2machine",
-      "path": ".",
+      "path": "."
     },
     {
-      "name": "v2m-skills",
-      "path": "../v2m-skills",
-    },
-    {
-      "name": "cesarszv custom agents",
-      "path": "../custom-agents (cesarszv)",
-    },
-    {
-      "name": "zarvent custom agents",
-      "path": "../custom-agents (zarvent)",
-    },
+      "path": "../v2m-skills"
+    }
   ],
   "settings": {
     "explorer.fileNesting.enabled": true,
     "explorer.fileNesting.expand": false,
-
-    // agrupaciones que usaremos con la funcionalidad fileNesting de VSCode
     "explorer.fileNesting.patterns": {
-      "package.json": ".npmrc, .yarnrc, package-lock.json, pnpm-lock.yaml, bun.lockb",
+      "package.json": ".npmrc, .yarnrc, package-lock.json, pnpm-lock.yaml, pnpm-workspace.yaml, bun.lockb",
       "tsconfig.json": "tsconfig.*.json, jsconfig.*.json",
       "vite.config.ts": "vitest.config.ts, vitest.setup.ts, postcss.config.js, tailwind.config.js, index.html, env.d.ts, eslint.config.js",
+      "Cargo.toml": "Cargo.lock, rust-toolchain.toml, .rustfmt.toml, clippy.toml",
+      "tauri.conf.json": "tauri.access-allowed.json, build.rs",
       "pyproject.toml": "requirements*.txt, .python-version, .ruff.toml, ruff.toml, config.toml, uv.lock",
       "*.tsx": "${capture}.ts, ${capture}.css, ${capture}.module.css, ${capture}.scss, ${capture}.test.tsx, ${capture}.spec.tsx",
       ".env": ".env.*",
-      "README.md": "LICENSE, .gitignore, .gitattributes, mkdocs.yml, CONTRIBUTING.md, CHANGELOG.md",
+      "README.md": "LICENSE, .gitignore, .gitattributes, mkdocs.yml, CONTRIBUTING.md, CHANGELOG.md, AGENTS.md, GEMINI.md, 2026-01-27 mvp birth plan.md"
     },
-
-    // ocultar estos archivos que la mayor parte del tiempo estorban
     "files.exclude": {
       "**/.pytest_cache": true,
       "**/.ruff_cache": true,
       "**/.venv": true,
-      "**/__pycache__": true,
-    },
-  },
+      "**/__pycache__": true
+    }
+  }
 }
