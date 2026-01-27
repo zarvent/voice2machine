@@ -114,8 +114,8 @@ fn get_icon_path(state: RecordingState) -> PathBuf {
         RecordingState::Processing => "icon-processing.png",
     };
 
-    // Los iconos estan en src-tauri/icons/
-    PathBuf::from("icons").join(icon_name)
+    // Los iconos estan en src-tauri/assets/icons/
+    PathBuf::from("assets/icons").join(icon_name)
 }
 
 /// Carga un icono desde archivo o usa fallback embebido

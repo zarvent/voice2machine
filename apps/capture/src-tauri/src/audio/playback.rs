@@ -8,11 +8,11 @@ use std::io::Cursor;
 use std::thread;
 
 // Sonidos embebidos en el binario para evitar dependencia de archivos externos
-// Los archivos WAV deben estar en src-tauri/sounds/
-const START_SOUND: &[u8] = include_bytes!("../../sounds/start.wav");
-const STOP_SOUND: &[u8] = include_bytes!("../../sounds/stop.wav");
-const SUCCESS_SOUND: &[u8] = include_bytes!("../../sounds/success.wav");
-const ERROR_SOUND: &[u8] = include_bytes!("../../sounds/error.wav");
+// Los archivos WAV deben estar en src-tauri/assets/sounds/
+const START_SOUND: &[u8] = include_bytes!("../../assets/sounds/start.wav");
+const STOP_SOUND: &[u8] = include_bytes!("../../assets/sounds/stop.wav");
+const SUCCESS_SOUND: &[u8] = include_bytes!("../../assets/sounds/success.wav");
+const ERROR_SOUND: &[u8] = include_bytes!("../../assets/sounds/error.wav");
 
 /// Tipos de sonidos de feedback disponibles
 #[derive(Debug, Clone, Copy)]
