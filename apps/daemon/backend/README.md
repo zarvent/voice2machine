@@ -26,8 +26,8 @@ source venv/bin/activate
 uv pip install -e .  # or: pip install -e .
 
 # 4. Launch the Daemon (Server)
-# This will keep the process alive listening on /tmp/v2m.sock
-python -m v2m.main --daemon
+# This will start the FastAPI server on localhost:8765
+python -m v2m.main
 ```
 
 ## 🏗️ Development Commands
@@ -69,19 +69,3 @@ apps/daemon/backend/
 ├── config.toml         # Default configuration
 └── pyproject.toml      # Build and tooling configuration
 ```
-
-## 🔌 Socket API (DEPRECATED)
-
-> **IMPORTANT**: The Unix Socket IPC has been replaced by **FastAPI** (REST/WebSocket).
-> This section is kept for historical reference during the migration period.
-
-The backend exposes a Unix Socket at `$XDG_RUNTIME_DIR/v2m/v2m.sock` (typically `/run/user/<uid>/v2m/v2m.sock`).
-
-> **Note**: The socket location follows the XDG Base Directory Specification for secure, user-isolated runtime files.
-
-**Protocol:**
-
-1.  **Header**: 4 bytes (Big Endian) indicating message length.
-2.  **Body**: JSON string encoded in UTF-8.
-
-_Message example:_ `{"type": "toggle_recording"}`
