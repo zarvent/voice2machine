@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./lib/tauri";
 import SetupWizard from "./components/SetupWizard";
 import SettingsPanel from "./components/SettingsPanel";
 import "./App.css";
@@ -7,15 +7,16 @@ import "./App.css";
 function App() {
   const [modelExists, setModelExists] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Verificar si el modelo existe al iniciar
     const checkModel = async () => {
       try {
         const exists = await invoke<boolean>("is_model_downloaded");
         setModelExists(exists);
-      } catch (error) {
-        console.error("Error checking model:", error);
+      } catch (err) {
+        console.error("Error checking model:", err);
+        setError(err instanceof Error ? err.message : String(err));
         setModelExists(false);
       } finally {
         setLoading(false);
@@ -34,12 +35,21 @@ function App() {
     );
   }
 
-  // Si el modelo no existe, mostrar el wizard de configuración
+  if (error) {
+    return (
+      <div className="app error">
+        <p>Error: {error}</p>
+        <button onClick={() => window.location.reload()}>Reintentar</button>
+      </div>
+    );
+  }
+
+  // Si el modelo no existe, mostrar el wizard de configuracion
   if (!modelExists) {
     return <SetupWizard onComplete={() => setModelExists(true)} />;
   }
 
-  // Si el modelo existe, mostrar el panel de configuración
+  // Si el modelo existe, mostrar el panel de configuracion
   return <SettingsPanel />;
 }
 

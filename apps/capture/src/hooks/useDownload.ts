@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { invoke, listen } from "../lib/tauri";
 import type { DownloadProgress } from "../types";
 
 interface UseDownloadReturn {
@@ -17,30 +16,48 @@ export function useDownload(): UseDownloadReturn {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let unlistenProgress: UnlistenFn | undefined;
-    let unlistenComplete: UnlistenFn | undefined;
+    let unlistenProgress: (() => void) | undefined;
+    let unlistenComplete: (() => void) | undefined;
+    let mounted = true;
 
     const setupListeners = async () => {
-      unlistenProgress = await listen<DownloadProgress>(
-        "download-progress",
-        (event) => {
-          setProgress(event.payload);
-          if (event.payload.status === "failed") {
-            setError("Download failed");
-            setIsDownloading(false);
+      try {
+        unlistenProgress = await listen<DownloadProgress>(
+          "download-progress",
+          (event) => {
+            if (!mounted) return;
+            setProgress(event.payload);
+            if (event.payload.status === "failed") {
+              setError("Download failed");
+              setIsDownloading(false);
+            }
           }
-        }
-      );
+        );
 
-      unlistenComplete = await listen("download-complete", () => {
-        setIsDownloading(false);
-        setProgress(null);
-      });
+        unlistenComplete = await listen("download-complete", () => {
+          if (!mounted) return;
+          setIsDownloading(false);
+          // Mantener el estado de progreso con status completado
+          setProgress((prev) =>
+            prev
+              ? { ...prev, status: "completed", percentage: 100 }
+              : {
+                  downloaded: 0,
+                  total: 0,
+                  percentage: 100,
+                  status: "completed",
+                }
+          );
+        });
+      } catch (err) {
+        console.error("Error setting up listeners:", err);
+      }
     };
 
     setupListeners();
 
     return () => {
+      mounted = false;
       unlistenProgress?.();
       unlistenComplete?.();
     };

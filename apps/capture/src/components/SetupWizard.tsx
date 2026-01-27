@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useDownload } from "../hooks/useDownload";
 import "./SetupWizard.css";
 
@@ -37,18 +38,16 @@ function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const handleDownload = async () => {
     await startDownload();
-    // Check if download completed successfully
-    if (progress?.status === "completed") {
-      onComplete();
-    }
   };
 
-  // Auto-complete when download finishes
-  if (progress?.status === "completed") {
-    setTimeout(onComplete, 1000);
-  }
-
-  return (
+  // Detectar cuando la descarga se completa y llamar a onComplete
+  useEffect(() => {
+    if (progress?.status === "completed") {
+      const timer = setTimeout(onComplete, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [progress?.status, onComplete]);
+return (
     <div className="setup-wizard">
       <div className="wizard-content">
         <div className="wizard-icon">

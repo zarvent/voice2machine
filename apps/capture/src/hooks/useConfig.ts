@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../lib/tauri";
 import type { AppConfig, AudioDeviceInfo } from "../types";
 
 interface UseConfigReturn {

@@ -10,7 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "withGlobalTauri": false,
+    "withGlobalTauri": true,
     "trayIcon": {
       "iconPath": "icons/icon-idle.png",
       "iconAsTemplate": true
@@ -50,11 +50,5 @@
       }
     }
   },
-  "plugins": {
-    "fs": {
-      "scope": {
-        "allow": ["$APPDATA/**", "$RESOURCE/**"]
-      }
-    }
-  }
+  "plugins": {}
 }

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { invoke, listen } from "../lib/tauri";
 import type { RecordingState } from "../types";
 
 interface UseRecordingReturn {
@@ -21,54 +20,59 @@ export function useRecording(): UseRecordingReturn {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let unlistenState: UnlistenFn | undefined;
-    let unlistenToggle: UnlistenFn | undefined;
-    let unlistenTranscription: UnlistenFn | undefined;
-    let unlistenError: UnlistenFn | undefined;
+    let unlistenState: (() => void) | undefined;
+    let unlistenToggle: (() => void) | undefined;
+    let unlistenTranscription: (() => void) | undefined;
+    let unlistenError: (() => void) | undefined;
+    let mounted = true;
 
     const setupListeners = async () => {
-      // Listen for state changes from backend
-      unlistenState = await listen<{ state: RecordingState }>(
-        "recording-state-changed",
-        (event) => {
-          setState(event.payload.state);
-        }
-      );
+      try {
+        // Listen for state changes from backend
+        unlistenState = await listen<{ state: RecordingState }>(
+          "recording-state-changed",
+          (event) => {
+            if (mounted) setState(event.payload.state);
+          }
+        );
 
-      // Listen for toggle shortcut
-      unlistenToggle = await listen("toggle-recording", async () => {
-        try {
-          await invoke("toggle_recording");
-        } catch (e) {
-          setError(e instanceof Error ? e.message : String(e));
-        }
-      });
+        // Listen for toggle shortcut
+        unlistenToggle = await listen("toggle-recording", async () => {
+          try {
+            await invoke("toggle_recording");
+          } catch (e) {
+            if (mounted) setError(e instanceof Error ? e.message : String(e));
+          }
+        });
 
-      // Listen for transcription results
-      unlistenTranscription = await listen<{ text: string }>(
-        "transcription-complete",
-        (event) => {
-          setLastTranscription(event.payload.text);
-        }
-      );
+        // Listen for transcription results
+        unlistenTranscription = await listen<{ text: string }>(
+          "transcription-complete",
+          (event) => {
+            if (mounted) setLastTranscription(event.payload.text);
+          }
+        );
 
-      // Listen for errors
-      unlistenError = await listen<{ message: string }>(
-        "pipeline-error",
-        (event) => {
-          setError(event.payload.message);
-        }
-      );
+        // Listen for errors
+        unlistenError = await listen<{ message: string }>(
+          "pipeline-error",
+          (event) => {
+            if (mounted) setError(event.payload.message);
+          }
+        );
+
+        // Check initial model state
+        const loaded = await invoke<boolean>("is_model_loaded");
+        if (mounted) setIsModelLoaded(loaded);
+      } catch (err) {
+        console.error("Error setting up recording listeners:", err);
+      }
     };
 
     setupListeners();
 
-    // Check initial model state
-    invoke<boolean>("is_model_loaded")
-      .then(setIsModelLoaded)
-      .catch(console.error);
-
     return () => {
+      mounted = false;
       unlistenState?.();
       unlistenToggle?.();
       unlistenTranscription?.();
