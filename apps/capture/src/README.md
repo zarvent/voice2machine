@@ -13,4 +13,3 @@ en `lib/` se encuentran las funciones y utilidades generales que no pertenecen a
 ## Types
 en `types/` se encuentran las definiciones de tipos TypeScript utilizadas en la aplicacion
 
-##
