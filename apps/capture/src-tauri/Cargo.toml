@@ -46,6 +46,9 @@ voice_activity_detector = "0.2"
 # --- Clipboard ---
 arboard = "3.4"
 
+# --- Image processing (for tray icons) ---
+image = "0.25"
+
 # --- Utilities ---
 chrono = "0.4"
 reqwest = { version = "0.12", features = ["stream", "rustls-tls"] }

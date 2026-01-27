@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
-    tray::{TrayIcon, TrayIconBuilder},
+    tray::TrayIconBuilder,
     AppHandle, Emitter, Manager,
 };
 

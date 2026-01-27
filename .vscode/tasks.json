@@ -1,5 +1,54 @@
 {
   "version": "2.0.0",
+  "options": {
+    "env": {
+      "PATH": "${env:HOME}/.cargo/bin:${env:PATH}"
+    }
+  },
   "tasks": [
+    {
+      "label": "Run Capture",
+      "type": "shell",
+      "command": "pnpm tauri dev",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/capture"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Build Release",
+      "type": "shell",
+      "command": "pnpm tauri build",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/capture"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Check Rust",
+      "type": "shell",
+      "command": "cargo check",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/capture/src-tauri"
+      },
+      "group": "build",
+      "problemMatcher": "$rustc",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
   ]
 }

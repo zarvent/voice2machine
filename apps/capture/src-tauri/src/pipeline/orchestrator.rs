@@ -9,7 +9,7 @@ use std::time::Instant;
 use tokio::sync::{mpsc, Mutex as TokioMutex};
 
 use crate::audio::{play_sound_if_enabled, AudioCapture, AudioResampler, CaptureConfig, SoundCue};
-use crate::config::{AppConfig, RecordingState, VadConfig};
+use crate::config::{AppConfig, RecordingState};
 use crate::output::ClipboardManager;
 use crate::transcription::WhisperTranscriber;
 use crate::vad::{SpeechBuffer, VadDetector, VadEvent, VadStateMachine};
@@ -51,6 +51,19 @@ impl Default for PipelineConfig {
             max_recording_duration_s: 30.0,
         }
     }
+}
+
+/// Resultado de la fase de captura de audio
+enum CaptureResult {
+    /// Audio capturado exitosamente
+    Success {
+        audio: Vec<f32>,
+        duration_s: f32,
+    },
+    /// Cancelado por el usuario
+    Cancelled,
+    /// No se detecto speech suficiente
+    NoSpeech,
 }
 
 /// Orquestador del pipeline de transcripcion
@@ -144,10 +157,6 @@ impl Pipeline {
         let _ = self.event_tx.send(PipelineEvent::StateChanged(new_state));
     }
 
-    fn emit_event(&self, event: PipelineEvent) {
-        let _ = self.event_tx.send(event);
-    }
-
     /// Alterna el estado de grabacion (toggle)
     /// Retorna true si inicio grabacion, false si la cancelo
     pub async fn toggle_recording(&mut self) -> anyhow::Result<bool> {
@@ -222,20 +231,14 @@ impl Pipeline {
     }
 }
 
-/// Ejecuta el pipeline de grabacion completo
-async fn run_recording_pipeline(
-    config_arc: Arc<std::sync::Mutex<PipelineConfig>>,
-    state: Arc<std::sync::Mutex<RecordingState>>,
+/// Ejecuta la fase de captura de audio (sincrona, no-Send)
+/// 
+/// Esta funcion corre en un spawn_blocking porque AudioCapture no es Send
+fn run_audio_capture(
+    config: PipelineConfig,
     cancel_flag: Arc<AtomicBool>,
     event_tx: mpsc::UnboundedSender<PipelineEvent>,
-    transcriber_arc: Arc<TokioMutex<Option<WhisperTranscriber>>>,
-) -> anyhow::Result<()> {
-    // Obtener configuracion
-    let config = {
-        let cfg = config_arc.lock().unwrap();
-        cfg.clone()
-    };
-
+) -> anyhow::Result<CaptureResult> {
     // 1. Iniciar captura de audio
     let capture_config = CaptureConfig {
         device_id: config.app_config.audio_device_id.clone(),
@@ -267,10 +270,8 @@ async fn run_recording_pipeline(
     loop {
         // Verificar cancelacion
         if cancel_flag.load(Ordering::Relaxed) {
-            *state.lock().unwrap() = RecordingState::Idle;
-            let _ = event_tx.send(PipelineEvent::StateChanged(RecordingState::Idle));
-            play_sound_if_enabled(SoundCue::Stop, config.app_config.sound_enabled);
-            return Ok(());
+            capture.stop();
+            return Ok(CaptureResult::Cancelled);
         }
 
         // Verificar timeout maximo
@@ -335,17 +336,13 @@ async fn run_recording_pipeline(
         }
     }
 
-    // Detener captura y liberar recursos antes de async
+    // Detener captura
     capture.stop();
-    drop(capture); // Liberar AudioCapture antes de cualquier .await (no es Send)
 
-    // Si no hay speech, salir silenciosamente
+    // Verificar si hay speech suficiente
     if !speech_buffer.has_speech() {
         log::info!("No se detecto speech suficiente");
-        *state.lock().unwrap() = RecordingState::Idle;
-        let _ = event_tx.send(PipelineEvent::StateChanged(RecordingState::Idle));
-        play_sound_if_enabled(SoundCue::Stop, config.app_config.sound_enabled);
-        return Ok(());
+        return Ok(CaptureResult::NoSpeech);
     }
 
     // Obtener audio acumulado
@@ -358,12 +355,61 @@ async fn run_recording_pipeline(
         audio_duration_s
     );
 
+    Ok(CaptureResult::Success {
+        audio: speech_audio,
+        duration_s: audio_duration_s,
+    })
+}
+
+/// Ejecuta el pipeline de grabacion completo
+async fn run_recording_pipeline(
+    config_arc: Arc<std::sync::Mutex<PipelineConfig>>,
+    state: Arc<std::sync::Mutex<RecordingState>>,
+    cancel_flag: Arc<AtomicBool>,
+    event_tx: mpsc::UnboundedSender<PipelineEvent>,
+    transcriber_arc: Arc<TokioMutex<Option<WhisperTranscriber>>>,
+) -> anyhow::Result<()> {
+    // Obtener configuracion
+    let config = {
+        let cfg = config_arc.lock().unwrap();
+        cfg.clone()
+    };
+
+    let sound_enabled = config.app_config.sound_enabled;
+
+    // Fase 1: Captura de audio (sincrona, en blocking task)
+    let event_tx_capture = event_tx.clone();
+    let cancel_flag_capture = cancel_flag.clone();
+    
+    let capture_result = tokio::task::spawn_blocking(move || {
+        run_audio_capture(config, cancel_flag_capture, event_tx_capture)
+    })
+    .await
+    .map_err(|e| anyhow::anyhow!("Error en task de captura: {}", e))??;
+
+    // Procesar resultado de captura
+    let (speech_audio, audio_duration_s) = match capture_result {
+        CaptureResult::Success { audio, duration_s } => (audio, duration_s),
+        CaptureResult::Cancelled => {
+            *state.lock().unwrap() = RecordingState::Idle;
+            let _ = event_tx.send(PipelineEvent::StateChanged(RecordingState::Idle));
+            play_sound_if_enabled(SoundCue::Stop, sound_enabled);
+            return Ok(());
+        }
+        CaptureResult::NoSpeech => {
+            *state.lock().unwrap() = RecordingState::Idle;
+            let _ = event_tx.send(PipelineEvent::StateChanged(RecordingState::Idle));
+            play_sound_if_enabled(SoundCue::Stop, sound_enabled);
+            return Ok(());
+        }
+    };
+
     // Cambiar a estado de procesamiento
     *state.lock().unwrap() = RecordingState::Processing;
     let _ = event_tx.send(PipelineEvent::StateChanged(RecordingState::Processing));
-    play_sound_if_enabled(SoundCue::Stop, config.app_config.sound_enabled);
+    play_sound_if_enabled(SoundCue::Stop, sound_enabled);
 
-    // 6. Transcribir con Whisper
+    // Fase 2: Transcribir con Whisper
     let transcribe_start = Instant::now();
     
     let text = {
@@ -388,7 +434,7 @@ async fn run_recording_pipeline(
         processing_time_ms,
     });
 
-    // 7. Copiar al clipboard si hay texto
+    // Fase 3: Copiar al clipboard si hay texto
     if !text.is_empty() {
         match ClipboardManager::new() {
             Ok(mut clipboard) => {
@@ -397,10 +443,10 @@ async fn run_recording_pipeline(
                     let _ = event_tx.send(PipelineEvent::Error {
                         message: format!("Error copiando al clipboard: {}", e),
                     });
-                    play_sound_if_enabled(SoundCue::Error, config.app_config.sound_enabled);
+                    play_sound_if_enabled(SoundCue::Error, sound_enabled);
                 } else {
                     let _ = event_tx.send(PipelineEvent::CopiedToClipboard { text });
-                    play_sound_if_enabled(SoundCue::Success, config.app_config.sound_enabled);
+                    play_sound_if_enabled(SoundCue::Success, sound_enabled);
                 }
             }
             Err(e) => {
@@ -408,12 +454,12 @@ async fn run_recording_pipeline(
                 let _ = event_tx.send(PipelineEvent::Error {
                     message: format!("Error con clipboard: {}", e),
                 });
-                play_sound_if_enabled(SoundCue::Error, config.app_config.sound_enabled);
+                play_sound_if_enabled(SoundCue::Error, sound_enabled);
             }
         }
     } else {
         log::info!("Transcripcion vacia, no se copia al clipboard");
-        play_sound_if_enabled(SoundCue::Stop, config.app_config.sound_enabled);
+        play_sound_if_enabled(SoundCue::Stop, sound_enabled);
     }
 
     // Volver a idle
