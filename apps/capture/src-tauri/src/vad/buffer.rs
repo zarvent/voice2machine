@@ -10,7 +10,8 @@ pub struct SpeechBuffer {
     pre_speech: AllocRingBuffer<f32>,
     /// Buffer dinámico para speech activo
     speech: Vec<f32>,
-    /// Duración del pre-buffer en samples
+    /// Duración del pre-buffer en samples (mantenido para debugging)
+    #[allow(dead_code)]
     pre_speech_samples: usize,
     /// Máximo de samples a acumular
     max_speech_samples: usize,

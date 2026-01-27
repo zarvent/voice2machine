@@ -15,11 +15,6 @@ use tauri::{
 
 use crate::config::RecordingState;
 
-/// IDs para los iconos de tray segun estado
-const TRAY_ICON_IDLE: &str = "tray-idle";
-const TRAY_ICON_RECORDING: &str = "tray-recording";
-const TRAY_ICON_PROCESSING: &str = "tray-processing";
-
 /// Administrador del icono de tray
 pub struct TrayManager {
     /// Handle del tray icon
