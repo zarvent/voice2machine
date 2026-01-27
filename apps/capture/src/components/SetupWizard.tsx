@@ -36,10 +36,6 @@ function SetupWizard({ onComplete }: SetupWizardProps) {
     }
   };
 
-  const handleDownload = async () => {
-    await startDownload();
-  };
-
   // Detectar cuando la descarga se completa y llamar a onComplete
   useEffect(() => {
     if (progress?.status === "completed") {
@@ -47,7 +43,8 @@ function SetupWizard({ onComplete }: SetupWizardProps) {
       return () => clearTimeout(timer);
     }
   }, [progress?.status, onComplete]);
-return (
+
+  return (
     <div className="setup-wizard">
       <div className="wizard-content">
         <div className="wizard-icon">
@@ -56,6 +53,7 @@ return (
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
+            aria-hidden="true"
           >
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -70,10 +68,10 @@ return (
           large-v3-turbo (~1.5GB) para funcionar.
         </p>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && <div className="error-message" role="alert">{error}</div>}
 
         {isDownloading ? (
-          <div className="download-progress">
+          <div className="download-progress" role="status" aria-label="Progreso de descarga">
             <div className="progress-bar">
               <div
                 className="progress-fill"
@@ -88,7 +86,7 @@ return (
         ) : (
           <button
             className="download-button"
-            onClick={handleDownload}
+            onClick={startDownload}
             disabled={isDownloading}
           >
             Descargar Modelo

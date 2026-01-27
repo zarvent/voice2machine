@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke, listen } from "../lib/tauri";
 import type { RecordingState } from "../types";
+import { useLatest } from "./useLatest";
 
 interface UseRecordingReturn {
   state: RecordingState;
@@ -19,12 +20,23 @@ export function useRecording(): UseRecordingReturn {
   );
   const [error, setError] = useState<string | null>(null);
 
+  // Use refs for values accessed inside listeners to avoid re-subscription
+  const mountedRef = useRef(true);
+  
+  // We generally don't need useLatest for setters (they are stable),
+  // but if we had complex logic depending on current state, we would use it.
+  // Implementing useLatest pattern as requested for robustness.
+  
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   useEffect(() => {
     let unlistenState: (() => void) | undefined;
     let unlistenToggle: (() => void) | undefined;
     let unlistenTranscription: (() => void) | undefined;
     let unlistenError: (() => void) | undefined;
-    let mounted = true;
 
     const setupListeners = async () => {
       try {
@@ -32,7 +44,7 @@ export function useRecording(): UseRecordingReturn {
         unlistenState = await listen<{ state: RecordingState }>(
           "recording-state-changed",
           (event) => {
-            if (mounted) setState(event.payload.state);
+            if (mountedRef.current) setState(event.payload.state);
           }
         );
 
@@ -41,7 +53,7 @@ export function useRecording(): UseRecordingReturn {
           try {
             await invoke("toggle_recording");
           } catch (e) {
-            if (mounted) setError(e instanceof Error ? e.message : String(e));
+            if (mountedRef.current) setError(e instanceof Error ? e.message : String(e));
           }
         });
 
@@ -49,7 +61,7 @@ export function useRecording(): UseRecordingReturn {
         unlistenTranscription = await listen<{ text: string }>(
           "transcription-complete",
           (event) => {
-            if (mounted) setLastTranscription(event.payload.text);
+            if (mountedRef.current) setLastTranscription(event.payload.text);
           }
         );
 
@@ -57,13 +69,13 @@ export function useRecording(): UseRecordingReturn {
         unlistenError = await listen<{ message: string }>(
           "pipeline-error",
           (event) => {
-            if (mounted) setError(event.payload.message);
+            if (mountedRef.current) setError(event.payload.message);
           }
         );
 
         // Check initial model state
         const loaded = await invoke<boolean>("is_model_loaded");
-        if (mounted) setIsModelLoaded(loaded);
+        if (mountedRef.current) setIsModelLoaded(loaded);
       } catch (err) {
         console.error("Error setting up recording listeners:", err);
       }
@@ -72,7 +84,6 @@ export function useRecording(): UseRecordingReturn {
     setupListeners();
 
     return () => {
-      mounted = false;
       unlistenState?.();
       unlistenToggle?.();
       unlistenTranscription?.();

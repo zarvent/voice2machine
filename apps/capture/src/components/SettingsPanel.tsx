@@ -1,11 +1,39 @@
 import { useConfig } from "../hooks/useConfig";
 import { useRecording } from "../hooks/useRecording";
+import type { RecordingState } from "../types";
 import "./SettingsPanel.css";
+
+const getStateColor = (state: RecordingState) => {
+  switch (state) {
+    case "recording":
+      return "#ef4444";
+    case "processing":
+      return "#f59e0b";
+    default:
+      return "#22c55e";
+  }
+};
+
+const getStateText = (state: RecordingState) => {
+  switch (state) {
+    case "recording":
+      return "Grabando...";
+    case "processing":
+      return "Procesando...";
+    default:
+      return "Listo";
+  }
+};
 
 function SettingsPanel() {
   const { config, devices, loading, updateConfig, refreshDevices } =
     useConfig();
   const { state, lastTranscription, error, toggleRecording } = useRecording();
+
+  // Derived state for button text/state
+  const isProcessing = state === "processing";
+  const isIdle = state === "idle";
+  const isRecording = state === "recording";
 
   if (loading || !config) {
     return (
@@ -26,29 +54,8 @@ function SettingsPanel() {
   };
 
   const handleSoundToggle = () => {
+    // Functional update if possible, otherwise use current config
     updateConfig({ sound_enabled: !config.sound_enabled });
-  };
-
-  const getStateColor = () => {
-    switch (state) {
-      case "recording":
-        return "#ef4444";
-      case "processing":
-        return "#f59e0b";
-      default:
-        return "#22c55e";
-    }
-  };
-
-  const getStateText = () => {
-    switch (state) {
-      case "recording":
-        return "Grabando...";
-      case "processing":
-        return "Procesando...";
-      default:
-        return "Listo";
-    }
   };
 
   return (
@@ -68,8 +75,8 @@ function SettingsPanel() {
           </svg>
         </div>
         <h1>Capture</h1>
-        <div className="status-indicator" style={{ background: getStateColor() }}>
-          {getStateText()}
+        <div className="status-indicator" style={{ background: getStateColor(state) }}>
+          {getStateText(state)}
         </div>
       </header>
 
@@ -138,13 +145,13 @@ function SettingsPanel() {
 
       <section className="settings-section">
         <button
-          className={`record-button ${state !== "idle" ? "active" : ""}`}
+          className={`record-button ${!isIdle ? "active" : ""}`}
           onClick={toggleRecording}
-          disabled={state === "processing"}
+          disabled={isProcessing}
         >
-          {state === "idle"
+          {isIdle
             ? "Iniciar Grabacion"
-            : state === "recording"
+            : isRecording
               ? "Detener Grabacion"
               : "Procesando..."}
         </button>
