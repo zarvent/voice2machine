@@ -1,3 +1,24 @@
+## overview
+
+`capture` is a voice2machine app located in `voice2machine/apps/capture`.
+
+voice2machine is a monorepo containing text transcription tools.
+
+## purpose
+capture will focus 100% on one thing: **transcribing the input assigned to it**.
+principles
+
+- simplicity
+- performance
+- efficiency
+
+### keep in mind
+
+- in all in code comments use spanish latin american native, Everything else that is technical, variables, etc., uses native American English.
+
+- Don't make it “CPU-only” or “GPU-hard-dependency.” In 2026, the standard is conditional compilation with runtime fallback.
+  Linux: Use Vulkan. It's much more portable than CUDA and doesn't require proprietary Nvidia drivers (it works on AMD/Intel).
+
 ### STACKS
 
 `FRONT END`
