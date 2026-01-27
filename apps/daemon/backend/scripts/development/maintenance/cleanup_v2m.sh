@@ -20,7 +20,7 @@ echo -e "${YELLOW}🧹 V2M Cleanup Script${NC}"
 echo "======================================"
 
 # 1. Buscar procesos v2m
-echo -e "\n${YELLOW}[1/4]${NC} Buscando procesos v2m..."
+echo -e "\n${YELLOW}[1/2]${NC} Buscando procesos v2m..."
 PIDS=$(pgrep -f "v2m" || true)
 
 if [[ -z "$PIDS" ]]; then
@@ -44,34 +44,8 @@ else
     fi
 fi
 
-# Load common utilities
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-source "${SCRIPT_DIR}/../../shared/common.sh"
-
-RUNTIME_DIR=$(get_runtime_dir)
-
-# 2. Limpiar socket huérfano
-echo -e "\n${YELLOW}[2/4]${NC} Verificando socket Unix..."
-if [[ -S "${RUNTIME_DIR}/v2m.sock" ]]; then
-    echo -e "${YELLOW}Socket encontrado en ${RUNTIME_DIR}/v2m.sock, eliminando...${NC}"
-    rm -f "${RUNTIME_DIR}/v2m.sock"
-    echo -e "${GREEN}✅ Socket eliminado${NC}"
-else
-    echo -e "${GREEN}✅ No hay socket huérfano en ${RUNTIME_DIR}${NC}"
-fi
-
-# 3. Limpiar PID file
-echo -e "\n${YELLOW}[3/4]${NC} Verificando PID file..."
-if [[ -f "${RUNTIME_DIR}/v2m_daemon.pid" ]]; then
-    echo -e "${YELLOW}PID file encontrado en ${RUNTIME_DIR}/v2m_daemon.pid, eliminando...${NC}"
-    rm -f "${RUNTIME_DIR}/v2m_daemon.pid"
-    echo -e "${GREEN}✅ PID file eliminado${NC}"
-else
-    echo -e "${GREEN}✅ No hay PID file huérfano en ${RUNTIME_DIR}${NC}"
-fi
-
-# 4. Verificar VRAM
-echo -e "\n${YELLOW}[4/4]${NC} Verificando uso de VRAM..."
+# 2. Verificar VRAM
+echo -e "\n${YELLOW}[2/2]${NC} Verificando uso de VRAM..."
 if command -v nvidia-smi &> /dev/null; then
     VRAM_USED=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
     VRAM_FREE=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits)

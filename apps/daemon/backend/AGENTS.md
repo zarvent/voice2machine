@@ -38,7 +38,6 @@ venv/bin/pytest tests/unit/path/to/test_file.py -v
 
 # Run server
 python -m v2m.main              # Start FastAPI server
-python -m v2m.main toggle       # Send toggle command
 ```
 
 > **Full builds only on explicit request.**
@@ -73,7 +72,7 @@ src/v2m/
 └── v2m_engine/          # Rust core (Audio capture & preprocessing)
 ```
 
-**Eliminated (Refactor SOTA 2026):**
+**Eliminated (Refactor SOTA 2026) - COMPLETED:**
 
 - ~~services/orchestrator.py~~ → `orchestration/` Workflows
 - ~~infrastructure/~~ → Integrated into `features/`

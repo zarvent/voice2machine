@@ -3,18 +3,11 @@
 
 echo "🛑 Buscando procesos de Voice2Machine..."
 
-# Buscar PID del proceso que corre "v2m.main --daemon"
-PID=$(pgrep -f "v2m.main --daemon")
+# Buscar PID del proceso que corre "v2m.main"
+PID=$(pgrep -f "v2m.main")
 
 if [ -z "$PID" ]; then
     echo "⚠️ No se encontró el demonio en ejecución."
-    
-    # Limpieza de seguridad: verificar socket huérfano
-    SOCKET_PATH="/run/user/$(id -u)/v2m/v2m.sock"
-    if [ -S "$SOCKET_PATH" ]; then
-        echo "🧹 Limpiando socket huérfano: $SOCKET_PATH"
-        rm "$SOCKET_PATH"
-    fi
     exit 0
 fi
 
