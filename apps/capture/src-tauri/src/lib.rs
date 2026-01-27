@@ -14,8 +14,8 @@ pub mod vad;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use config::AppConfig;
-use pipeline::{Pipeline, PipelineConfig};
+use config::{AppConfig, RecordingState};
+use pipeline::{Pipeline, PipelineConfig, PipelineEvent};
 use tray::TrayManager;
 
 /// Estado global de la aplicacion compartido entre comandos
@@ -57,7 +57,7 @@ impl Default for AppState {
 
 /// Configura los plugins y shortcuts de Tauri
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri::{Emitter, Manager};
+    use tauri::{Emitter, Listener, Manager};
     use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
     let app_handle = app.handle().clone();
@@ -68,6 +68,12 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         let tray_manager = TrayManager::setup(&app_handle)?;
         let mut tray_lock = state.tray_manager.blocking_lock();
         *tray_lock = Some(tray_manager);
+    }
+
+    // Configurar el AppHandle en el Pipeline para emision de eventos
+    {
+        let mut pipeline_lock = state.pipeline.blocking_lock();
+        pipeline_lock.set_app_handle(app_handle.clone());
     }
 
     // Registrar shortcut global
@@ -94,14 +100,27 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 
     log::info!("Shortcut global registrado: Ctrl+Shift+Space");
 
-    // Verificar si el modelo existe y mostrar ventana si es necesario
+    // Mostrar ventana si el modelo no existe, o siempre en modo debug
     let check_app_handle = app_handle.clone();
     tauri::async_runtime::spawn(async move {
         use crate::transcription::ModelDownloader;
         
         let downloader = ModelDownloader::new();
-        if !downloader.exists().await {
+        let model_exists = downloader.exists().await;
+        
+        // En debug, siempre mostrar ventana para testing
+        // En release, solo si el modelo no existe
+        let should_show = if cfg!(debug_assertions) {
+            log::info!("Modo debug: mostrando ventana de configuración");
+            true
+        } else if !model_exists {
             log::info!("Modelo no encontrado. Mostrando ventana de configuración.");
+            true
+        } else {
+            false
+        };
+        
+        if should_show {
             if let Some(window) = check_app_handle.get_webview_window("main") {
                 if let Err(e) = window.show() {
                     log::error!("Error mostrando ventana: {}", e);
@@ -113,13 +132,38 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         }
     });
 
-    // Escuchar eventos del pipeline para actualizar tray
-    let _app_handle_events = app_handle.clone();
-    tauri::async_runtime::spawn(async move {
-        // Este loop escuchara eventos del pipeline cuando se implemente
-        // Por ahora, el tray se actualiza directamente desde los comandos
-        log::debug!("Event listener iniciado");
+    // Escuchar eventos del pipeline para actualizar tray icon
+    let tray_app_handle = app_handle.clone();
+    app_handle.listen("pipeline-event", move |event| {
+        // Deserializar el evento
+        if let Ok(pipeline_event) = serde_json::from_str::<PipelineEvent>(event.payload()) {
+            // Solo actualizamos el tray en eventos de cambio de estado
+            if let PipelineEvent::StateChanged { state: new_state } = pipeline_event {
+                update_tray_for_state(&tray_app_handle, new_state);
+            }
+        }
     });
 
+    log::info!("Event listener para tray icon configurado");
+
     Ok(())
+}
+
+/// Actualiza el icono del tray segun el estado del pipeline
+fn update_tray_for_state(app_handle: &tauri::AppHandle, new_state: RecordingState) {
+    use tauri::Manager;
+    
+    let app_state = app_handle.state::<AppState>();
+    let tray_manager = app_state.tray_manager.clone();
+    let app_handle = app_handle.clone();
+    
+    tauri::async_runtime::spawn(async move {
+        if let Some(tray) = tray_manager.lock().await.as_ref() {
+            if let Err(e) = tray.update_state(&app_handle, new_state) {
+                log::error!("Error actualizando tray icon: {}", e);
+            } else {
+                log::debug!("Tray icon actualizado a estado: {:?}", new_state);
+            }
+        }
+    });
 }

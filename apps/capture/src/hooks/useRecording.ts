@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke, listen } from "../lib/tauri";
-import type { RecordingState } from "../types";
-import { useLatest } from "./useLatest";
+import type { RecordingState, PipelineEvent } from "../types";
 
 interface UseRecordingReturn {
   state: RecordingState;
@@ -23,32 +22,57 @@ export function useRecording(): UseRecordingReturn {
   // Use refs for values accessed inside listeners to avoid re-subscription
   const mountedRef = useRef(true);
   
-  // We generally don't need useLatest for setters (they are stable),
-  // but if we had complex logic depending on current state, we would use it.
-  // Implementing useLatest pattern as requested for robustness.
-  
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
 
   useEffect(() => {
-    let unlistenState: (() => void) | undefined;
+    let unlistenPipeline: (() => void) | undefined;
     let unlistenToggle: (() => void) | undefined;
-    let unlistenTranscription: (() => void) | undefined;
-    let unlistenError: (() => void) | undefined;
 
     const setupListeners = async () => {
       try {
-        // Listen for state changes from backend
-        unlistenState = await listen<{ state: RecordingState }>(
-          "recording-state-changed",
+        // Escuchar eventos unificados del pipeline
+        unlistenPipeline = await listen<PipelineEvent>(
+          "pipeline-event",
           (event) => {
-            if (mountedRef.current) setState(event.payload.state);
+            if (!mountedRef.current) return;
+            
+            const payload = event.payload;
+            console.log("Pipeline event:", payload);
+            
+            switch (payload.type) {
+              case "state_changed":
+                if (payload.state) {
+                  setState(payload.state);
+                }
+                break;
+              case "speech_started":
+                // Feedback visual opcional
+                console.log("Speech started");
+                break;
+              case "speech_ended":
+                console.log("Speech ended:", payload.duration_ms, "ms");
+                break;
+              case "transcription_complete":
+                if (payload.text) {
+                  setLastTranscription(payload.text);
+                }
+                break;
+              case "copied_to_clipboard":
+                console.log("Copied to clipboard:", payload.text);
+                break;
+              case "error":
+                if (payload.message) {
+                  setError(payload.message);
+                }
+                break;
+            }
           }
         );
 
-        // Listen for toggle shortcut
+        // Escuchar shortcut de toggle
         unlistenToggle = await listen("toggle-recording", async () => {
           try {
             await invoke("toggle_recording");
@@ -57,23 +81,7 @@ export function useRecording(): UseRecordingReturn {
           }
         });
 
-        // Listen for transcription results
-        unlistenTranscription = await listen<{ text: string }>(
-          "transcription-complete",
-          (event) => {
-            if (mountedRef.current) setLastTranscription(event.payload.text);
-          }
-        );
-
-        // Listen for errors
-        unlistenError = await listen<{ message: string }>(
-          "pipeline-error",
-          (event) => {
-            if (mountedRef.current) setError(event.payload.message);
-          }
-        );
-
-        // Check initial model state
+        // Verificar estado inicial del modelo
         const loaded = await invoke<boolean>("is_model_loaded");
         if (mountedRef.current) setIsModelLoaded(loaded);
       } catch (err) {
@@ -84,10 +92,8 @@ export function useRecording(): UseRecordingReturn {
     setupListeners();
 
     return () => {
-      unlistenState?.();
+      unlistenPipeline?.();
       unlistenToggle?.();
-      unlistenTranscription?.();
-      unlistenError?.();
     };
   }, []);
 

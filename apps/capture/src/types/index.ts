@@ -45,13 +45,11 @@ export interface ModelInfo {
   verified: boolean;
 }
 
-export interface PipelineEvent {
-  type:
-    | "state_changed"
-    | "speech_started"
-    | "speech_ended"
-    | "transcription_complete"
-    | "copied_to_clipboard"
-    | "error";
-  data?: unknown;
-}
+// Pipeline events - discriminated union basada en el campo "type"
+export type PipelineEvent =
+  | { type: "state_changed"; state: RecordingState }
+  | { type: "speech_started" }
+  | { type: "speech_ended"; duration_ms: number }
+  | { type: "transcription_complete"; text: string; audio_duration_s: number; processing_time_ms: number }
+  | { type: "copied_to_clipboard"; text: string }
+  | { type: "error"; message: string };

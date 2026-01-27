@@ -30,7 +30,7 @@ impl AudioResampler {
     /// Crea un nuevo resampler para el formato de entrada especificado
     pub fn new(input_sample_rate: u32, input_channels: u16) -> anyhow::Result<Self> {
         let ratio = WHISPER_SAMPLE_RATE as f64 / input_sample_rate as f64;
-        
+
         // Solo crear resampler si es necesario
         let resampler = if input_sample_rate != WHISPER_SAMPLE_RATE {
             // Parámetros optimizados para voz (menor latencia, buena calidad)
@@ -44,13 +44,13 @@ impl AudioResampler {
 
             // Tamaño de chunk típico (~10ms de audio @ 48kHz = 480 samples)
             let chunk_size = (input_sample_rate as f64 * 0.01) as usize;
-            
+
             let resampler = SincFixedIn::<f32>::new(
                 ratio,
                 2.0, // Max ratio adjustment
                 params,
                 chunk_size.max(64), // Mínimo 64 samples
-                input_channels as usize,
+                1, // Siempre 1 canal: primero convertimos a mono, luego resampling
             )
             .map_err(|e| anyhow::anyhow!("Error creando resampler: {}", e))?;
 
@@ -111,7 +111,7 @@ impl AudioResampler {
 
         // rubato espera Vec<Vec<f32>> donde cada Vec interno es un canal
         let input = vec![mono_samples.to_vec()];
-        
+
         // Calcular tamaño de salida aproximado
         let output_len = (mono_samples.len() as f64 * self.ratio).ceil() as usize + 10;
         let mut output = vec![vec![0.0f32; output_len]];
@@ -123,7 +123,7 @@ impl AudioResampler {
 
         // Extraer solo los frames válidos
         output[0].truncate(output_frames);
-        
+
         Ok(output.into_iter().next().unwrap_or_default())
     }
 
@@ -160,11 +160,11 @@ mod tests {
     #[test]
     fn test_mono_conversion() {
         let resampler = AudioResampler::new(16000, 2).unwrap();
-        
+
         // Stereo: L=1.0, R=0.0, L=0.5, R=0.5
         let stereo = vec![1.0, 0.0, 0.5, 0.5];
         let mono = resampler.to_mono(&stereo);
-        
+
         // Promedio: (1.0+0.0)/2=0.5, (0.5+0.5)/2=0.5
         assert_eq!(mono.len(), 2);
         assert!((mono[0] - 0.5).abs() < 0.001);

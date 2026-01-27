@@ -2,11 +2,15 @@
 //!
 //! Conecta todos los componentes: captura de audio, VAD, buffer de speech,
 //! transcripcion con Whisper, y salida al clipboard.
+//!
+//! Emite eventos Tauri para comunicar cambios de estado al frontend.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::sync::{mpsc, Mutex as TokioMutex};
+use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Emitter};
+use tokio::sync::Mutex as TokioMutex;
 
 use crate::audio::{play_sound_if_enabled, AudioCapture, AudioResampler, CaptureConfig, SoundCue};
 use crate::config::{AppConfig, RecordingState};
@@ -15,10 +19,12 @@ use crate::transcription::WhisperTranscriber;
 use crate::vad::{SpeechBuffer, VadDetector, VadEvent, VadStateMachine};
 
 /// Eventos emitidos por el pipeline para actualizar la UI
-#[derive(Debug, Clone)]
+/// Estos payloads se serializan y envian al frontend via Tauri events
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum PipelineEvent {
     /// El estado de grabacion cambio
-    StateChanged(RecordingState),
+    StateChanged { state: RecordingState },
     /// Speech detectado, comenzando captura
     SpeechStarted,
     /// Speech finalizado, procesando
@@ -68,10 +74,8 @@ enum CaptureResult {
 
 /// Orquestador del pipeline de transcripcion
 pub struct Pipeline {
-    /// Transmisor de eventos
-    event_tx: mpsc::UnboundedSender<PipelineEvent>,
-    /// Receptor de eventos (para la UI)
-    event_rx: Option<mpsc::UnboundedReceiver<PipelineEvent>>,
+    /// Handle de la aplicacion Tauri para emitir eventos
+    app_handle: Option<AppHandle>,
     /// Estado actual
     state: Arc<std::sync::Mutex<RecordingState>>,
     /// Flag para cancelar grabacion
@@ -85,11 +89,8 @@ pub struct Pipeline {
 impl Pipeline {
     /// Crea un nuevo pipeline
     pub fn new(config: PipelineConfig) -> Self {
-        let (event_tx, event_rx) = mpsc::unbounded_channel();
-        
         Self {
-            event_tx,
-            event_rx: Some(event_rx),
+            app_handle: None,
             state: Arc::new(std::sync::Mutex::new(RecordingState::Idle)),
             cancel_flag: Arc::new(AtomicBool::new(false)),
             transcriber: Arc::new(TokioMutex::new(None)),
@@ -97,9 +98,18 @@ impl Pipeline {
         }
     }
 
-    /// Toma el receptor de eventos (solo se puede llamar una vez)
-    pub fn take_event_receiver(&mut self) -> Option<mpsc::UnboundedReceiver<PipelineEvent>> {
-        self.event_rx.take()
+    /// Configura el AppHandle para emitir eventos al frontend
+    pub fn set_app_handle(&mut self, app_handle: AppHandle) {
+        self.app_handle = Some(app_handle);
+    }
+
+    /// Emite un evento al frontend via Tauri
+    fn emit_event(&self, event: PipelineEvent) {
+        if let Some(app) = &self.app_handle {
+            if let Err(e) = app.emit("pipeline-event", &event) {
+                log::error!("Error emitiendo evento pipeline: {}", e);
+            }
+        }
     }
 
     /// Carga el modelo de Whisper si no esta cargado
@@ -154,7 +164,7 @@ impl Pipeline {
 
     fn set_state(&self, new_state: RecordingState) {
         *self.state.lock().unwrap() = new_state;
-        let _ = self.event_tx.send(PipelineEvent::StateChanged(new_state));
+        self.emit_event(PipelineEvent::StateChanged { state: new_state });
     }
 
     /// Alterna el estado de grabacion (toggle)
@@ -199,7 +209,7 @@ impl Pipeline {
         // Clonar recursos compartidos para el task
         let state = self.state.clone();
         let cancel_flag = self.cancel_flag.clone();
-        let event_tx = self.event_tx.clone();
+        let app_handle = self.app_handle.clone();
         let transcriber = self.transcriber.clone();
         let config_arc = self.config.clone();
 
@@ -209,13 +219,13 @@ impl Pipeline {
                 config_arc,
                 state,
                 cancel_flag,
-                event_tx.clone(),
+                app_handle.clone(),
                 transcriber,
             )
             .await
             {
                 log::error!("Error en pipeline: {}", e);
-                let _ = event_tx.send(PipelineEvent::Error {
+                emit_pipeline_event(&app_handle, PipelineEvent::Error {
                     message: e.to_string(),
                 });
             }
@@ -231,13 +241,23 @@ impl Pipeline {
     }
 }
 
+/// Helper para emitir eventos desde funciones standalone
+fn emit_pipeline_event(app_handle: &Option<AppHandle>, event: PipelineEvent) {
+    if let Some(app) = app_handle {
+        if let Err(e) = app.emit("pipeline-event", &event) {
+            log::error!("Error emitiendo evento pipeline: {}", e);
+        }
+    }
+}
+
 /// Ejecuta la fase de captura de audio (sincrona, no-Send)
 /// 
 /// Esta funcion corre en un spawn_blocking porque AudioCapture no es Send
+/// Nota: No podemos pasar AppHandle aqui porque no es Send, 
+/// los eventos de speech se emiten despues via el resultado
 fn run_audio_capture(
     config: PipelineConfig,
     cancel_flag: Arc<AtomicBool>,
-    event_tx: mpsc::UnboundedSender<PipelineEvent>,
 ) -> anyhow::Result<CaptureResult> {
     // 1. Iniciar captura de audio
     let capture_config = CaptureConfig {
@@ -310,12 +330,12 @@ fn run_audio_capture(
                 log::info!("Speech detectado, iniciando captura");
                 speech_buffer.start_speech();
                 speech_started = true;
-                let _ = event_tx.send(PipelineEvent::SpeechStarted);
+                // Evento se emitira desde el contexto async despues
             }
             VadEvent::SpeechEnded | VadEvent::MaxDurationReached => {
                 if speech_started {
                     let duration_ms = speech_buffer.speech_duration_ms();
-                    let _ = event_tx.send(PipelineEvent::SpeechEnded { duration_ms });
+                    log::info!("Speech terminado: {}ms", duration_ms);
                     break;
                 }
             }
@@ -328,7 +348,7 @@ fn run_audio_capture(
                     if speech_buffer.is_at_capacity() {
                         vad_state.force_end();
                         let duration_ms = speech_buffer.speech_duration_ms();
-                        let _ = event_tx.send(PipelineEvent::SpeechEnded { duration_ms });
+                        log::info!("Max duration reached: {}ms", duration_ms);
                         break;
                     }
                 }
@@ -366,7 +386,7 @@ async fn run_recording_pipeline(
     config_arc: Arc<std::sync::Mutex<PipelineConfig>>,
     state: Arc<std::sync::Mutex<RecordingState>>,
     cancel_flag: Arc<AtomicBool>,
-    event_tx: mpsc::UnboundedSender<PipelineEvent>,
+    app_handle: Option<AppHandle>,
     transcriber_arc: Arc<TokioMutex<Option<WhisperTranscriber>>>,
 ) -> anyhow::Result<()> {
     // Obtener configuracion
@@ -377,28 +397,35 @@ async fn run_recording_pipeline(
 
     let sound_enabled = config.app_config.sound_enabled;
 
+    // Emitir evento de speech started (aproximado, antes de captura)
+    emit_pipeline_event(&app_handle, PipelineEvent::SpeechStarted);
+
     // Fase 1: Captura de audio (sincrona, en blocking task)
-    let event_tx_capture = event_tx.clone();
     let cancel_flag_capture = cancel_flag.clone();
     
     let capture_result = tokio::task::spawn_blocking(move || {
-        run_audio_capture(config, cancel_flag_capture, event_tx_capture)
+        run_audio_capture(config, cancel_flag_capture)
     })
     .await
     .map_err(|e| anyhow::anyhow!("Error en task de captura: {}", e))??;
 
     // Procesar resultado de captura
     let (speech_audio, audio_duration_s) = match capture_result {
-        CaptureResult::Success { audio, duration_s } => (audio, duration_s),
+        CaptureResult::Success { audio, duration_s } => {
+            emit_pipeline_event(&app_handle, PipelineEvent::SpeechEnded { 
+                duration_ms: (duration_s * 1000.0) as u64 
+            });
+            (audio, duration_s)
+        },
         CaptureResult::Cancelled => {
             *state.lock().unwrap() = RecordingState::Idle;
-            let _ = event_tx.send(PipelineEvent::StateChanged(RecordingState::Idle));
+            emit_pipeline_event(&app_handle, PipelineEvent::StateChanged { state: RecordingState::Idle });
             play_sound_if_enabled(SoundCue::Stop, sound_enabled);
             return Ok(());
         }
         CaptureResult::NoSpeech => {
             *state.lock().unwrap() = RecordingState::Idle;
-            let _ = event_tx.send(PipelineEvent::StateChanged(RecordingState::Idle));
+            emit_pipeline_event(&app_handle, PipelineEvent::StateChanged { state: RecordingState::Idle });
             play_sound_if_enabled(SoundCue::Stop, sound_enabled);
             return Ok(());
         }
@@ -406,7 +433,7 @@ async fn run_recording_pipeline(
 
     // Cambiar a estado de procesamiento
     *state.lock().unwrap() = RecordingState::Processing;
-    let _ = event_tx.send(PipelineEvent::StateChanged(RecordingState::Processing));
+    emit_pipeline_event(&app_handle, PipelineEvent::StateChanged { state: RecordingState::Processing });
     play_sound_if_enabled(SoundCue::Stop, sound_enabled);
 
     // Fase 2: Transcribir con Whisper
@@ -428,7 +455,7 @@ async fn run_recording_pipeline(
         text
     );
 
-    let _ = event_tx.send(PipelineEvent::TranscriptionComplete {
+    emit_pipeline_event(&app_handle, PipelineEvent::TranscriptionComplete {
         text: text.clone(),
         audio_duration_s,
         processing_time_ms,
@@ -440,18 +467,18 @@ async fn run_recording_pipeline(
             Ok(mut clipboard) => {
                 if let Err(e) = clipboard.set_text(&text) {
                     log::error!("Error copiando al clipboard: {}", e);
-                    let _ = event_tx.send(PipelineEvent::Error {
+                    emit_pipeline_event(&app_handle, PipelineEvent::Error {
                         message: format!("Error copiando al clipboard: {}", e),
                     });
                     play_sound_if_enabled(SoundCue::Error, sound_enabled);
                 } else {
-                    let _ = event_tx.send(PipelineEvent::CopiedToClipboard { text });
+                    emit_pipeline_event(&app_handle, PipelineEvent::CopiedToClipboard { text });
                     play_sound_if_enabled(SoundCue::Success, sound_enabled);
                 }
             }
             Err(e) => {
                 log::error!("Error inicializando clipboard: {}", e);
-                let _ = event_tx.send(PipelineEvent::Error {
+                emit_pipeline_event(&app_handle, PipelineEvent::Error {
                     message: format!("Error con clipboard: {}", e),
                 });
                 play_sound_if_enabled(SoundCue::Error, sound_enabled);
@@ -464,7 +491,7 @@ async fn run_recording_pipeline(
 
     // Volver a idle
     *state.lock().unwrap() = RecordingState::Idle;
-    let _ = event_tx.send(PipelineEvent::StateChanged(RecordingState::Idle));
+    emit_pipeline_event(&app_handle, PipelineEvent::StateChanged { state: RecordingState::Idle });
 
     Ok(())
 }
@@ -483,10 +510,9 @@ mod tests {
     #[test]
     fn test_pipeline_creation() {
         let config = PipelineConfig::default();
-        let mut pipeline = Pipeline::new(config);
+        let pipeline = Pipeline::new(config);
         
         assert_eq!(pipeline.state(), RecordingState::Idle);
-        assert!(pipeline.take_event_receiver().is_some());
-        assert!(pipeline.take_event_receiver().is_none()); // Solo una vez
+        assert!(pipeline.app_handle.is_none()); // Sin app handle inicialmente
     }
 }
