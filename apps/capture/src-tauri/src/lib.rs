@@ -57,7 +57,7 @@ impl Default for AppState {
 
 /// Configura los plugins y shortcuts de Tauri
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri::{Emitter, Listener, Manager};
+    use tauri::{Listener, Manager};
     use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
     let app_handle = app.handle().clone();
@@ -81,15 +81,26 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         .parse()
         .expect("Shortcut invalido");
 
+    // Clonar el handle para usar dentro del handler
+    let shortcut_app_handle = app_handle.clone();
+
     app.handle().plugin(
         tauri_plugin_global_shortcut::Builder::new()
             .with_handler(move |_app, shortcut_pressed, event| {
                 if event.state() == ShortcutState::Pressed {
                     log::info!("Shortcut presionado: {:?}", shortcut_pressed);
-                    // Emitir evento para toggle
-                    if let Err(e) = _app.emit("toggle-recording", ()) {
-                        log::error!("Error emitiendo evento: {}", e);
-                    }
+
+                    // Llamar toggle_recording DIRECTAMENTE en lugar de emitir evento
+                    // Esto elimina la doble invocación que ocurría cuando el frontend
+                    // escuchaba el evento y llamaba de vuelta via IPC
+                    let app_handle = shortcut_app_handle.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let state = app_handle.state::<AppState>();
+                        let mut pipeline = state.pipeline.lock().await;
+                        if let Err(e) = pipeline.toggle_recording().await {
+                            log::error!("Error en toggle_recording: {}", e);
+                        }
+                    });
                 }
             })
             .build(),
@@ -104,10 +115,10 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     let check_app_handle = app_handle.clone();
     tauri::async_runtime::spawn(async move {
         use crate::transcription::ModelDownloader;
-        
+
         let downloader = ModelDownloader::new();
         let model_exists = downloader.exists().await;
-        
+
         // En debug, siempre mostrar ventana para testing
         // En release, solo si el modelo no existe
         let should_show = if cfg!(debug_assertions) {
@@ -119,7 +130,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         } else {
             false
         };
-        
+
         if should_show {
             if let Some(window) = check_app_handle.get_webview_window("main") {
                 if let Err(e) = window.show() {
@@ -152,11 +163,11 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 /// Actualiza el icono del tray segun el estado del pipeline
 fn update_tray_for_state(app_handle: &tauri::AppHandle, new_state: RecordingState) {
     use tauri::Manager;
-    
+
     let app_state = app_handle.state::<AppState>();
     let tray_manager = app_state.tray_manager.clone();
     let app_handle = app_handle.clone();
-    
+
     tauri::async_runtime::spawn(async move {
         if let Some(tray) = tray_manager.lock().await.as_ref() {
             if let Err(e) = tray.update_state(&app_handle, new_state) {

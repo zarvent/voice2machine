@@ -98,7 +98,7 @@ Ctrl+Shift+Space → grabar → VAD → Whisper → clipboard
 ### Data flow detail
 
 ```
-1. User: Ctrl+Shift+Space
+1. User: Ctrl+Shift+Space (INICIAR GRABACIÓN)
    └── tauri_plugin_global_shortcut emite "toggle-recording"
 
 2. Frontend: escucha evento → invoca toggle_recording IPC
@@ -111,22 +111,27 @@ Ctrl+Shift+Space → grabar → VAD → Whisper → clipboard
    │   └── spawn task → run_recording_pipeline()
    │
    └── If Recording:
-       └── cancel_flag.store(true)
+       └── cancel_flag.store(true)  ← DETIENE GRABACIÓN
 
 4. run_recording_pipeline() [tokio task]:
    │
    ├── spawn_blocking: run_audio_capture()
    │   ├── AudioCapture::start() → cpal stream
-   │   ├── loop:
+   │   ├── loop (MANUAL STOP - solo termina por cancel_flag o timeout):
+   │   │   ├── check cancel_flag → si true:
+   │   │   │   └── return Success (con audio) o Cancelled (sin audio)
    │   │   ├── recv chunk via crossbeam channel
    │   │   ├── resampler.process() → 16kHz mono
    │   │   ├── speech_buffer.push_pre_speech()
    │   │   ├── vad.predict() → is_speech: bool
    │   │   ├── vad_state.process() → VadEvent
    │   │   │   ├── SpeechStarted: speech_buffer.start_speech()
-   │   │   │   ├── SpeechEnded: break
-   │   │   │   └── None: if capturing, speech_buffer.push_speech()
-   │   │   └── check cancel_flag, timeout
+   │   │   │   │   └── Primera vez: iniciar acumulación
+   │   │   │   ├── SpeechEnded: vad_state.reset()
+   │   │   │   │   └── NO termina grabación - continua esperando
+   │   │   │   │   └── Reset VAD para detectar siguiente segmento
+   │   │   │   └── None: acumular audio si hay speech activo
+   │   │   └── check max_duration → break si excede
    │   └── return CaptureResult { audio, duration }
    │
    ├── set_state(Processing)
@@ -134,7 +139,7 @@ Ctrl+Shift+Space → grabar → VAD → Whisper → clipboard
    │
    ├── transcriber.transcribe(audio) [spawn_blocking interno]
    │   ├── WhisperContext::create_state()
-   │   ├── FullParams con language, no_speech_thold=0.4
+   │   ├── FullParams con language="es", no_speech_thold=0.4
    │   └── state.full() → segments → String
    │
    ├── ClipboardManager::set_text(text)
@@ -142,7 +147,20 @@ Ctrl+Shift+Space → grabar → VAD → Whisper → clipboard
    ├── emit PipelineEvent::CopiedToClipboard
    │
    └── set_state(Idle)
+
+5. User: Ctrl+Shift+Space (DETENER GRABACIÓN)
+   └── cancel_flag.store(true) → capture loop detecta → retorna audio
+   └── Pipeline procesa audio → transcribe → clipboard
 ```
+
+**Comportamiento clave:**
+- La grabación es **MANUAL**: solo termina cuando el usuario presiona el shortcut de nuevo
+- El VAD **NO** controla cuándo termina la grabación
+- El VAD detecta segmentos de voz para:
+  - Iniciar acumulación de audio (primera detección de speech)
+  - Feedback visual al frontend (indicador de "hablando")
+  - Optimizar el audio (no incluir silencios largos innecesarios)
+- El usuario puede hacer pausas entre oraciones sin perder audio
 
 ### VAD state machine
 

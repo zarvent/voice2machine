@@ -21,7 +21,7 @@ export function useRecording(): UseRecordingReturn {
 
   // Use refs for values accessed inside listeners to avoid re-subscription
   const mountedRef = useRef(true);
-  
+
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
@@ -29,19 +29,20 @@ export function useRecording(): UseRecordingReturn {
 
   useEffect(() => {
     let unlistenPipeline: (() => void) | undefined;
-    let unlistenToggle: (() => void) | undefined;
 
     const setupListeners = async () => {
       try {
         // Escuchar eventos unificados del pipeline
+        // El toggle ahora se maneja directamente en el backend (shortcut → toggle_recording)
+        // Este listener solo actualiza el UI basado en eventos del pipeline
         unlistenPipeline = await listen<PipelineEvent>(
           "pipeline-event",
           (event) => {
             if (!mountedRef.current) return;
-            
+
             const payload = event.payload;
             console.log("Pipeline event:", payload);
-            
+
             switch (payload.type) {
               case "state_changed":
                 if (payload.state) {
@@ -72,15 +73,6 @@ export function useRecording(): UseRecordingReturn {
           }
         );
 
-        // Escuchar shortcut de toggle
-        unlistenToggle = await listen("toggle-recording", async () => {
-          try {
-            await invoke("toggle_recording");
-          } catch (e) {
-            if (mountedRef.current) setError(e instanceof Error ? e.message : String(e));
-          }
-        });
-
         // Verificar estado inicial del modelo
         const loaded = await invoke<boolean>("is_model_loaded");
         if (mountedRef.current) setIsModelLoaded(loaded);
@@ -93,7 +85,6 @@ export function useRecording(): UseRecordingReturn {
 
     return () => {
       unlistenPipeline?.();
-      unlistenToggle?.();
     };
   }, []);
 
