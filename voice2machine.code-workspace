@@ -7,6 +7,9 @@
     {
       "name": "voice2machine",
       "path": "."
+    },
+    {
+      "path": "../v2m-skills"
     }
   ],
   "settings": {
