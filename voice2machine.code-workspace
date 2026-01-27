@@ -1,10 +1,6 @@
 {
   "folders": [
     {
-      "name": "prompts book",
-      "path": "../llm-book",
-    },
-    {
       "name": "daemon backend",
       "path": "apps/daemon/backend",
     },
@@ -15,14 +11,6 @@
     {
       "name": "v2m-skills",
       "path": "../v2m-skills",
-    },
-    {
-      "name": "cesarszv custom agents",
-      "path": "../custom-agents (cesarszv)",
-    },
-    {
-      "name": "zarvent custom agents",
-      "path": "../custom-agents (zarvent)",
     },
   ],
   "settings": {
