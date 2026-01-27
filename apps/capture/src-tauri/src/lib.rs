@@ -202,7 +202,7 @@ pub async fn is_model_loaded(
 
 /// Configura los plugins y shortcuts de Tauri
 pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri::Manager;
+    use tauri::{Emitter, Manager};
     use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
     let app_handle = app.handle().clone();

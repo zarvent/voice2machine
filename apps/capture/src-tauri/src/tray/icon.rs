@@ -10,7 +10,7 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{TrayIcon, TrayIconBuilder},
-    AppHandle, Manager,
+    AppHandle, Emitter, Manager,
 };
 
 use crate::config::RecordingState;
@@ -127,8 +127,17 @@ fn get_icon_path(state: RecordingState) -> PathBuf {
 fn load_icon(path: &PathBuf) -> anyhow::Result<Image<'static>> {
     // Intentar cargar desde archivo
     if path.exists() {
-        Image::from_path(path)
-            .map_err(|e| anyhow::anyhow!("Error cargando icono {:?}: {}", path, e))
+        // Leer el archivo de imagen y decodificarlo a RGBA
+        let bytes = std::fs::read(path)
+            .map_err(|e| anyhow::anyhow!("Error leyendo icono {:?}: {}", path, e))?;
+        
+        let img = image::load_from_memory(&bytes)
+            .map_err(|e| anyhow::anyhow!("Error decodificando icono {:?}: {}", path, e))?;
+        
+        let rgba = img.to_rgba8();
+        let (width, height) = rgba.dimensions();
+        
+        Ok(Image::new_owned(rgba.into_raw(), width, height))
     } else {
         // Usar icono embebido como fallback
         // Esto es un icono PNG simple de 32x32 pixeles (negro transparente)
@@ -173,8 +182,7 @@ fn create_fallback_icon() -> anyhow::Result<Image<'static>> {
         }
     }
 
-    Image::from_rgba(rgba, size as u32, size as u32)
-        .map_err(|e| anyhow::anyhow!("Error creando icono fallback: {}", e))
+    Ok(Image::new_owned(rgba, size as u32, size as u32))
 }
 
 /// Maneja eventos del menu de tray
@@ -233,8 +241,7 @@ pub mod icons {
         // Soporte (linea vertical)
         draw_rect(&mut rgba, size, 15, 22, 2, 4, r, g, b);
 
-        Image::from_rgba(rgba, size as u32, size as u32)
-            .map_err(|e| anyhow::anyhow!("Error creando icono: {}", e))
+        Ok(Image::new_owned(rgba, size as u32, size as u32))
     }
 
     fn draw_circle(

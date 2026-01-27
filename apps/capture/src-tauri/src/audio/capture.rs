@@ -4,7 +4,7 @@
 //! El audio capturado se envía a través de canales para procesamiento asíncrono.
 
 use cpal::traits::{DeviceTrait, StreamTrait};
-use cpal::{SampleFormat, StreamConfig};
+use cpal::{Sample, SampleFormat, StreamConfig};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

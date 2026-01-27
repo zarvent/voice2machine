@@ -335,8 +335,9 @@ async fn run_recording_pipeline(
         }
     }
 
-    // Detener captura
+    // Detener captura y liberar recursos antes de async
     capture.stop();
+    drop(capture); // Liberar AudioCapture antes de cualquier .await (no es Send)
 
     // Si no hay speech, salir silenciosamente
     if !speech_buffer.has_speech() {

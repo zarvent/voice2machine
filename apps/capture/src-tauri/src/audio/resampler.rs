@@ -3,7 +3,7 @@
 //! Utiliza rubato para conversión de alta calidad con bajo overhead.
 
 use rubato::{
-    SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
+    Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
 };
 
 use super::AudioChunk;
