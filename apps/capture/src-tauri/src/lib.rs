@@ -94,6 +94,25 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 
     log::info!("Shortcut global registrado: Ctrl+Shift+Space");
 
+    // Verificar si el modelo existe y mostrar ventana si es necesario
+    let check_app_handle = app_handle.clone();
+    tauri::async_runtime::spawn(async move {
+        use crate::transcription::ModelDownloader;
+        
+        let downloader = ModelDownloader::new();
+        if !downloader.exists().await {
+            log::info!("Modelo no encontrado. Mostrando ventana de configuración.");
+            if let Some(window) = check_app_handle.get_webview_window("main") {
+                if let Err(e) = window.show() {
+                    log::error!("Error mostrando ventana: {}", e);
+                }
+                if let Err(e) = window.set_focus() {
+                    log::error!("Error dando foco a ventana: {}", e);
+                }
+            }
+        }
+    });
+
     // Escuchar eventos del pipeline para actualizar tray
     let _app_handle_events = app_handle.clone();
     tauri::async_runtime::spawn(async move {
