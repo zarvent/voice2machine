@@ -105,5 +105,5 @@ python apps/daemon/backend/scripts/diagnostics/health_check.py
 
 Una vez instalado, es hora de configurar cómo interactúas con la herramienta.
 
-- [Configuración Detallada](configuracion.md) - Ajusta modelos y sensibilidad.
-- [Atajos de Teclado](atajos_teclado.md) - Configura tus teclas mágicas.
+- [Configuración Detallada](configuration.md) - Ajusta modelos y sensibilidad.
+- [Atajos de Teclado](keyboard_shortcuts.md) - Configura tus teclas mágicas.

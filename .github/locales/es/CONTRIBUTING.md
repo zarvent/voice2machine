@@ -20,7 +20,7 @@ Para mantener nuestros estándares "State of the Art 2026", seguimos reglas estr
 2.  **Fork & Branch**:
     - Haz fork del repositorio.
     - Crea una rama descriptiva: `feat/nuevo-soporte-gpu` o `fix/error-transcripcion`.
-3.  **Desarrollo Local**: Sigue la guía de [Instalación](instalacion.md) para configurar tu entorno de desarrollo.
+3.  **Desarrollo Local**: Sigue la guía de [Instalación](installation.md) para configurar tu entorno de desarrollo.
 
 ---
 
