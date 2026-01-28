@@ -28,7 +28,13 @@ const getStateText = (state: RecordingState) => {
 function SettingsPanel() {
   const { config, devices, loading, updateConfig, refreshDevices } =
     useConfig();
-  const { state, lastTranscription, error, toggleRecording } = useRecording();
+  const {
+    state,
+    lastTranscription,
+    showCopiedFeedback,
+    error,
+    toggleRecording,
+  } = useRecording();
 
   // Derived state for button text/state
   const isProcessing = state === "processing";
@@ -67,6 +73,7 @@ function SettingsPanel() {
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
+            aria-hidden="true"
           >
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -75,8 +82,20 @@ function SettingsPanel() {
           </svg>
         </div>
         <h1>Capture</h1>
-        <div className="status-indicator" style={{ background: getStateColor(state) }}>
-          {getStateText(state)}
+        <div className="status-container">
+          {showCopiedFeedback && (
+            <div className="copied-badge" role="status">
+              ¡Copiado!
+            </div>
+          )}
+          <div
+            className="status-indicator"
+            style={{ background: getStateColor(state) }}
+            role="status"
+            aria-live="polite"
+          >
+            {getStateText(state)}
+          </div>
         </div>
       </header>
 
@@ -96,8 +115,19 @@ function SettingsPanel() {
               </option>
             ))}
           </select>
-          <button className="icon-button" onClick={refreshDevices} title="Refrescar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button
+            className="icon-button"
+            onClick={refreshDevices}
+            title="Refrescar"
+            aria-label="Refrescar dispositivos"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
               <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
               <path d="M21 3v5h-5" />
             </svg>

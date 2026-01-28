@@ -252,3 +252,24 @@ kbd {
   color: #64748b;
   font-size: 0.75rem;
 }
+
+.status-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.copied-badge {
+  background: #22c55e;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}

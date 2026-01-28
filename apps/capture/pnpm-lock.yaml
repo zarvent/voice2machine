@@ -6,7 +6,7 @@ settings:
 
 importers:
 
-  apps/capture:
+  .:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.0.0
