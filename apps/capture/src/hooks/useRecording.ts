@@ -6,6 +6,7 @@ interface UseRecordingReturn {
   state: RecordingState;
   isModelLoaded: boolean;
   lastTranscription: string | null;
+  showCopiedFeedback: boolean;
   error: string | null;
   toggleRecording: () => Promise<void>;
   loadModel: () => Promise<void>;
@@ -17,6 +18,7 @@ export function useRecording(): UseRecordingReturn {
   const [lastTranscription, setLastTranscription] = useState<string | null>(
     null
   );
+  const [showCopiedFeedback, setShowCopiedFeedback] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Use refs for values accessed inside listeners to avoid re-subscription
@@ -41,7 +43,6 @@ export function useRecording(): UseRecordingReturn {
             if (!mountedRef.current) return;
 
             const payload = event.payload;
-            console.log("Pipeline event:", payload);
 
             switch (payload.type) {
               case "state_changed":
@@ -51,10 +52,8 @@ export function useRecording(): UseRecordingReturn {
                 break;
               case "speech_started":
                 // Feedback visual opcional
-                console.log("Speech started");
                 break;
               case "speech_ended":
-                console.log("Speech ended:", payload.duration_ms, "ms");
                 break;
               case "transcription_complete":
                 if (payload.text) {
@@ -62,7 +61,12 @@ export function useRecording(): UseRecordingReturn {
                 }
                 break;
               case "copied_to_clipboard":
-                console.log("Copied to clipboard:", payload.text);
+                setShowCopiedFeedback(true);
+                setTimeout(() => {
+                  if (mountedRef.current) {
+                    setShowCopiedFeedback(false);
+                  }
+                }, 2000);
                 break;
               case "error":
                 if (payload.message) {
@@ -110,6 +114,7 @@ export function useRecording(): UseRecordingReturn {
     state,
     isModelLoaded,
     lastTranscription,
+    showCopiedFeedback,
     error,
     toggleRecording,
     loadModel,
