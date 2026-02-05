@@ -22,7 +22,7 @@ numpy==2.3.4
 # nvidia-cudnn-cu12==9.16.0.29  # torch gestiona esto automáticamente
 onnxruntime==1.23.2
 packaging==25.0
-protobuf==6.33.1
+protobuf==6.33.5
 python-dotenv>=1.0.0
 PyYAML==6.0.3
 setuptools==80.9.0
